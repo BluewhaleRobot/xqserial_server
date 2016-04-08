@@ -1,0 +1,9 @@
+建立包架构
+catkin_create_pkg xqserial_server std_msgs rospy roscpp nav_msgs sensor_msgs
+编译
+catkin_make xqserial_server
+
+c++总结：
+1.cout 需要endl刷新
+2.ros::init(argc, argv, "xqserial_server");中的argv是二级指针
+3.使用ros::param::param<int>("~baud", baud, 115200);这种写法获取baud参数时，debug时提供的参数列表为 _baud:=9600 ，请留意～与_
