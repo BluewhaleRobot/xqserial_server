@@ -28,6 +28,10 @@ typedef struct {
     int encoder_ppr;//车轮1转对应的编码器个数
     int omga_r;//右轮转速 个每秒
     int omga_l;//左轮转速 个每秒
+    float distance1;//第一个超声模块距离值 单位cm
+    float distance2;//第二个超声模块距离值 单位cm
+    float distance3;//第三个超声模块距离值 单位cm
+    float distance4;//第四个超声模块距离值 单位cm
     unsigned int time_stamp;//时间戳
 }UPLOAD_STATUS;
 
@@ -42,14 +46,16 @@ public:
     double get_wheel_separation();
     double get_wheel_radius();
     int get_wheel_ppr();
+    int get_status();
     geometry_msgs::Pose2D get_CarPos2D();
     void get_wheel_speed(double speed[2]);
     geometry_msgs::Twist get_CarTwist();
     std_msgs::Float64 get_power();
     nav_msgs::Odometry get_odom();
+    UPLOAD_STATUS car_status;
 private:
 
-    UPLOAD_STATUS car_status;
+
 
     //Wheel separation, wrt the midpoint of the wheel width: meters
     double wheel_separation;

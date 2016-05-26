@@ -63,6 +63,7 @@ int main(int argc, char **argv)
             }
             xq_status.Refresh();//定时发布状态
             r.sleep();
+            //cout<<"run"<<endl;
         }
 
         quit:

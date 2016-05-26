@@ -32,7 +32,7 @@ StatusPublisher::StatusPublisher()
     int i=0;
     int * status;
     status=(int *)&car_status;
-    for(i=0;i<19;i++)
+    for(i=0;i<23;i++)
     {
         status[i]=0;
     }
@@ -62,25 +62,31 @@ StatusPublisher::StatusPublisher(double separation,double radius)
     wheel_radius=radius;
 }
 
-void StatusPublisher::Update(const char *data, unsigned int len)
+void StatusPublisher::Update(const char data[], unsigned int len)
 {
+    boost::mutex::scoped_lock lock(mMutex);
     int i=0,j=0;
     int * receive_byte;
     static unsigned char last_str[2]={0x00,0x00};
     static unsigned char new_packed_ctr=DISABLE;//ENABLE表示新包开始，DISABLE 表示上一个包还未处理完；
-    int new_packed_ok_len=0;//包的理论长度
-    int new_packed_len=0;//包的实际长度
+    static int new_packed_ok_len=0;//包的理论长度
+    static int new_packed_len=0;//包的实际长度
     static unsigned char cmd_string_buf[512];
     unsigned char current_str=0x00;
     const int cmd_string_max_size=512;
     receive_byte=(int *)&car_status;
+    //int ii=0;
+    //boost::mutex::scoped_lock lock(mMutex);
 
     for(i=0;i<len;i++)
     {
         current_str=data[i];
+       // unsigned int temp=(unsigned int)current_str;
+       // std::cout<<temp<<std::endl;
         //判断是否有新包头
       if(last_str[0]==205&&last_str[1]==235&&current_str==215) //包头 205 235 215
         {
+            //std::cout<<"runup1 "<<std::endl;
             new_packed_ctr=ENABLE;
             new_packed_ok_len=0;
             new_packed_len=new_packed_ok_len;
@@ -92,16 +98,19 @@ void StatusPublisher::Update(const char *data, unsigned int len)
         last_str[1]=current_str;
         if (new_packed_ctr==ENABLE)
         {
+
             //获取包长度
             new_packed_ok_len=current_str;
             if(new_packed_ok_len>cmd_string_max_size) new_packed_ok_len=cmd_string_max_size; //包内容最大长度有限制
             new_packed_ctr=DISABLE;
+            //std::cout<<"runup2 "<< new_packed_len<< new_packed_ok_len<<std::endl;
         }
         else
         {
             //判断包当前大小
             if(new_packed_ok_len<=new_packed_len)
             {
+                //std::cout<<"runup3 "<< new_packed_len<< new_packed_ok_len<<std::endl;
                 //包长度已经大于等于理论长度，后续内容无效
                 continue;
             }
@@ -112,8 +121,16 @@ void StatusPublisher::Update(const char *data, unsigned int len)
                 cmd_string_buf[new_packed_len-1]=current_str;
                 if(new_packed_ok_len==new_packed_len&&new_packed_ok_len>0)
                 {
+                    //std::cout<<"runup4 "<<std::endl;
                     //当前包已经处理完成，开始处理
-                    if(new_packed_ok_len==95)
+                    if(new_packed_ok_len==115)
+                    {
+                        for(j=0;j<23;j++)
+                        {
+                            memcpy(&receive_byte[j],&cmd_string_buf[5*j],4);
+                        }
+                    }
+                    else if(new_packed_ok_len==95)
                     {
                         for(j=0;j<19;j++)
                         {
@@ -121,6 +138,8 @@ void StatusPublisher::Update(const char *data, unsigned int len)
                         }
                     }
                     mbUpdated=true;
+                    //ii++;
+                    //std::cout << ii << std::endl;
                     new_packed_ok_len=0;
                 }
             }
@@ -128,11 +147,14 @@ void StatusPublisher::Update(const char *data, unsigned int len)
         }
 
     }
+    return;
 }
 
 
 void StatusPublisher::Refresh()
 {
+
+    //std::cout<<"runR"<< mbUpdated<<std::endl;
     if(mbUpdated)
     {
         // Time
@@ -170,7 +192,7 @@ void StatusPublisher::Refresh()
         mPowerPub.publish(CarPower);
 
         CarOdom.header.stamp = current_time;
-        CarOdom.header.frame_id = "odom_combined";
+        CarOdom.header.frame_id = "odom";
         CarOdom.pose.pose.position.x = CarPos2D.x;
         CarOdom.pose.pose.position.y = CarPos2D.y;
         CarOdom.pose.pose.position.z = 0.0f;
@@ -195,16 +217,17 @@ void StatusPublisher::Refresh()
         mOdomPub.publish(CarOdom);
 
         // pub transform
-        /*
+
         static tf::TransformBroadcaster br;
         tf::Quaternion q;
         tf::Transform transform;
         transform.setOrigin( tf::Vector3(CarPos2D.x, CarPos2D.y, 0.0) );
         q.setRPY(0, 0, CarPos2D.theta/180*PI);
         transform.setRotation(q);
-        br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "odom_combined", "base_footprint"));
-        */
+        br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "odom", "base_footprint"));
+
         ros::spinOnce();
+        boost::mutex::scoped_lock lock(mMutex);
         mbUpdated = false;
     }
 }
@@ -241,6 +264,9 @@ std_msgs::Float64 StatusPublisher::get_power(){
 
 nav_msgs::Odometry StatusPublisher::get_odom(){
   return CarOdom;
+}
+int StatusPublisher::get_status(){
+  return car_status.status;
 }
 
 } //namespace xqserial_server

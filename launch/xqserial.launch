@@ -1,6 +1,7 @@
 <launch>
   <node pkg="xqserial_server" type="xqserial_server" name="motor_driver">
-    <param name="debug_flag" value="true"/>
+    <param name="debug_flag" value="false"/>
+    <param name="wheel_separation" value="0.412"/>ros
   </node>
   <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0.13 0 0 0 1 base_footprint base_link 10">
   </node>

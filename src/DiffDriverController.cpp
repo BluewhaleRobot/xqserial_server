@@ -1,5 +1,5 @@
 #include "DiffDriverController.h"
-
+#include <time.h>
 
 namespace xqserial_server
 {
@@ -31,12 +31,13 @@ void DiffDriverController::run()
 
 void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
 {
+    static time_t t1=time(NULL),t2;
     int i=0,wheel_ppr=1;
     double separation=0,radius=0,speed_lin=0,speed_ang=0,speed_temp[2];
     char speed[2]={0,0};//右一左二
     char cmd_str[13]={0xcd,0xeb,0xd7,0x09,0x74,0x53,0x53,0x53,0x53,0x00,0x00,0x00,0x00};
 
-
+    if(xq_status->get_status()==0) return;//底层还在初始化
     separation=xq_status->get_wheel_separation();
     radius=xq_status->get_wheel_radius();
     wheel_ppr=xq_status->get_wheel_ppr();
@@ -71,6 +72,39 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
          cmd_str[9+i]=0x00;
      }
     }
+
+    // std::cout<<"distance1 "<<xq_status->car_status.distance1<<std::endl;
+    // std::cout<<"distance2 "<<xq_status->car_status.distance2<<std::endl;
+    // std::cout<<"distance3 "<<xq_status->car_status.distance3<<std::endl;
+    if(xq_status->get_status()==2)
+    {
+      //有障碍物
+      if(xq_status->car_status.distance1<30&&xq_status->car_status.distance1>0&&cmd_str[6]==0x46)
+      {
+        cmd_str[6]=0x53;
+      }
+      if(xq_status->car_status.distance2<30&&xq_status->car_status.distance2>0&&cmd_str[5]==0x46)
+      {
+        cmd_str[5]=0x53;
+      }
+      if(xq_status->car_status.distance3<20&&xq_status->car_status.distance3>0&&(cmd_str[5]==0x42||cmd_str[6]==0x42))
+      {
+        cmd_str[5]=0x53;
+        cmd_str[6]=0x53;
+      }
+      if(xq_status->car_status.distance1<15&&xq_status->car_status.distance1>0&&(cmd_str[5]==0x46||cmd_str[6]==0x46))
+      {
+        cmd_str[5]=0x53;
+        cmd_str[6]=0x53;
+      }
+      if(xq_status->car_status.distance2<15&&xq_status->car_status.distance2>0&&(cmd_str[5]==0x46||cmd_str[6]==0x46))
+      {
+        cmd_str[5]=0x53;
+        cmd_str[6]=0x53;
+      }
+    }
+
+
     if(NULL!=cmd_serial)
     {
         cmd_serial->write(cmd_str,13);
