@@ -17,7 +17,7 @@ xiaoqiang motor driver and low level ROS api package
     
 ##input param   
        name                            default
-      port                             /dev/ttyUSB0
+    port                             /dev/ttyUSB0
     baud                               115200
     wheel_separation                    0.37
     wheel_radius                        0.06
