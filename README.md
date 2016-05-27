@@ -24,8 +24,14 @@ xiaoqiang motor driver and low level ROS api package
     debug_flag                          false
     max_speed                           2.0
     cmd_topic                           cmd_vel
-    
-##Quickstart
+
+##Usage:
+###download to xiaoqiang ros workspace
+```
+cd ~/Documents/ros/src
+git clone https://github.com/BlueWhaleRobot/xqserial_server.git 
+```
+###Quickstart
 ```
 roslaunch xqserial_server xqserial.launch
 ```
@@ -33,7 +39,13 @@ roslaunch xqserial_server xqserial.launch
     
     
 小强电机驱动和相关的ROS底层驱动程序。  
-##简单使用方法
+##使用方法：
+####安装到小强ROS工作目录
+```
+cd ~/Documents/ros/src
+git clone https://github.com/BlueWhaleRobot/xqserial_server.git 
+```
+###直接启动
 ```
 roslaunch xqserial_server xqserial.launch
 ```
