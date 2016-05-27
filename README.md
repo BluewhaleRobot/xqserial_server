@@ -25,7 +25,7 @@ xiaoqiang motor driver and low level ROS api package
     max_speed                           2.0
     cmd_topic                           cmd_vel
     
-##Quik start
+##Quickstart
 ```
 roslaunch xqserial_server xqserial.launch
 ```
