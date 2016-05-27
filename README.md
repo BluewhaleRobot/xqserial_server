@@ -30,6 +30,8 @@ xiaoqiang motor driver and low level ROS api package
 ```
 cd ~/Documents/ros/src
 git clone https://github.com/BlueWhaleRobot/xqserial_server.git 
+cd ..
+catkin_make
 ```
 ###Quickstart
 ```
@@ -44,6 +46,8 @@ roslaunch xqserial_server xqserial.launch
 ```
 cd ~/Documents/ros/src
 git clone https://github.com/BlueWhaleRobot/xqserial_server.git 
+cd ..
+catkin_make
 ```
 ###直接启动
 ```
