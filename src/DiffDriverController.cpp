@@ -25,9 +25,21 @@ void DiffDriverController::run()
 {
     ros::NodeHandle nodeHandler;
     ros::Subscriber sub = nodeHandler.subscribe(cmd_topic, 1, &DiffDriverController::sendcmd, this);
+    ros::Subscriber sub2 = nodeHandler.subscribe("/imu_cal", 1, &DiffDriverController::imuCalibration,this);
     ros::spin();
 }
-
+void DiffDriverController::imuCalibration(const std_msgs::Bool& calFlag)
+{
+  if(calFlag.data)
+  {
+    //下发底层ｉｍｕ标定命令
+    char cmd_str[5]={0xcd,0xeb,0xd7,0x01,0x43};
+    if(NULL!=cmd_serial)
+    {
+        cmd_serial->write(cmd_str,13);
+    }
+  }
+}
 
 void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
 {

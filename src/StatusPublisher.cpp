@@ -205,8 +205,8 @@ void StatusPublisher::Refresh()
                                                               (0)   (0)   (0)  (0) (999) (0)
                                                               (0)   (0)   (0)  (0)  (0)  (var_angle) ;
         CarOdom.child_frame_id = "base_footprint";
-        CarOdom.twist.twist.linear.x = CarTwist.linear.x * cos(CarPos2D.theta* PI / 180.0f);
-        CarOdom.twist.twist.linear.y = CarTwist.linear.y * sin(CarPos2D.theta* PI / 180.0f);
+        CarOdom.twist.twist.linear.x = CarTwist.linear.x;// * cos(CarPos2D.theta* PI / 180.0f);
+        CarOdom.twist.twist.linear.y = CarTwist.linear.y;// * sin(CarPos2D.theta* PI / 180.0f);
         CarOdom.twist.twist.angular.z = CarTwist.angular.z;
         CarOdom.twist.covariance =  boost::assign::list_of(var_len) (0) (0)  (0)  (0)  (0)
                                                               (0) (var_len)  (0)  (0)  (0)  (0)
