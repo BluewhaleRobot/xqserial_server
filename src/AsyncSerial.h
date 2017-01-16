@@ -120,7 +120,7 @@ public:
     /**
      * Read buffer maximum size
      */
-    static const int readBufferSize=512;
+    static const int readBufferSize=1024;
 private:
 
     /**
@@ -135,6 +135,7 @@ private:
      */
     void readEnd(const boost::system::error_code& error,
         size_t bytes_transferred);
+
 
     /**
      * Callback called to start an asynchronous write operation.

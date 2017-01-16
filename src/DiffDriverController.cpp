@@ -11,10 +11,12 @@ DiffDriverController::DiffDriverController()
     cmd_topic="cmd_vel";
     xq_status=new StatusPublisher();
     cmd_serial=NULL;
+    MoveFlag=true;
 }
 
 DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_)
 {
+    MoveFlag=true;
     max_wheelspeed=max_speed_;
     cmd_topic=cmd_topic_;
     xq_status=xq_status_;
@@ -26,7 +28,14 @@ void DiffDriverController::run()
     ros::NodeHandle nodeHandler;
     ros::Subscriber sub = nodeHandler.subscribe(cmd_topic, 1, &DiffDriverController::sendcmd, this);
     ros::Subscriber sub2 = nodeHandler.subscribe("/imu_cal", 1, &DiffDriverController::imuCalibration,this);
+    ros::Subscriber sub3 = nodeHandler.subscribe("/globalMoveFlag", 1, &DiffDriverController::updateMoveFlag,this);
     ros::spin();
+}
+void DiffDriverController::updateMoveFlag(const std_msgs::Bool& moveFlag)
+{
+  boost::mutex::scoped_lock lock(mMutex);
+  MoveFlag=moveFlag.data;
+
 }
 void DiffDriverController::imuCalibration(const std_msgs::Bool& calFlag)
 {
@@ -64,6 +73,10 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     speed_temp[1]=(speed_lin-speed_ang/2)/max_wheelspeed*100.0;
     speed_temp[1]=std::min(speed_temp[1],100.0);
     speed_temp[1]=std::max(-100.0,speed_temp[1]);
+
+  //std::cout<<"radius "<<radius<<std::endl;
+  //std::cout<<"ppr "<<wheel_ppr<<std::endl;
+  //std::cout<<"pwm "<<speed_temp[0]<<std::endl;
   //  command.linear.x/
     for(i=0;i<2;i++)
     {
@@ -88,35 +101,40 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     // std::cout<<"distance1 "<<xq_status->car_status.distance1<<std::endl;
     // std::cout<<"distance2 "<<xq_status->car_status.distance2<<std::endl;
     // std::cout<<"distance3 "<<xq_status->car_status.distance3<<std::endl;
-    if(xq_status->get_status()==2)
+    // if(xq_status->get_status()==2)
+    // {
+    //   //有障碍物
+    //   if(xq_status->car_status.distance1<30&&xq_status->car_status.distance1>0&&cmd_str[6]==0x46)
+    //   {
+    //     cmd_str[6]=0x53;
+    //   }
+    //   if(xq_status->car_status.distance2<30&&xq_status->car_status.distance2>0&&cmd_str[5]==0x46)
+    //   {
+    //     cmd_str[5]=0x53;
+    //   }
+    //   if(xq_status->car_status.distance3<20&&xq_status->car_status.distance3>0&&(cmd_str[5]==0x42||cmd_str[6]==0x42))
+    //   {
+    //     cmd_str[5]=0x53;
+    //     cmd_str[6]=0x53;
+    //   }
+    //   if(xq_status->car_status.distance1<15&&xq_status->car_status.distance1>0&&(cmd_str[5]==0x46||cmd_str[6]==0x46))
+    //   {
+    //     cmd_str[5]=0x53;
+    //     cmd_str[6]=0x53;
+    //   }
+    //   if(xq_status->car_status.distance2<15&&xq_status->car_status.distance2>0&&(cmd_str[5]==0x46||cmd_str[6]==0x46))
+    //   {
+    //     cmd_str[5]=0x53;
+    //     cmd_str[6]=0x53;
+    //   }
+    // }
+
+    boost::mutex::scoped_lock lock(mMutex);
+    if(!MoveFlag)
     {
-      //有障碍物
-      if(xq_status->car_status.distance1<30&&xq_status->car_status.distance1>0&&cmd_str[6]==0x46)
-      {
-        cmd_str[6]=0x53;
-      }
-      if(xq_status->car_status.distance2<30&&xq_status->car_status.distance2>0&&cmd_str[5]==0x46)
-      {
-        cmd_str[5]=0x53;
-      }
-      if(xq_status->car_status.distance3<20&&xq_status->car_status.distance3>0&&(cmd_str[5]==0x42||cmd_str[6]==0x42))
-      {
-        cmd_str[5]=0x53;
-        cmd_str[6]=0x53;
-      }
-      if(xq_status->car_status.distance1<15&&xq_status->car_status.distance1>0&&(cmd_str[5]==0x46||cmd_str[6]==0x46))
-      {
-        cmd_str[5]=0x53;
-        cmd_str[6]=0x53;
-      }
-      if(xq_status->car_status.distance2<15&&xq_status->car_status.distance2>0&&(cmd_str[5]==0x46||cmd_str[6]==0x46))
-      {
-        cmd_str[5]=0x53;
-        cmd_str[6]=0x53;
-      }
+      cmd_str[5]=0x53;
+      cmd_str[6]=0x53;
     }
-
-
     if(NULL!=cmd_serial)
     {
         cmd_serial->write(cmd_str,13);
