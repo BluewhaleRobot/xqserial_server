@@ -28,7 +28,7 @@ int main(int argc, char **argv)
     double separation=0,radius=0;
     bool DebugFlag = false;
     ros::param::param<double>("~wheel_separation", separation, 0.37);
-    ros::param::param<double>("~wheel_radius", radius, 0.035);
+    ros::param::param<double>("~wheel_radius", radius, 0.0625);
     ros::param::param<bool>("~debug_flag", DebugFlag, false);
     xqserial_server::StatusPublisher xq_status(separation,radius);
 
