@@ -215,6 +215,7 @@ void StatusPublisher::Update(const char data[], unsigned int len)
 void StatusPublisher::Refresh()
 {
      boost::mutex::scoped_lock lock(mMutex);
+     static double theta_last=0.0;
      static unsigned int ii=0;
      ii++;
     //std::cout<<"runR"<< mbUpdated<<std::endl;
@@ -249,10 +250,16 @@ void StatusPublisher::Refresh()
         delta_x=delta_car*cos(CarPos2D.theta* PI / 180.0f);
         delta_y=delta_car*sin(CarPos2D.theta* PI / 180.0f);
 
+        delta_theta=car_status.theta-theta_last;
+        theta_last=car_status.theta;
+        if(delta_theta>10)
+        {
+          mbUpdated = false;
+          return;
+        }
         CarPos2D.x+=delta_x;
         CarPos2D.y+=delta_y;
-        delta_theta=car_status.theta-CarPos2D.theta;
-        CarPos2D.theta=car_status.theta;
+        CarPos2D.theta+=delta_theta;
 
 
         mPose2DPub.publish(CarPos2D);

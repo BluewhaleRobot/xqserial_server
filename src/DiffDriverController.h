@@ -18,6 +18,7 @@ public:
     void imuCalibration(const std_msgs::Bool& calFlag);
     void setStatusPtr(StatusPublisher& status);
     void updateMoveFlag(const std_msgs::Bool& moveFlag);
+    void updateBarDetectFlag(const std_msgs::Bool& DetectFlag);
 private:
     double max_wheelspeed;//单位为转每秒,只能为正数
     std::string cmd_topic;

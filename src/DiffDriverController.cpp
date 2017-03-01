@@ -29,6 +29,7 @@ void DiffDriverController::run()
     ros::Subscriber sub = nodeHandler.subscribe(cmd_topic, 1, &DiffDriverController::sendcmd, this);
     ros::Subscriber sub2 = nodeHandler.subscribe("/imu_cal", 1, &DiffDriverController::imuCalibration,this);
     ros::Subscriber sub3 = nodeHandler.subscribe("/globalMoveFlag", 1, &DiffDriverController::updateMoveFlag,this);
+    ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag,this);
     ros::spin();
 }
 void DiffDriverController::updateMoveFlag(const std_msgs::Bool& moveFlag)
@@ -45,11 +46,31 @@ void DiffDriverController::imuCalibration(const std_msgs::Bool& calFlag)
     char cmd_str[5]={0xcd,0xeb,0xd7,0x01,0x43};
     if(NULL!=cmd_serial)
     {
-        cmd_serial->write(cmd_str,13);
+        cmd_serial->write(cmd_str,5);
     }
   }
 }
-
+void DiffDriverController::updateBarDetectFlag(const std_msgs::Bool& DetectFlag)
+{
+  if(DetectFlag.data)
+  {
+    //下发底层红外开启命令
+    char cmd_str[6]={0xcd,0xeb,0xd7,0x02,0x44,0x01};
+    if(NULL!=cmd_serial)
+    {
+        cmd_serial->write(cmd_str,6);
+    }
+  }
+  else
+  {
+    //下发底层红外禁用命令
+    char cmd_str[6]={0xcd,0xeb,0xd7,0x02,0x44,0x00};
+    if(NULL!=cmd_serial)
+    {
+        cmd_serial->write(cmd_str,6);
+    }
+  }
+}
 void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
 {
     static time_t t1=time(NULL),t2;
