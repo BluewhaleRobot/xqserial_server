@@ -236,8 +236,7 @@ void StatusPublisher::Refresh()
         if(delta_car>0.05||delta_car<-0.05)
         {
           // std::cout<<"get you!"<<std::endl;
-          mbUpdated = false;
-          return;
+          delta_car = 0;
         }
         // if(ii%50==0||car_status.encoder_delta_car>3000||car_status.encoder_delta_car<-3000)
         // {
@@ -252,10 +251,9 @@ void StatusPublisher::Refresh()
 
         delta_theta=car_status.theta-theta_last;
         theta_last=car_status.theta;
-        if(delta_theta>10)
+        if(delta_theta>10||delta_theta<-10)
         {
-          mbUpdated = false;
-          return;
+          delta_theta = 0;
         }
         CarPos2D.x+=delta_x;
         CarPos2D.y+=delta_y;
