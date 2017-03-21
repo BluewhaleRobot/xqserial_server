@@ -1,11 +1,11 @@
 # xqserial_server
 xiaoqiang motor driver and low level ROS api package
     
-##input topic
+## input topic
       name                                  type        
     /cmd_vel                         geometry_msgs/Twist
       
-##output topic
+## output topic
        name                                 type                 frate
     /xqserial_server/Odom            nav_msgs/Odometry            50hz
     /xqserial_server/Pose2D          geometry_msgs/Pose2D         50hz
@@ -15,7 +15,7 @@ xiaoqiang motor driver and low level ROS api package
     /tf                              odom-->base_footprint        50hz
     /tf_static                       base_footprint-->base_link   100hz
     
-##input param   
+## input param   
        name                            default
     port                             /dev/ttyUSB0
     baud                               115200
@@ -25,33 +25,33 @@ xiaoqiang motor driver and low level ROS api package
     max_speed                           2.0
     cmd_topic                           cmd_vel
 
-##Usage:
-###download to xiaoqiang ros workspace
+## Usage:
+### download to xiaoqiang ros workspace
 ```
 cd ~/Documents/ros/src
 git clone https://github.com/BlueWhaleRobot/xqserial_server.git 
 cd ..
 catkin_make
 ```
-###Quickstart
+### Quickstart
 ```
 roslaunch xqserial_server xqserial.launch
 ```
-##Made with :heart: by BlueWhale Tech corp.
+## Made with :heart: by BlueWhale Tech corp.
     
     
 小强电机驱动和相关的ROS底层驱动程序。  
-##使用方法：
-####安装到小强ROS工作目录
+## 使用方法：
+#### 安装到小强ROS工作目录
 ```
 cd ~/Documents/ros/src
 git clone https://github.com/BlueWhaleRobot/xqserial_server.git 
 cd ..
 catkin_make
 ```
-###直接启动
+### 直接启动
 ```
 roslaunch xqserial_server xqserial.launch
 ```
     
-##由蓝鲸科技精 :heart: 制作。
+## 由蓝鲸科技精 :heart: 制作。
