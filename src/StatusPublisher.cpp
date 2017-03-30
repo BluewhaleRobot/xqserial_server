@@ -259,7 +259,9 @@ void StatusPublisher::Refresh()
         CarPos2D.y+=delta_y;
         CarPos2D.theta+=delta_theta;
 
-
+        if(CarPos2D.theta>360.0) CarPos2D.theta-=360;
+        if(CarPos2D.theta<0.0) CarPos2D.theta+=360;
+        
         mPose2DPub.publish(CarPos2D);
 
         //flag
