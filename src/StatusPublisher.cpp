@@ -9,6 +9,7 @@
 
 namespace xqserial_server
 {
+typedef sensor_msgs::PointCloud2 PointCloud;
 
 StatusPublisher::StatusPublisher()
 {
@@ -43,7 +44,8 @@ StatusPublisher::StatusPublisher()
    mTwistPub = mNH.advertise<geometry_msgs::Twist>("xqserial_server/Twist",1,true);
    mPowerPub = mNH.advertise<std_msgs::Float64>("xqserial_server/Power", 1, true);
    mOdomPub = mNH.advertise<nav_msgs::Odometry>("xqserial_server/Odom", 1, true);
-
+   pub_barpoint_cloud_ = mNH.advertise<PointCloud>("kinect/barpoints", 1, true);
+   pub_clearpoint_cloud_ = mNH.advertise<PointCloud>("kinect/clearpoints", 1, true);
   /* static tf::TransformBroadcaster br;
    tf::Quaternion q;
    tf::Transform transform;
@@ -261,7 +263,7 @@ void StatusPublisher::Refresh()
 
         if(CarPos2D.theta>360.0) CarPos2D.theta-=360;
         if(CarPos2D.theta<0.0) CarPos2D.theta+=360;
-        
+
         mPose2DPub.publish(CarPos2D);
 
         //flag
@@ -274,6 +276,140 @@ void StatusPublisher::Refresh()
           flag.data=2;
         }
         mStatusFlagPub.publish(flag);
+
+        int barArea_nums=0;
+        int clearArea_nums=0;
+        if(car_status.distance1>0.1)
+        {
+          barArea_nums+=3;
+        }else{
+          clearArea_nums+=6;
+        }
+        if(car_status.distance2>0.1)
+        {
+          barArea_nums+=3;
+        }else{
+          clearArea_nums+=6;
+        }
+        if(car_status.distance4>0.1)
+        {
+          barArea_nums+=3;
+        }else{
+          clearArea_nums+=6;
+        }
+
+        if(barArea_nums>0)
+        {
+          //发布雷区
+          PointCloud::Ptr barcloud_msg(new PointCloud);
+          barcloud_msg->header.stamp = current_time;
+          barcloud_msg->height = 1;
+          barcloud_msg->width  = barArea_nums;
+          barcloud_msg->is_dense = true;
+          barcloud_msg->is_bigendian = false;
+          barcloud_msg->header.frame_id="kinect_link_new";
+          sensor_msgs::PointCloud2Modifier pcd_modifier1(*barcloud_msg);
+          pcd_modifier1.setPointCloud2FieldsByString(1,"xyz");
+          sensor_msgs::PointCloud2Iterator<float> bariter_x(*barcloud_msg, "x");
+          sensor_msgs::PointCloud2Iterator<float> bariter_y(*barcloud_msg, "y");
+          sensor_msgs::PointCloud2Iterator<float> bariter_z(*barcloud_msg, "z");
+          if(car_status.distance2>0.1)
+          {
+            for(int k=0;k<3;k++,++bariter_x, ++bariter_y,++bariter_z)
+            {
+              *bariter_x=0.3;
+              *bariter_y=-0.10-k*0.05;
+              *bariter_z=0.15;
+            }
+          }
+          if(car_status.distance4>0.1)
+          {
+            for(int k=0;k<3;k++,++bariter_x, ++bariter_y,++bariter_z)
+            {
+              *bariter_x=0.3;
+              *bariter_y=-0.1+k*0.05;
+              *bariter_z=0.15;
+            }
+          }
+          if(car_status.distance1>0.1)
+          {
+            for(int k=0;k<3;k++,++bariter_x, ++bariter_y,++bariter_z)
+            {
+              *bariter_x=0.3;
+              *bariter_y=0.05+k*0.05;
+              *bariter_z=0.15;
+            }
+          }
+          if(ii%5==0)
+          {
+            pub_barpoint_cloud_.publish(barcloud_msg);
+          }
+        }
+        if(clearArea_nums>0)
+        {
+          //发布雷区
+          PointCloud::Ptr clearcloud_msg(new PointCloud);
+          clearcloud_msg->header.stamp = current_time;
+          clearcloud_msg->height = 1;
+          clearcloud_msg->width  = clearArea_nums;
+          clearcloud_msg->is_dense = true;
+          clearcloud_msg->is_bigendian = false;
+          clearcloud_msg->header.frame_id="kinect_link_new";
+          sensor_msgs::PointCloud2Modifier pcd_modifier1(*clearcloud_msg);
+          pcd_modifier1.setPointCloud2FieldsByString(1,"xyz");
+          sensor_msgs::PointCloud2Iterator<float> cleariter_x(*clearcloud_msg, "x");
+          sensor_msgs::PointCloud2Iterator<float> cleariter_y(*clearcloud_msg, "y");
+          sensor_msgs::PointCloud2Iterator<float> cleariter_z(*clearcloud_msg, "z");
+          if(car_status.distance2<0.1)
+          {
+            for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            {
+              *cleariter_x=0.3;
+              *cleariter_y=-0.1-k*0.05;
+              *cleariter_z=0.0;
+            }
+            for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            {
+              *cleariter_x=0.25;
+              *cleariter_y=-0.1-k*0.05;
+              *cleariter_z=0.0;
+            }
+          }
+          if(car_status.distance4<0.1)
+          {
+            for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            {
+              *cleariter_x=0.3;
+              *cleariter_y=-0.1+k*0.05;
+              *cleariter_z=0.0;
+            }
+            for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            {
+              *cleariter_x=0.25;
+              *cleariter_y=-0.1+k*0.05;
+              *cleariter_z=0.0;
+            }
+          }
+          if(car_status.distance1<0.1)
+          {
+            for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            {
+              *cleariter_x=0.3;
+              *cleariter_y=0.05+k*0.05;
+              *cleariter_z=0.0;
+            }
+            for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            {
+              *cleariter_x=0.25;
+              *cleariter_y=0.05+k*0.05;
+              *cleariter_z=0.0;
+            }
+          }
+          if(ii%5==0)
+          {
+            pub_clearpoint_cloud_.publish(clearcloud_msg);
+          }
+        }
 
         //Twist
         double angle_speed;

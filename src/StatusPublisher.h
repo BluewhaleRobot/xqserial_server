@@ -12,6 +12,8 @@
 #include "std_msgs/Int32.h"
 #include "std_msgs/Float64.h"
 #include "tf/transform_broadcaster.h"
+#include <sensor_msgs/point_cloud2_iterator.h>
+#include <sensor_msgs/PointField.h>
 
 #define PI 3.14159265
 
@@ -74,6 +76,8 @@ private:
     ros::Publisher mStatusFlagPub;
     ros::Publisher mPowerPub;
     ros::Publisher mOdomPub;
+    ros::Publisher pub_barpoint_cloud_;
+    ros::Publisher pub_clearpoint_cloud_;
 
     bool mbUpdated;
 
