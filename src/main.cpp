@@ -8,6 +8,7 @@
 #include <ros/package.h>
 #include "DiffDriverController.h"
 #include "StatusPublisher.h"
+#include <ros/console.h>
 
 using namespace std;
 
@@ -17,6 +18,7 @@ int main(int argc, char **argv)
 
     ros::init(argc, argv, "xqserial_server");
     ros::start();
+    ROS_ERROR("Hello %s", "World");
 
     //获取串口参数
     std::string port;

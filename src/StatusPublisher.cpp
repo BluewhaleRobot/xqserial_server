@@ -33,7 +33,7 @@ StatusPublisher::StatusPublisher()
     int i=0;
     int * status;
     status=(int *)&car_status;
-    for(i=0;i<23;i++)
+    for(i=0;i<24;i++)
     {
         status[i]=0;
     }
@@ -46,6 +46,11 @@ StatusPublisher::StatusPublisher()
    mOdomPub = mNH.advertise<nav_msgs::Odometry>("xqserial_server/Odom", 1, true);
    pub_barpoint_cloud_ = mNH.advertise<PointCloud>("kinect/barpoints", 1, true);
    pub_clearpoint_cloud_ = mNH.advertise<PointCloud>("kinect/clearpoints", 1, true);
+
+   // 蓝海的数据
+   mTargetIndexPub = mNH.advertise<std_msgs::Int32>("xqserial_server/targetIndex",1,true);
+   mTargetAnglePub = mNH.advertise<std_msgs::Int32>("xqserial_server/targetAngle",1,true);
+
   /* static tf::TransformBroadcaster br;
    tf::Quaternion q;
    tf::Transform transform;
@@ -70,7 +75,6 @@ void StatusPublisher::Update(const char data[], unsigned int len)
   // static char data2[1024];
   // static int len2=0;
     boost::mutex::scoped_lock lock(mMutex);
-
     int i=0,j=0;
     int * receive_byte;
     static unsigned char last_str[2]={0x00,0x00};
@@ -151,6 +155,14 @@ void StatusPublisher::Update(const char data[], unsigned int len)
                         }
                         mbUpdated=true;
                     }
+                    else if(new_packed_ok_len == 120){
+                      for(j=0;j<24;j++)
+                      {
+                          memcpy(&receive_byte[j],&cmd_string_buf[5*j],4);
+                      }
+                      mbUpdated=true;
+                    }
+
                     if(mbUpdated)
                     {
                       for(j=0;j<7;j++)
@@ -445,6 +457,16 @@ void StatusPublisher::Refresh()
                                                               (0)   (0)   (0)  (0) (999) (0)
                                                               (0)   (0)   (0)  (0)  (0)  (var_angle) ;
         mOdomPub.publish(CarOdom);
+
+        // 蓝海的需求
+        std_msgs::Int32 target_index;
+        std::cout << "here" << std::endl;
+        std::cout << car_status.target_index << std::endl;
+        target_index.data = (int)car_status.target_index;
+        mTargetIndexPub.publish(target_index);
+        std_msgs::Int32 target_angle;
+        target_angle.data = (int)(car_status.target_angle_h * 0xff + car_status.target_angle_l);
+        mTargetAnglePub.publish(target_angle);
 
         // pub transform
 

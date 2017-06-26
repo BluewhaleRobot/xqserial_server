@@ -2,6 +2,7 @@
 #define STATUSPUBLISHER_H
 
 #include "ros/ros.h"
+#include "ros/console.h"
 #include <boost/thread.hpp>
 #include <boost/assign/list_of.hpp>
 #include <algorithm>
@@ -14,6 +15,7 @@
 #include "tf/transform_broadcaster.h"
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include <sensor_msgs/PointField.h>
+#include <stdint.h>
 
 #define PI 3.14159265
 
@@ -35,6 +37,10 @@ typedef struct {
     float distance4;//第四个超声模块距离值 单位cm
     float IMU[9];//mpu9250 9轴数据
     unsigned int time_stamp;//时间戳
+    uint8_t target_index;
+    uint8_t target_angle_h;
+    uint8_t target_angle_l;
+    uint8_t target_blank;
 }UPLOAD_STATUS;
 
 class StatusPublisher
@@ -78,7 +84,8 @@ private:
     ros::Publisher mOdomPub;
     ros::Publisher pub_barpoint_cloud_;
     ros::Publisher pub_clearpoint_cloud_;
-
+    ros::Publisher mTargetIndexPub;
+    ros::Publisher mTargetAnglePub;
     bool mbUpdated;
 
     boost::mutex mMutex;
