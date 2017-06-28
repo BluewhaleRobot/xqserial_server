@@ -8,19 +8,23 @@ namespace xqserial_server
 DiffDriverController::DiffDriverController()
 {
     max_wheelspeed=2.0;
-    cmd_topic="cmd_vel";
+    cmd_topic="/cmd_vel";
     xq_status=new StatusPublisher();
-    cmd_serial=NULL;
+    cmd_serial_car=NULL;
+    cmd_serial_imu=NULL;
     MoveFlag=true;
+    goalReached=false;
 }
 
-DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_)
+DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_car_,CallbackAsyncSerial* cmd_serial_imu_)
 {
     MoveFlag=true;
     max_wheelspeed=max_speed_;
     cmd_topic=cmd_topic_;
     xq_status=xq_status_;
-    cmd_serial=cmd_serial_;
+    cmd_serial_car=cmd_serial_car_;
+    cmd_serial_imu=cmd_serial_imu_;
+    goalReached=false;
 }
 
 void DiffDriverController::run()
@@ -30,7 +34,14 @@ void DiffDriverController::run()
     ros::Subscriber sub2 = nodeHandler.subscribe("/imu_cal", 1, &DiffDriverController::imuCalibration,this);
     ros::Subscriber sub3 = nodeHandler.subscribe("/globalMoveFlag", 1, &DiffDriverController::updateMoveFlag,this);
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag,this);
+    ros::Subscriber sub5 = nodeHandler.subscribe("/goalReached", 1, &DiffDriverController::updateGoalFlag,this);
     ros::spin();
+}
+void DiffDriverController::updateGoalFlag(const std_msgs::Bool& goalFlag)
+{
+  boost::mutex::scoped_lock lock(mMutex);
+  goalReached=goalFlag.data;
+
 }
 void DiffDriverController::updateMoveFlag(const std_msgs::Bool& moveFlag)
 {
@@ -43,43 +54,71 @@ void DiffDriverController::imuCalibration(const std_msgs::Bool& calFlag)
   if(calFlag.data)
   {
     //下发底层ｉｍｕ标定命令
+    boost::mutex::scoped_lock lock(mMutex);
     char cmd_str[5]={0xcd,0xeb,0xd7,0x01,0x43};
-    if(NULL!=cmd_serial)
+    if(NULL!=cmd_serial_imu)
     {
-        cmd_serial->write(cmd_str,5);
+        cmd_serial_imu->write(cmd_str,5);
     }
   }
 }
 void DiffDriverController::updateBarDetectFlag(const std_msgs::Bool& DetectFlag)
 {
+  boost::mutex::scoped_lock lock(mMutex);
   if(DetectFlag.data)
   {
     //下发底层红外开启命令
     char cmd_str[6]={0xcd,0xeb,0xd7,0x02,0x44,0x01};
-    if(NULL!=cmd_serial)
+    if(NULL!=cmd_serial_car)
     {
-        cmd_serial->write(cmd_str,6);
+        cmd_serial_car->write(cmd_str,6);
     }
   }
   else
   {
     //下发底层红外禁用命令
     char cmd_str[6]={0xcd,0xeb,0xd7,0x02,0x44,0x00};
-    if(NULL!=cmd_serial)
+    if(NULL!=cmd_serial_car)
     {
-        cmd_serial->write(cmd_str,6);
+        cmd_serial_car->write(cmd_str,6);
     }
   }
 }
+void DiffDriverController::Refresh()
+{
+     boost::mutex::scoped_lock lock(mMutex);
+     char cmd_str[13]={0xcd,0xeb,0xd7,0x09,0x10,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+     if(NULL!=cmd_serial_car)
+     {
+         uint8_t * send_bytes;
+         send_bytes= (uint8_t *)&xq_status->car_status.poseID;
+         memcpy(&cmd_str[5],send_bytes,4);
+         int goalReachFlag;
+         if(goalReached)
+         {
+           goalReachFlag=1;
+         }
+         else
+         {
+           goalReachFlag=0;
+
+         }
+         send_bytes= (uint8_t *)&goalReachFlag;
+         memcpy(&cmd_str[9],send_bytes,4);
+         cmd_serial_car->write(cmd_str,13);
+     }
+}
+
 void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
 {
+    std::cout<<"oups1! "<<std::endl;
     static time_t t1=time(NULL),t2;
     int i=0,wheel_ppr=1;
     double separation=0,radius=0,speed_lin=0,speed_ang=0,speed_temp[2];
     char speed[2]={0,0};//右一左二
     char cmd_str[13]={0xcd,0xeb,0xd7,0x09,0x74,0x53,0x53,0x53,0x53,0x00,0x00,0x00,0x00};
 
-    if(xq_status->get_status()==0) return;//底层还在初始化
+  //  if(xq_status->get_status()==0) return;//底层还在初始化
     separation=xq_status->get_wheel_separation();
     radius=xq_status->get_wheel_radius();
     wheel_ppr=xq_status->get_wheel_ppr();
@@ -159,16 +198,20 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     //     cmd_str[6]=0x53;
     //   }
     // }
+    std::cout<<"oups2! "<<std::endl;
 
     boost::mutex::scoped_lock lock(mMutex);
+    std::cout<<"oups3! "<<std::endl;
+
     if(!MoveFlag)
     {
       cmd_str[5]=0x53;
       cmd_str[6]=0x53;
     }
-    if(NULL!=cmd_serial)
+    if(NULL!=cmd_serial_car)
     {
-        cmd_serial->write(cmd_str,13);
+        cmd_serial_car->write(cmd_str,13);
+        std::cout<<"oups! "<<std::endl;
     }
 
    // command.linear.x

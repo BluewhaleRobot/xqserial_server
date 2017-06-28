@@ -13,7 +13,8 @@ typedef sensor_msgs::PointCloud2 PointCloud;
 
 StatusPublisher::StatusPublisher()
 {
-    mbUpdated=false;
+    mbUpdated_car=false;
+    mbUpdated_imu=false;
     wheel_separation=0.37;
     wheel_radius=0.06;
 
@@ -37,7 +38,7 @@ StatusPublisher::StatusPublisher()
     {
         status[i]=0;
     }
-    car_status.encoder_ppr=4*12*64;
+    car_status.encoder_ppr=1000;
 
    mPose2DPub = mNH.advertise<geometry_msgs::Pose2D>("xqserial_server/Pose2D",1,true);
    mStatusFlagPub = mNH.advertise<std_msgs::Int32>("xqserial_server/StatusFlag",1,true);
@@ -50,7 +51,7 @@ StatusPublisher::StatusPublisher()
    // 蓝海的数据
    mTargetIndexPub = mNH.advertise<std_msgs::Int32>("xqserial_server/targetIndex",1,true);
    mTargetAnglePub = mNH.advertise<std_msgs::Int32>("xqserial_server/targetAngle",1,true);
-
+   car_status.poseID=-1;
   /* static tf::TransformBroadcaster br;
    tf::Quaternion q;
    tf::Transform transform;
@@ -69,7 +70,171 @@ StatusPublisher::StatusPublisher(double separation,double radius)
     wheel_radius=radius;
 }
 
-void StatusPublisher::Update(const char data[], unsigned int len)
+void StatusPublisher::Update_car(const char data[], unsigned int len)
+{
+  // if(len <1) return;
+  // static char data2[1024];
+  // static int len2=0;
+    boost::mutex::scoped_lock lock(mMutex);
+    int i=0,j=0;
+    int * receive_byte;
+    static unsigned char last_str[2]={0x00,0x00};
+    static unsigned char new_packed_ctr=DISABLE;//ENABLE表示新包开始，DISABLE 表示上一个包还未处理完；
+    static int new_packed_ok_len=0;//包的理论长度
+    static int new_packed_len=0;//包的实际长度
+    static unsigned char cmd_string_buf[512];
+    unsigned char current_str=0x00;
+    const int cmd_string_max_size=512;
+    receive_byte=(int *)&car_status;
+    //int ii=0;
+    //boost::mutex::scoped_lock lock(mMutex);
+
+    // if(len<119)
+    // {
+    //   std::cout<<"len0:"<<len<<std::endl;
+    //   current_str=data[0];
+    //   std::cout<<(unsigned int)current_str<<std::endl;
+    // }
+    for(i=0;i<len;i++)
+    {
+        current_str=data[i];
+       // unsigned int temp=(unsigned int)current_str;
+       //std::cout<<len<<std::endl;
+        //判断是否有新包头
+      if(last_str[0]==205&&last_str[1]==235&&current_str==215) //包头 205 235 215
+        {
+            //std::cout<<"runup1 "<<std::endl;
+            new_packed_ctr=ENABLE;
+            new_packed_ok_len=0;
+            new_packed_len=new_packed_ok_len;
+            last_str[0]=last_str[1];//保存最后两个字符，用来确定包头
+            last_str[1]=current_str;
+            continue;
+        }
+        last_str[0]=last_str[1];//保存最后两个字符，用来确定包头
+        last_str[1]=current_str;
+        if (new_packed_ctr==ENABLE)
+        {
+
+            //获取包长度
+            new_packed_ok_len=current_str;
+            if(new_packed_ok_len>cmd_string_max_size) new_packed_ok_len=cmd_string_max_size; //包内容最大长度有限制
+            new_packed_ctr=DISABLE;
+            //std::cout<<"runup2 "<< new_packed_len<< new_packed_ok_len<<std::endl;
+        }
+        else
+        {
+            //判断包当前大小
+            if(new_packed_ok_len<=new_packed_len)
+            {
+                //std::cout<<"runup3 "<< new_packed_len<< new_packed_ok_len<<std::endl;
+                //包长度已经大于等于理论长度，后续内容无效
+                continue;
+            }
+            else
+            {
+                //获取包内容
+                new_packed_len++;
+                cmd_string_buf[new_packed_len-1]=current_str;
+                if(new_packed_ok_len==new_packed_len&&new_packed_ok_len>0)
+                {
+                    //std::cout<<"runup4 "<<new_packed_ok_len <<std::endl;
+                    //当前包已经处理完成，开始处理
+                    if(new_packed_ok_len==115)
+                    {
+                        for(j=0;j<23;j++)
+                        {
+                            memcpy(&receive_byte[j],&cmd_string_buf[5*j],4);
+                        }
+                        mbUpdated_car=true;
+                    }
+                    else if(new_packed_ok_len==95)
+                    {
+                        for(j=0;j<19;j++)
+                        {
+                            memcpy(&receive_byte[j],&cmd_string_buf[5*j],4);
+                        }
+                        mbUpdated_car=true;
+                    }
+                    else if(new_packed_ok_len == 40){
+                      //std::cout<<"oups!!!"<<std::endl;
+                      for(j=0;j<2;j++)
+                      {
+                          memcpy(&receive_byte[j],&cmd_string_buf[5*j],4);
+                      }
+                      for(j=2;j<5;j++)
+                      {
+                          memcpy(&receive_byte[j+1],&cmd_string_buf[5*j],4);
+                      }
+                      for(j=5;j<8;j++)
+                      {
+                          memcpy(&receive_byte[j+17],&cmd_string_buf[5*j],4);
+                      }
+                      mbUpdated_car=true;
+                    }
+
+                    if(mbUpdated_car)
+                    {
+                      for(j=0;j<7;j++)
+                      {
+                          if(cmd_string_buf[5*j+4]!=32)
+                          {
+                            //   std::cout<<"len:"<< len <<std::endl;
+                            //   std::cout<<"delta_encoder_car:"<< car_status.encoder_delta_car <<std::endl;
+                            //   for(j=0;j<115;j++)
+                            //   {
+                            //     current_str=cmd_string_buf[j];
+                            //     std::cout<<(unsigned int)current_str<<std::endl;
+                            //   }
+                            mbUpdated_car=false;
+                            car_status.encoder_ppr=1000;
+                            break;
+                          }
+                      }
+                    }
+                    // if(mbUpdated_car&&(car_status.encoder_delta_car>3000||car_status.encoder_delta_car<-3000))
+                    // {
+                    //   std::cout<<"len:"<< len <<std::endl;
+                    //   std::cout<<"delta_encoder_car:"<< car_status.encoder_delta_car <<std::endl;
+                    //   for(j=0;j<115;j++)
+                    //   {
+                    //     current_str=cmd_string_buf[j];
+                    //     std::cout<<(unsigned int)current_str<<std::endl;
+                    //   }
+                    //   std::cout<<"last len:"<<len2<<std::endl;
+                    //   for(j=0;j<len2;j++)
+                    //   {
+                    //     current_str=data2[j];
+                    //     std::cout<<(unsigned int)current_str<<std::endl;
+                    //   }
+                    //   std::cout<<"current:"<<std::endl;
+                    //   for(j=0;j<len;j++)
+                    //   {
+                    //     current_str=data[j];
+                    //     std::cout<<(unsigned int)current_str<<std::endl;
+                    //   }
+                    // }
+
+                    //ii++;
+                    //std::cout << ii << std::endl;
+                    new_packed_ok_len=0;
+                    new_packed_len=0;
+                }
+            }
+
+        }
+
+    }
+    // for(j=0;j<len;j++)
+    // {
+    //   len2++;
+    //   if(len2==1024) len2=1;
+    //   data2[len2-1]=data[j];
+    // }
+
+    return;
+}
+void StatusPublisher::Update_imu(const char data[], unsigned int len)
 {
   // if(len <1) return;
   // static char data2[1024];
@@ -141,11 +306,16 @@ void StatusPublisher::Update(const char data[], unsigned int len)
                     //当前包已经处理完成，开始处理
                     if(new_packed_ok_len==115)
                     {
-                        for(j=0;j<23;j++)
+                        // for(j=0;j<23;j++)
+                        // {
+                        //     memcpy(&receive_byte[j],&cmd_string_buf[5*j],4);
+                        // }
+                        memcpy(&receive_byte[2],&cmd_string_buf[5*2],4);
+                        for(j=13;j<22;j++)
                         {
                             memcpy(&receive_byte[j],&cmd_string_buf[5*j],4);
                         }
-                        mbUpdated=true;
+                        mbUpdated_imu=true;
                     }
                     else if(new_packed_ok_len==95)
                     {
@@ -153,17 +323,17 @@ void StatusPublisher::Update(const char data[], unsigned int len)
                         {
                             memcpy(&receive_byte[j],&cmd_string_buf[5*j],4);
                         }
-                        mbUpdated=true;
+                        mbUpdated_imu=true;
                     }
-                    else if(new_packed_ok_len == 120){
-                      for(j=0;j<24;j++)
+                    else if(new_packed_ok_len == 125){
+                      for(j=0;j<25;j++)
                       {
                           memcpy(&receive_byte[j],&cmd_string_buf[5*j],4);
                       }
-                      mbUpdated=true;
+                      mbUpdated_imu=true;
                     }
 
-                    if(mbUpdated)
+                    if(mbUpdated_imu)
                     {
                       for(j=0;j<7;j++)
                       {
@@ -176,13 +346,13 @@ void StatusPublisher::Update(const char data[], unsigned int len)
                             //     current_str=cmd_string_buf[j];
                             //     std::cout<<(unsigned int)current_str<<std::endl;
                             //   }
-                            mbUpdated=false;
-                            car_status.encoder_ppr=4*12*64;
+                            mbUpdated_imu=false;
+                            car_status.encoder_ppr=1000;
                             break;
                           }
                       }
                     }
-                    // if(mbUpdated&&(car_status.encoder_delta_car>3000||car_status.encoder_delta_car<-3000))
+                    // if(mbUpdated_imu&&(car_status.encoder_delta_car>3000||car_status.encoder_delta_car<-3000))
                     // {
                     //   std::cout<<"len:"<< len <<std::endl;
                     //   std::cout<<"delta_encoder_car:"<< car_status.encoder_delta_car <<std::endl;
@@ -225,17 +395,17 @@ void StatusPublisher::Update(const char data[], unsigned int len)
     return;
 }
 
-
 void StatusPublisher::Refresh()
 {
      boost::mutex::scoped_lock lock(mMutex);
      static double theta_last=0.0;
      static unsigned int ii=0;
      ii++;
-    //std::cout<<"runR"<< mbUpdated<<std::endl;
-    if(mbUpdated)
+    //std::cout<<"runR"<< mbUpdated_car<<std::endl;
+    if(mbUpdated_car || mbUpdated_imu)
     {
       // Time
+
       ros::Time current_time = ros::Time::now();
 
 
@@ -252,14 +422,16 @@ void StatusPublisher::Refresh()
           // std::cout<<"get you!"<<std::endl;
           delta_car = 0;
         }
-        // if(ii%50==0||car_status.encoder_delta_car>3000||car_status.encoder_delta_car<-3000)
-        // {
-        //   std::cout<<"delta_encoder_car:"<< car_status.encoder_delta_car <<std::endl;
-        //   std::cout<<"delta_encoder_r:"<< car_status.encoder_delta_r <<std::endl;
-        //   std::cout<<"delta_encoder_l:"<< car_status.encoder_delta_l <<std::endl;
-        //   std::cout<<"ppr:"<< car_status.encoder_ppr <<std::endl;
-        //   std::cout<<"delta_car:"<< delta_car <<std::endl;
-        // }
+        if(ii%50==0||car_status.encoder_delta_car>3000||car_status.encoder_delta_car<-3000)
+        {
+          //std::cout<<"delta_encoder_car:"<< car_status.encoder_delta_car <<std::endl;
+          std::cout<<"delta_encoder_r:"<< car_status.encoder_delta_r <<std::endl;
+          std::cout<<"delta_encoder_l:"<< car_status.encoder_delta_l <<std::endl;
+          std::cout<<"ppr:"<< car_status.encoder_ppr <<std::endl;
+          std::cout<<"time_stamp:"<< car_status.time_stamp <<std::endl;
+          std::cout<<"poseID:"<< car_status.poseID <<std::endl;
+          std::cout<<"poseAngle:"<< car_status.poseAngle <<std::endl;
+        }
         delta_x=delta_car*cos(CarPos2D.theta* PI / 180.0f);
         delta_y=delta_car*sin(CarPos2D.theta* PI / 180.0f);
 
@@ -460,12 +632,12 @@ void StatusPublisher::Refresh()
 
         // 蓝海的需求
         std_msgs::Int32 target_index;
-        std::cout << "here" << std::endl;
-        std::cout << car_status.target_index << std::endl;
-        target_index.data = (int)car_status.target_index;
+        //std::cout << "here" << std::endl;
+        //std::cout << car_status.poseID << std::endl;
+        target_index.data = car_status.poseID;
         mTargetIndexPub.publish(target_index);
         std_msgs::Int32 target_angle;
-        target_angle.data = (int)(car_status.target_angle_h * 0xff + car_status.target_angle_l);
+        target_angle.data = car_status.poseAngle;
         mTargetAnglePub.publish(target_angle);
 
         // pub transform
@@ -480,7 +652,7 @@ void StatusPublisher::Refresh()
 
         ros::spinOnce();
 
-        mbUpdated = false;
+        mbUpdated_car = false;
     }
 }
 

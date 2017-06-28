@@ -37,10 +37,8 @@ typedef struct {
     float distance4;//第四个超声模块距离值 单位cm
     float IMU[9];//mpu9250 9轴数据
     unsigned int time_stamp;//时间戳
-    uint8_t target_index;
-    uint8_t target_angle_h;
-    uint8_t target_angle_l;
-    uint8_t target_blank;
+    int  poseID;
+    int poseAngle;
 }UPLOAD_STATUS;
 
 class StatusPublisher
@@ -50,7 +48,8 @@ public:
     StatusPublisher();
     StatusPublisher(double separation,double radius);
     void Refresh();
-    void Update(const char *data, unsigned int len);
+    void Update_car(const char *data, unsigned int len);
+    void Update_imu(const char *data, unsigned int len);
     double get_wheel_separation();
     double get_wheel_radius();
     int get_wheel_ppr();
@@ -86,7 +85,8 @@ private:
     ros::Publisher pub_clearpoint_cloud_;
     ros::Publisher mTargetIndexPub;
     ros::Publisher mTargetAnglePub;
-    bool mbUpdated;
+    bool mbUpdated_imu;
+    bool mbUpdated_car;
 
     boost::mutex mMutex;
 };
