@@ -39,7 +39,7 @@ int main(int argc, char **argv)
     ros::param::param<double>("~wheel_separation", separation, 0.37);
     ros::param::param<double>("~wheel_radius", radius, 0.0625);
     ros::param::param<bool>("~debug_flag", DebugFlag, false);
-    xqserial_server::StatusPublisher xq_status(separation,radius);
+    xqserial_server::StatusPublisher xq_status(separation,radius,DebugFlag);
 
     //获取小车控制参数
     double max_speed;
@@ -52,7 +52,7 @@ int main(int argc, char **argv)
         serial_car.setCallback(boost::bind(&xqserial_server::StatusPublisher::Update_car,&xq_status,_1,_2));
 
         CallbackAsyncSerial serial_imu(port_imu,baud_imu);
-        //serial_car.setCallback(boost::bind(&xqserial_server::StatusPublisher::Update_imu,&xq_status,_1,_2));
+        serial_imu.setCallback(boost::bind(&xqserial_server::StatusPublisher::Update_imu,&xq_status,_1,_2));
 
         xqserial_server::DiffDriverController xq_diffdriver(max_speed,cmd_topic,&xq_status,&serial_car,&serial_imu);
         boost::thread cmd2serialThread(& xqserial_server::DiffDriverController::run,&xq_diffdriver);
@@ -60,12 +60,12 @@ int main(int argc, char **argv)
         char debugFlagCmd[] = {0xcd,0xeb,0xd7,0x01, 'T'};
         if(DebugFlag){
           std::cout << "Debug mode Enabled" << std::endl;
-          serial_car.write(debugFlagCmd, 5);
+          //serial_car.write(debugFlagCmd, 5);
           serial_imu.write(debugFlagCmd, 5);
         }
         // send reset cmd
         char resetCmd[] = {0xcd,0xeb,0xd7,0x01, 'I'};
-        serial_car.write(resetCmd, 5);
+        //serial_car.write(resetCmd, 5);
         serial_imu.write(resetCmd, 5);
 
         ros::Rate r(50);//发布周期为50hz

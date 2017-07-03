@@ -2,8 +2,8 @@
   <node pkg="xqserial_server" type="xqserial_server" name="motor_driver" output="screen">
     <param name="debug_flag" value="true"/>
     <param name="wheel_separation" value="0.360"/>
-    <param name="port_car" value="/dev/ttyUSB002"/>
-    <param name="port_imu" value="/dev/ttyUSB001"/>
+    <param name="port_car" value="/dev/ttyUSB0"/>
+    <param name="port_imu" value="/dev/ttyUSB1"/>
     <!-- <param name="port" value="/dev/pts/5"/> -->
 
   </node>

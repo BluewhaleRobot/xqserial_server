@@ -15,6 +15,7 @@
 #include "tf/transform_broadcaster.h"
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include <sensor_msgs/PointField.h>
+#include <sensor_msgs/Imu.h>
 #include <stdint.h>
 
 #define PI 3.14159265
@@ -22,12 +23,22 @@
 namespace xqserial_server
 {
 typedef struct {
-    int status;//小车状态，0表示未初始化，1表示正常，-1表示error
-    float power;//电源电压【9 13】v
-    float theta;//方位角，【0 360）°
+    int status_car;//小车状态，0表示未初始化，1表示正常，-1表示error
+    float power_car;//电源电压【9 13】v
     int encoder_ppr;//车轮1转对应的编码器个数
     int encoder_delta_r;//右轮编码器增量， 个为单位
     int encoder_delta_l;//左轮编码器增量， 个为单位
+    unsigned int time_stamp_car;//时间戳
+    int  poseID;
+    int poseAngle;
+
+    int status_imu;//小车状态，0表示未初始化，1表示正常，-1表示error
+    float power_imu;//电源电压【9 13】v
+    float quat[4];//4元数
+    float IMU[9];//mpu9250 9轴数据
+    unsigned int time_stamp_imu;//时间戳
+
+    float theta;//方位角，【0 360）°
     int encoder_delta_car;//两车轮中心位移，个为单位
     int omga_r;//右轮转速 个每秒
     int omga_l;//左轮转速 个每秒
@@ -35,10 +46,7 @@ typedef struct {
     float distance2;//第二个超声模块距离值 单位cm
     float distance3;//第三个超声模块距离值 单位cm
     float distance4;//第四个超声模块距离值 单位cm
-    float IMU[9];//mpu9250 9轴数据
-    unsigned int time_stamp;//时间戳
-    int  poseID;
-    int poseAngle;
+    int status;
 }UPLOAD_STATUS;
 
 class StatusPublisher
@@ -46,7 +54,7 @@ class StatusPublisher
 
 public:
     StatusPublisher();
-    StatusPublisher(double separation,double radius);
+    StatusPublisher(double separation,double radius,bool debugFlag);
     void Refresh();
     void Update_car(const char *data, unsigned int len);
     void Update_imu(const char *data, unsigned int len);
@@ -75,20 +83,30 @@ private:
     geometry_msgs::Twist  CarTwist;//小车自身坐标系
     std_msgs::Float64 CarPower;// 小车电池信息
     nav_msgs::Odometry CarOdom;// 小车位置和速度信息
+    sensor_msgs::Imu  CarIMU;
+
     ros::NodeHandle mNH;
     ros::Publisher mPose2DPub;
     ros::Publisher mTwistPub;
     ros::Publisher mStatusFlagPub;
     ros::Publisher mPowerPub;
     ros::Publisher mOdomPub;
-    ros::Publisher pub_barpoint_cloud_;
-    ros::Publisher pub_clearpoint_cloud_;
     ros::Publisher mTargetIndexPub;
     ros::Publisher mTargetAnglePub;
+    ros::Publisher mIMUPub;
     bool mbUpdated_imu;
     bool mbUpdated_car;
 
-    boost::mutex mMutex;
+    boost::mutex mMutex_car;
+    boost::mutex mMutex_imu;
+
+    float yaw_deltas[100];
+    int yaw_index;
+    float yaw_sum;
+    float yaw_omega;
+    bool yaw_ready;
+
+    bool debug_flag;
 };
 
 } //namespace xqserial_server

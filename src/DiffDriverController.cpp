@@ -71,7 +71,7 @@ void DiffDriverController::updateBarDetectFlag(const std_msgs::Bool& DetectFlag)
     char cmd_str[6]={0xcd,0xeb,0xd7,0x02,0x44,0x01};
     if(NULL!=cmd_serial_car)
     {
-        cmd_serial_car->write(cmd_str,6);
+        //cmd_serial_car->write(cmd_str,6);
     }
   }
   else
@@ -111,14 +111,13 @@ void DiffDriverController::Refresh()
 
 void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
 {
-    std::cout<<"oups1! "<<std::endl;
     static time_t t1=time(NULL),t2;
     int i=0,wheel_ppr=1;
     double separation=0,radius=0,speed_lin=0,speed_ang=0,speed_temp[2];
     char speed[2]={0,0};//右一左二
     char cmd_str[13]={0xcd,0xeb,0xd7,0x09,0x74,0x53,0x53,0x53,0x53,0x00,0x00,0x00,0x00};
 
-  //  if(xq_status->get_status()==0) return;//底层还在初始化
+    if(xq_status->get_status()==0) return;//底层还在初始化
     separation=xq_status->get_wheel_separation();
     radius=xq_status->get_wheel_radius();
     wheel_ppr=xq_status->get_wheel_ppr();
@@ -198,10 +197,8 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     //     cmd_str[6]=0x53;
     //   }
     // }
-    std::cout<<"oups2! "<<std::endl;
 
     boost::mutex::scoped_lock lock(mMutex);
-    std::cout<<"oups3! "<<std::endl;
 
     if(!MoveFlag)
     {
@@ -211,7 +208,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     if(NULL!=cmd_serial_car)
     {
         cmd_serial_car->write(cmd_str,13);
-        std::cout<<"oups! "<<std::endl;
+        std::cout<<"oups_send_twist_cmd! "<<std::endl;
     }
 
    // command.linear.x
