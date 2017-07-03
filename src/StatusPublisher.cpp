@@ -361,13 +361,21 @@ void StatusPublisher::Update_imu(const char data[], unsigned int len)
 
 void StatusPublisher::Refresh()
 {
-
+     static bool update_theta=false;
      //先处理imu
      {
        static float yaw_last=0.0;
        static int update_nums=0;
        boost::mutex::scoped_lock lock(mMutex_imu);
        float angle;
+       if(car_status.status_imu==1 && yaw_ready )
+       {
+         update_theta=true;
+       }
+       else
+       {
+         update_theta=false;
+       }
        if(mbUpdated_imu && car_status.status_imu==1)
        {
          //4元数转角度
@@ -399,6 +407,7 @@ void StatusPublisher::Refresh()
              if(update_nums>600)
              {
                yaw_ready = true;
+               update_theta=true;
                yaw_omega = yaw_sum/100.0;
                update_nums=25;
              }
@@ -485,15 +494,15 @@ void StatusPublisher::Refresh()
 
          static unsigned int ii=0;
          ii++;
-         if(ii%50==0)
-         {
-           //std::cout<<"delta_encoder_car:"<< car_status.encoder_delta_car <<std::endl;
-
-           std::cout<<"status_imu:"<< car_status.status_imu<<std::endl;
-           std::cout<<"power_imu:"<< car_status.power_imu <<std::endl;
-           std::cout<<"roll: "<< roll<<" pitch: "<<pitch<<" yaw: "<<yaw  << " theta: " << car_status.theta <<std::endl;
-           std::cout<<"time_stamp_imu:"<< car_status.time_stamp_imu <<std::endl;
-         }
+        //  if(ii%50==0)
+        //  {
+        //    //std::cout<<"delta_encoder_car:"<< car_status.encoder_delta_car <<std::endl;
+         //
+        //    std::cout<<"status_imu:"<< car_status.status_imu<<std::endl;
+        //    std::cout<<"power_imu:"<< car_status.power_imu <<std::endl;
+        //    std::cout<<"roll: "<< roll<<" pitch: "<<pitch<<" yaw: "<<yaw  << " theta: " << car_status.theta <<std::endl;
+        //    std::cout<<"time_stamp_imu:"<< car_status.time_stamp_imu <<std::endl;
+        //  }
        }
      }
      //再处理car
@@ -549,10 +558,8 @@ void StatusPublisher::Refresh()
             delta_theta += 360;
          }
 
-         if(delta_theta>30||delta_theta<-30)
+         if((!update_theta)||delta_theta>30||delta_theta<-30)
          {
-           std::cout<<"oups!: "<<delta_theta<<std::endl;
-
            delta_theta = 0;
          }
          CarPos2D.x+=delta_x;
