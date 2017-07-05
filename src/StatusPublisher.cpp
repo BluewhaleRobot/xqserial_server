@@ -86,7 +86,7 @@ void StatusPublisher::Update(const char data[], unsigned int len)
 
     // if(len<119)
     // {
-    //   std::cout<<"len0:"<<len<<std::endl;
+      // std::cout<<"len0:"<<len<<std::endl;
     //   current_str=data[0];
     //   std::cout<<(unsigned int)current_str<<std::endl;
     // }
@@ -133,7 +133,7 @@ void StatusPublisher::Update(const char data[], unsigned int len)
                 cmd_string_buf[new_packed_len-1]=current_str;
                 if(new_packed_ok_len==new_packed_len&&new_packed_ok_len>0)
                 {
-                    //std::cout<<"runup4 "<<std::endl;
+                    // std::cout<<"runup4 "<<std::endl;
                     //当前包已经处理完成，开始处理
                     if(new_packed_ok_len==115)
                     {
@@ -219,6 +219,7 @@ void StatusPublisher::Refresh()
      boost::mutex::scoped_lock lock(mMutex);
      static double theta_last=0.0;
      static unsigned int ii=0;
+     static bool theta_updateflag = false;
      ii++;
     //std::cout<<"runR"<< mbUpdated<<std::endl;
     if(mbUpdated)
@@ -226,7 +227,14 @@ void StatusPublisher::Refresh()
       // Time
       ros::Time current_time = ros::Time::now();
 
-
+      if(car_status.status == 0)
+      {
+        theta_updateflag = false;
+      }
+      else
+      {
+        theta_updateflag = true;
+      }
       //pose
       double delta_car,delta_x,delta_y,delta_theta,var_len,var_angle;
 
@@ -253,7 +261,10 @@ void StatusPublisher::Refresh()
 
         delta_theta=car_status.theta-theta_last;
         theta_last=car_status.theta;
-        if(delta_theta>10||delta_theta<-10)
+        if(delta_theta > 270 ) delta_theta -= 360;
+        if(delta_theta < -270 ) delta_theta += 360;
+
+        if((!theta_updateflag) ||delta_theta>20||delta_theta<-20)
         {
           delta_theta = 0;
         }
