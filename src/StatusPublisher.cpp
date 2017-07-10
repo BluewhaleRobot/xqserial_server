@@ -4,6 +4,8 @@
 #include <math.h>
 #include <stdlib.h>
 
+#include <xqserial_server/Target.h>
+
 #define DISABLE 0
 #define ENABLE 1
 
@@ -47,8 +49,7 @@ StatusPublisher::StatusPublisher()
    mOdomPub = mNH.advertise<nav_msgs::Odometry>("xqserial_server/Odom", 1, true);
 
    // 蓝海的数据
-   mTargetIndexPub = mNH.advertise<std_msgs::Int32>("xqserial_server/targetIndex",1,true);
-   mTargetAnglePub = mNH.advertise<std_msgs::Int32>("xqserial_server/targetAngle",1,true);
+   mTargetPub = mNH.advertise<xqserial_server::Target>("xqserial_server/Target",1,true);
    mIMUPub = mNH.advertise<sensor_msgs::Imu>("xqserial_server/IMU", 1, true);
    car_status.poseID=-1;
    car_status.power_imu=12.0;
@@ -489,6 +490,15 @@ void StatusPublisher::Refresh()
          CarIMU.orientation.y=q.y();
          CarIMU.orientation.z=q.z();
          CarIMU.orientation.w=q.w();
+
+         CarIMU.angular_velocity.x=car_status.IMU[3]* PI /180.0f;
+         CarIMU.angular_velocity.y=car_status.IMU[4]* PI /180.0f;
+         CarIMU.angular_velocity.z=car_status.IMU[5]* PI /180.0f;
+
+         CarIMU.linear_acceleration.x=car_status.IMU[0]*9.8;
+         CarIMU.linear_acceleration.y=car_status.IMU[1]*9.8;
+         CarIMU.linear_acceleration.z=car_status.IMU[2]*9.8;
+
          mIMUPub.publish(CarIMU);
          mbUpdated_imu = false;
 
@@ -496,12 +506,16 @@ void StatusPublisher::Refresh()
          ii++;
         //  if(ii%50==0)
         //  {
-        //    //std::cout<<"delta_encoder_car:"<< car_status.encoder_delta_car <<std::endl;
+        //    std::cout<<"IMU_acc: x "<<  car_status.IMU[0] <<" y " << car_status.IMU[1] << " z "<< car_status.IMU[2] <<std::endl;
+        //    std::cout<<"IMU_gyo: x "<<  car_status.IMU[3] <<" y " << car_status.IMU[4] << " z "<< car_status.IMU[5] <<std::endl;
+        //    std::cout<<"IMU_cps: x "<<  car_status.IMU[6] <<" y " << car_status.IMU[7] << " z "<< car_status.IMU[8] <<std::endl;
          //
-        //    std::cout<<"status_imu:"<< car_status.status_imu<<std::endl;
-        //    std::cout<<"power_imu:"<< car_status.power_imu <<std::endl;
-        //    std::cout<<"roll: "<< roll<<" pitch: "<<pitch<<" yaw: "<<yaw  << " theta: " << car_status.theta <<std::endl;
-        //    std::cout<<"time_stamp_imu:"<< car_status.time_stamp_imu <<std::endl;
+
+
+          //  std::cout<<"status_imu:"<< car_status.status_imu<<std::endl;
+          //  std::cout<<"power_imu:"<< car_status.power_imu <<std::endl;
+          //  std::cout<<"roll: "<< roll<<" pitch: "<<pitch<<" yaw: "<<yaw  << " theta: " << car_status.theta <<std::endl;
+          //  std::cout<<"time_stamp_imu:"<< car_status.time_stamp_imu <<std::endl;
         //  }
        }
      }
@@ -589,7 +603,7 @@ void StatusPublisher::Refresh()
          //Twist
          double angle_speed;
          CarTwist.linear.x=delta_car*50.0f;
-         angle_speed=-car_status.IMU[5];
+         angle_speed=car_status.IMU[5];
          CarTwist.angular.z=angle_speed * PI /180.0f;
          mTwistPub.publish(CarTwist);
 
@@ -622,14 +636,12 @@ void StatusPublisher::Refresh()
          mOdomPub.publish(CarOdom);
 
          // 蓝海的需求
-         std_msgs::Int32 target_index;
+         xqserial_server::Target target;
          //std::cout << "here" << std::endl;
          //std::cout << car_status.poseID << std::endl;
-         target_index.data = car_status.poseID;
-         mTargetIndexPub.publish(target_index);
-         std_msgs::Int32 target_angle;
-         target_angle.data = car_status.poseAngle;
-         mTargetAnglePub.publish(target_angle);
+         target.index = car_status.poseID;
+         target.angle = car_status.poseAngle;
+         mTargetPub.publish(target);
 
          // pub transform
 

@@ -14,6 +14,7 @@ DiffDriverController::DiffDriverController()
     cmd_serial_imu=NULL;
     MoveFlag=true;
     goalReached=false;
+    poseID_last=-1;
 }
 
 DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_car_,CallbackAsyncSerial* cmd_serial_imu_)
@@ -25,6 +26,7 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
     cmd_serial_car=cmd_serial_car_;
     cmd_serial_imu=cmd_serial_imu_;
     goalReached=false;
+    poseID_last=-1;
 }
 
 void DiffDriverController::run()
@@ -93,6 +95,14 @@ void DiffDriverController::Refresh()
          uint8_t * send_bytes;
          send_bytes= (uint8_t *)&xq_status->car_status.poseID;
          memcpy(&cmd_str[5],send_bytes,4);
+
+         //先判断goal id有无变化
+         if(xq_status->car_status.poseID != poseID_last)
+         {
+           goalReached = false;
+         }
+         poseID_last = xq_status->car_status.poseID;
+
          int goalReachFlag;
          if(goalReached)
          {

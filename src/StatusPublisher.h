@@ -91,8 +91,7 @@ private:
     ros::Publisher mStatusFlagPub;
     ros::Publisher mPowerPub;
     ros::Publisher mOdomPub;
-    ros::Publisher mTargetIndexPub;
-    ros::Publisher mTargetAnglePub;
+    ros::Publisher mTargetPub;
     ros::Publisher mIMUPub;
     bool mbUpdated_imu;
     bool mbUpdated_car;

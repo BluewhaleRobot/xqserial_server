@@ -30,6 +30,7 @@ private:
     boost::mutex mMutex;
     bool MoveFlag;
     bool goalReached;
+    int poseID_last;
 };
 
 }
