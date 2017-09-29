@@ -44,13 +44,13 @@ int main(int argc, char **argv)
         xqserial_server::DiffDriverController xq_diffdriver(max_speed,cmd_topic,&xq_status,&serial);
         boost::thread cmd2serialThread(& xqserial_server::DiffDriverController::run,&xq_diffdriver);
         // send test flag
-        char debugFlagCmd[] = {0xcd,0xeb,0xd7,0x01, 'T'};
+        char debugFlagCmd[] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x01, 'T'};
         if(DebugFlag){
           std::cout << "Debug mode Enabled" << std::endl;
           serial.write(debugFlagCmd, 5);
         }
         // send reset cmd
-        char resetCmd[] = {0xcd,0xeb,0xd7,0x01, 'I'};
+        char resetCmd[] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x01, 'I'};
         serial.write(resetCmd, 5);
 
         ros::Rate r(50);//发布周期为50hz
