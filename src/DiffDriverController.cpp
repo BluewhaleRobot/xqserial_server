@@ -43,7 +43,7 @@ void DiffDriverController::imuCalibration(const std_msgs::Bool& calFlag)
   if(calFlag.data)
   {
     //下发底层ｉｍｕ标定命令
-    char cmd_str[5]={0xcd,0xeb,0xd7,0x01,0x43};
+    char cmd_str[5]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x01,(char)0x43};
     if(NULL!=cmd_serial)
     {
         cmd_serial->write(cmd_str,5);
@@ -55,7 +55,7 @@ void DiffDriverController::updateBarDetectFlag(const std_msgs::Bool& DetectFlag)
   if(DetectFlag.data)
   {
     //下发底层红外开启命令
-    char cmd_str[6]={0xcd,0xeb,0xd7,0x02,0x44,0x01};
+    char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x01};
     if(NULL!=cmd_serial)
     {
         cmd_serial->write(cmd_str,6);
@@ -64,7 +64,7 @@ void DiffDriverController::updateBarDetectFlag(const std_msgs::Bool& DetectFlag)
   else
   {
     //下发底层红外禁用命令
-    char cmd_str[6]={0xcd,0xeb,0xd7,0x02,0x44,0x00};
+    char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x00};
     if(NULL!=cmd_serial)
     {
         cmd_serial->write(cmd_str,6);
@@ -77,7 +77,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     int i=0,wheel_ppr=1;
     double separation=0,radius=0,speed_lin=0,speed_ang=0,speed_temp[2];
     char speed[2]={0,0};//右一左二
-    char cmd_str[13]={0xcd,0xeb,0xd7,0x09,0x74,0x53,0x53,0x53,0x53,0x00,0x00,0x00,0x00};
+    char cmd_str[13]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x09,(char)0x74,(char)0x53,(char)0x53,(char)0x53,(char)0x53,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
 
     if(xq_status->get_status()==0) return;//底层还在初始化
     separation=xq_status->get_wheel_separation();
@@ -114,18 +114,18 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
      speed[i]=speed_temp[i];
      if(speed[i]<0)
      {
-         cmd_str[5+i]=0x42;//B
+         cmd_str[5+i]=(char)0x42;//B
          cmd_str[9+i]=-speed[i];
      }
      else if(speed[i]>0)
      {
-         cmd_str[5+i]=0x46;//F
+         cmd_str[5+i]=(char)0x46;//F
          cmd_str[9+i]=speed[i];
      }
      else
      {
-         cmd_str[5+i]=0x53;//S
-         cmd_str[9+i]=0x00;
+         cmd_str[5+i]=(char)0x53;//S
+         cmd_str[9+i]=(char)0x00;
      }
     }
 
@@ -135,36 +135,36 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     // if(xq_status->get_status()==2)
     // {
     //   //有障碍物
-    //   if(xq_status->car_status.distance1<30&&xq_status->car_status.distance1>0&&cmd_str[6]==0x46)
+    //   if(xq_status->car_status.distance1<30&&xq_status->car_status.distance1>0&&cmd_str[6]==(char)0x46)
     //   {
-    //     cmd_str[6]=0x53;
+    //     cmd_str[6]=(char)0x53;
     //   }
-    //   if(xq_status->car_status.distance2<30&&xq_status->car_status.distance2>0&&cmd_str[5]==0x46)
+    //   if(xq_status->car_status.distance2<30&&xq_status->car_status.distance2>0&&cmd_str[5]==(char)0x46)
     //   {
-    //     cmd_str[5]=0x53;
+    //     cmd_str[5]=(char)0x53;
     //   }
-    //   if(xq_status->car_status.distance3<20&&xq_status->car_status.distance3>0&&(cmd_str[5]==0x42||cmd_str[6]==0x42))
+    //   if(xq_status->car_status.distance3<20&&xq_status->car_status.distance3>0&&(cmd_str[5]==(char)0x42||cmd_str[6]==(char)0x42))
     //   {
-    //     cmd_str[5]=0x53;
-    //     cmd_str[6]=0x53;
+    //     cmd_str[5]=(char)0x53;
+    //     cmd_str[6]=(char)0x53;
     //   }
-    //   if(xq_status->car_status.distance1<15&&xq_status->car_status.distance1>0&&(cmd_str[5]==0x46||cmd_str[6]==0x46))
+    //   if(xq_status->car_status.distance1<15&&xq_status->car_status.distance1>0&&(cmd_str[5]==(char)0x46||cmd_str[6]==(char)0x46))
     //   {
-    //     cmd_str[5]=0x53;
-    //     cmd_str[6]=0x53;
+    //     cmd_str[5]=(char)0x53;
+    //     cmd_str[6]=(char)0x53;
     //   }
-    //   if(xq_status->car_status.distance2<15&&xq_status->car_status.distance2>0&&(cmd_str[5]==0x46||cmd_str[6]==0x46))
+    //   if(xq_status->car_status.distance2<15&&xq_status->car_status.distance2>0&&(cmd_str[5]==(char)0x46||cmd_str[6]==(char)0x46))
     //   {
-    //     cmd_str[5]=0x53;
-    //     cmd_str[6]=0x53;
+    //     cmd_str[5]=(char)0x53;
+    //     cmd_str[6]=(char)0x53;
     //   }
     // }
 
     boost::mutex::scoped_lock lock(mMutex);
     if(!MoveFlag)
     {
-      cmd_str[5]=0x53;
-      cmd_str[6]=0x53;
+      cmd_str[5]=(char)0x53;
+      cmd_str[6]=(char)0x53;
     }
     if(NULL!=cmd_serial)
     {

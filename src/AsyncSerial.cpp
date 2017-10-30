@@ -31,6 +31,8 @@
 #include <algorithm>
 #include <iostream>
 #include <boost/bind.hpp>
+#include <sys/ioctl.h>
+#include <linux/serial.h>
 
 using namespace std;
 using namespace boost;
@@ -91,11 +93,18 @@ void AsyncSerial::open(const std::string& devname, unsigned int baud_rate,
 
     setErrorStatus(true);//If an exception is thrown, error_ remains true
     pimpl->port.open(devname);
+
     pimpl->port.set_option(asio::serial_port_base::baud_rate(baud_rate));
     pimpl->port.set_option(opt_parity);
     pimpl->port.set_option(opt_csize);
     pimpl->port.set_option(opt_flow);
     pimpl->port.set_option(opt_stop);
+
+    boost::asio::basic_serial_port<boost::asio::serial_port_service>::native_type native = pimpl->port.native(); // serial_port_ is the boost's serial port class.
+    struct serial_struct serial_tempf;
+    ioctl(native, TIOCGSERIAL, &serial_tempf);
+    serial_tempf.flags |= ASYNC_LOW_LATENCY; // (0x2000)
+    ioctl(native, TIOCSSERIAL, &serial_tempf);
 
     //This gives some work to the io_service before it is started
     pimpl->io.post(boost::bind(&AsyncSerial::doRead, this));
