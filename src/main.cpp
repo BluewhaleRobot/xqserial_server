@@ -35,7 +35,7 @@ int main(int argc, char **argv)
     //获取小车控制参数
     double max_speed;
     string cmd_topic;
-    ros::param::param<double>("~max_speed", max_speed, 2.0);
+    ros::param::param<double>("~max_speed", max_speed, 3.0);
     ros::param::param<std::string>("~cmd_topic", cmd_topic, "cmd_vel");
 
     try {
