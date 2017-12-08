@@ -12,6 +12,7 @@ DiffDriverController::DiffDriverController()
     xq_status=new StatusPublisher();
     cmd_serial=NULL;
     MoveFlag=true;
+    last_ordertime=ros::WallTime::now();
 }
 
 DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_)
@@ -21,6 +22,9 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
     cmd_topic=cmd_topic_;
     xq_status=xq_status_;
     cmd_serial=cmd_serial_;
+    speed_debug[0]=0.0;
+    speed_debug[1]=0.0;
+    last_ordertime=ros::WallTime::now();
 }
 
 void DiffDriverController::run()
@@ -36,7 +40,7 @@ void DiffDriverController::updateMoveFlag(const std_msgs::Bool& moveFlag)
 {
   boost::mutex::scoped_lock lock(mMutex);
   MoveFlag=moveFlag.data;
-
+  last_ordertime=ros::WallTime::now();
 }
 void DiffDriverController::imuCalibration(const std_msgs::Bool& calFlag)
 {
@@ -83,9 +87,20 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     separation=xq_status->get_wheel_separation();
     radius=xq_status->get_wheel_radius();
     wheel_ppr=xq_status->get_wheel_ppr();
+    double vx_temp,vtheta_temp;
+    vx_temp=command.linear.x;
+    vtheta_temp=command.angular.z;
+    if(std::fabs(vx_temp)<0.11)
+    {
+      if(vtheta_temp>0.02&&vtheta_temp<0.3) vtheta_temp=0.3;
+      if(vtheta_temp<-0.02&&vtheta_temp>-0.3) vtheta_temp=-0.3;
+    }
+    if(vx_temp>0 && vx_temp<0.1) vx_temp=0.1;
+    if(vx_temp<0 && vx_temp>-0.1) vx_temp=-0.1;
     //转换速度单位，由米转换成转
     speed_lin=command.linear.x/(2.0*PI*radius);
-    speed_ang=command.angular.z*separation/(2.0*PI*radius);
+    //speed_ang=command.angular.z*separation/(2.0*PI*radius);
+    speed_ang=vtheta_temp*separation/(2.0*PI*radius);
 
     float scale=std::max(std::abs(speed_lin+speed_ang/2.0),std::abs(speed_lin-speed_ang/2.0))/max_wheelspeed;
     if(scale>1.0)
@@ -112,6 +127,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     for(i=0;i<2;i++)
     {
      speed[i]=speed_temp[i];
+     speed_debug[i]=speed_temp[i];
      if(speed[i]<0)
      {
          cmd_str[5+i]=(char)0x42;//B
@@ -129,31 +145,31 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
      }
     }
 
-    // std::cout<<"distance1 "<<xq_status->car_status.distance1<<std::endl;
-    // std::cout<<"distance2 "<<xq_status->car_status.distance2<<std::endl;
-    // std::cout<<"distance3 "<<xq_status->car_status.distance3<<std::endl;
+    // std::cout<<"hbz1 "<<xq_status->car_status.hbz1<<std::endl;
+    // std::cout<<"hbz2 "<<xq_status->car_status.hbz2<<std::endl;
+    // std::cout<<"hbz3 "<<xq_status->car_status.hbz3<<std::endl;
     // if(xq_status->get_status()==2)
     // {
     //   //有障碍物
-    //   if(xq_status->car_status.distance1<30&&xq_status->car_status.distance1>0&&cmd_str[6]==(char)0x46)
+    //   if(xq_status->car_status.hbz1<30&&xq_status->car_status.hbz1>0&&cmd_str[6]==(char)0x46)
     //   {
     //     cmd_str[6]=(char)0x53;
     //   }
-    //   if(xq_status->car_status.distance2<30&&xq_status->car_status.distance2>0&&cmd_str[5]==(char)0x46)
+    //   if(xq_status->car_status.hbz2<30&&xq_status->car_status.hbz2>0&&cmd_str[5]==(char)0x46)
     //   {
     //     cmd_str[5]=(char)0x53;
     //   }
-    //   if(xq_status->car_status.distance3<20&&xq_status->car_status.distance3>0&&(cmd_str[5]==(char)0x42||cmd_str[6]==(char)0x42))
-    //   {
-    //     cmd_str[5]=(char)0x53;
-    //     cmd_str[6]=(char)0x53;
-    //   }
-    //   if(xq_status->car_status.distance1<15&&xq_status->car_status.distance1>0&&(cmd_str[5]==(char)0x46||cmd_str[6]==(char)0x46))
+    //   if(xq_status->car_status.hbz3<20&&xq_status->car_status.hbz3>0&&(cmd_str[5]==(char)0x42||cmd_str[6]==(char)0x42))
     //   {
     //     cmd_str[5]=(char)0x53;
     //     cmd_str[6]=(char)0x53;
     //   }
-    //   if(xq_status->car_status.distance2<15&&xq_status->car_status.distance2>0&&(cmd_str[5]==(char)0x46||cmd_str[6]==(char)0x46))
+    //   if(xq_status->car_status.hbz1<15&&xq_status->car_status.hbz1>0&&(cmd_str[5]==(char)0x46||cmd_str[6]==(char)0x46))
+    //   {
+    //     cmd_str[5]=(char)0x53;
+    //     cmd_str[6]=(char)0x53;
+    //   }
+    //   if(xq_status->car_status.hbz2<15&&xq_status->car_status.hbz2>0&&(cmd_str[5]==(char)0x46||cmd_str[6]==(char)0x46))
     //   {
     //     cmd_str[5]=(char)0x53;
     //     cmd_str[6]=(char)0x53;
@@ -170,7 +186,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     {
         cmd_serial->write(cmd_str,13);
     }
-
+    last_ordertime=ros::WallTime::now();
    // command.linear.x
 }
 

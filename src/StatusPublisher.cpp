@@ -37,7 +37,7 @@ StatusPublisher::StatusPublisher()
     {
         status[i]=0;
     }
-    car_status.encoder_ppr=4*12*64;
+    car_status.encoder_ppr=90;
 
    mPose2DPub = mNH.advertise<geometry_msgs::Pose2D>("xqserial_server/Pose2D",1,true);
    mStatusFlagPub = mNH.advertise<std_msgs::Int32>("xqserial_server/StatusFlag",1,true);
@@ -135,17 +135,9 @@ void StatusPublisher::Update(const char data[], unsigned int len)
                 {
                     // std::cout<<"runup4 "<<std::endl;
                     //当前包已经处理完成，开始处理
-                    if(new_packed_ok_len==115)
+                    if(new_packed_ok_len==125)
                     {
-                        for(j=0;j<23;j++)
-                        {
-                            memcpy(&receive_byte[j],&cmd_string_buf[5*j],4);
-                        }
-                        mbUpdated=true;
-                    }
-                    else if(new_packed_ok_len==95)
-                    {
-                        for(j=0;j<19;j++)
+                        for(j=0;j<25;j++)
                         {
                             memcpy(&receive_byte[j],&cmd_string_buf[5*j],4);
                         }
@@ -165,7 +157,7 @@ void StatusPublisher::Update(const char data[], unsigned int len)
                             //     std::cout<<(unsigned int)current_str<<std::endl;
                             //   }
                             mbUpdated=false;
-                            car_status.encoder_ppr=4*12*64;
+                            car_status.encoder_ppr=90;
                             break;
                           }
                       }
@@ -281,7 +273,7 @@ void StatusPublisher::Refresh()
         std_msgs::Int32 flag;
         flag.data=car_status.status;
         //底层障碍物信息
-        if((car_status.distance1+car_status.distance2+car_status.distance3+car_status.distance4)>0.1&&(car_status.distance1+car_status.distance2+car_status.distance3+car_status.distance4)<5.0)
+        if((car_status.hbz1+car_status.hbz2+car_status.hbz3+car_status.hbz4)>0.1&&(car_status.hbz1+car_status.hbz2+car_status.hbz3+car_status.hbz4)<5.0)
         {
           //有障碍物
           flag.data=2;
@@ -290,19 +282,19 @@ void StatusPublisher::Refresh()
 
         int barArea_nums=0;
         int clearArea_nums=0;
-        if(car_status.distance1>0.1)
+        if(car_status.hbz1>0.1)
         {
           barArea_nums+=3;
         }else{
           clearArea_nums+=6;
         }
-        if(car_status.distance2>0.1)
+        if(car_status.hbz2>0.1)
         {
           barArea_nums+=3;
         }else{
           clearArea_nums+=6;
         }
-        if(car_status.distance4>0.1)
+        if(car_status.hbz4>0.1)
         {
           barArea_nums+=3;
         }else{
@@ -324,7 +316,7 @@ void StatusPublisher::Refresh()
           sensor_msgs::PointCloud2Iterator<float> bariter_x(*barcloud_msg, "x");
           sensor_msgs::PointCloud2Iterator<float> bariter_y(*barcloud_msg, "y");
           sensor_msgs::PointCloud2Iterator<float> bariter_z(*barcloud_msg, "z");
-          if(car_status.distance2>0.1)
+          if(car_status.hbz2>0.1)
           {
             for(int k=0;k<3;k++,++bariter_x, ++bariter_y,++bariter_z)
             {
@@ -333,7 +325,7 @@ void StatusPublisher::Refresh()
               *bariter_z=0.15;
             }
           }
-          if(car_status.distance4>0.1)
+          if(car_status.hbz4>0.1)
           {
             for(int k=0;k<3;k++,++bariter_x, ++bariter_y,++bariter_z)
             {
@@ -342,7 +334,7 @@ void StatusPublisher::Refresh()
               *bariter_z=0.15;
             }
           }
-          if(car_status.distance1>0.1)
+          if(car_status.hbz1>0.1)
           {
             for(int k=0;k<3;k++,++bariter_x, ++bariter_y,++bariter_z)
             {
@@ -371,7 +363,7 @@ void StatusPublisher::Refresh()
           sensor_msgs::PointCloud2Iterator<float> cleariter_x(*clearcloud_msg, "x");
           sensor_msgs::PointCloud2Iterator<float> cleariter_y(*clearcloud_msg, "y");
           sensor_msgs::PointCloud2Iterator<float> cleariter_z(*clearcloud_msg, "z");
-          if(car_status.distance2<0.1)
+          if(car_status.hbz2<0.1)
           {
             for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
@@ -386,7 +378,7 @@ void StatusPublisher::Refresh()
               *cleariter_z=0.0;
             }
           }
-          if(car_status.distance4<0.1)
+          if(car_status.hbz4<0.1)
           {
             for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
@@ -401,7 +393,7 @@ void StatusPublisher::Refresh()
               *cleariter_z=0.0;
             }
           }
-          if(car_status.distance1<0.1)
+          if(car_status.hbz1<0.1)
           {
             for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
@@ -487,8 +479,8 @@ int StatusPublisher::get_wheel_ppr(){
 
 void StatusPublisher::get_wheel_speed(double speed[2]){
     //右一左二
-    speed[0]=car_status.omga_r/car_status.encoder_ppr*2.0*PI*wheel_radius;
-    speed[1]=car_status.omga_l/car_status.encoder_ppr*2.0*PI*wheel_radius;
+    speed[0]=car_status.encoder_delta_r*50/car_status.encoder_ppr*2.0*PI*wheel_radius;
+    speed[1]=car_status.encoder_delta_l*50/car_status.encoder_ppr*2.0*PI*wheel_radius;
 }
 
 geometry_msgs::Pose2D StatusPublisher::get_CarPos2D(){

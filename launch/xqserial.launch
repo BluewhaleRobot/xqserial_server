@@ -2,6 +2,8 @@
   <node pkg="xqserial_server" type="xqserial_server" name="motor_driver">
     <param name="debug_flag" value="false"/>
     <param name="wheel_separation" value="0.360"/>
+    <param name="wheel_radius" value="0.0825"/>
+    <param name="max_speed" value="5.0"/>
     <param name="port" value="/dev/ttyUSB001"/>
   </node>
   <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0.15 0 0 0 1 base_footprint base_link 50">
