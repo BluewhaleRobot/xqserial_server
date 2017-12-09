@@ -60,6 +60,7 @@ int main(int argc, char **argv)
         ros::Rate r(50);//发布周期为50hz
         while (ros::ok())
         {
+            int i=0;
             if(serial.errorStatus() || serial.isOpen()==false)
             {
                 cerr<<"Error: serial port closed unexpectedly"<<endl;
@@ -70,10 +71,17 @@ int main(int argc, char **argv)
             if(t_diff.toSec()>1.5 && t_diff.toSec()<1.7)
             {
               //safety security
-              char cmd_str[13]={0xcd,0xeb,0xd7,0x09,0x74,0x53,0x53,0x53,0x53,0x00,0x00,0x00,0x00};
+              char cmd_str[13]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x09,(char)0x74,(char)0x53,(char)0x53,(char)0x53,(char)0x53,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
               serial.write(cmd_str, 13);
               //xq_diffdriver.last_ordertime=ros::WallTime::now();
             }
+            if(i%50==0 && xq_diffdriver.DetectFlag_)
+            {
+              //下发底层红外开启命令
+              char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x01};
+              serial.write(cmd_str,6);
+            }
+            i++;
             r.sleep();
             //cout<<"run"<<endl;
         }
