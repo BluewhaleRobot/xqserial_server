@@ -99,10 +99,15 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
       if(vtheta_temp>0.02&&vtheta_temp<0.3) vtheta_temp=0.3;
       if(vtheta_temp<-0.02&&vtheta_temp>-0.3) vtheta_temp=-0.3;
     }
-    if(vx_temp>0 && vx_temp<0.1) vx_temp=0.1;
-    if(vx_temp<0 && vx_temp>-0.1) vx_temp=-0.1;
+    if(std::fabs(vtheta_temp)<0.1)
+    {
+      if(vx_temp>0 && vx_temp<0.1 ) vx_temp=0.1;
+      if(vx_temp<0 && vx_temp>-0.1) vx_temp=-0.1;
+    }
+
     //转换速度单位，由米转换成转
     speed_lin=command.linear.x/(2.0*PI*radius);
+
     //speed_ang=command.angular.z*separation/(2.0*PI*radius);
     speed_ang=vtheta_temp*separation/(2.0*PI*radius);
 

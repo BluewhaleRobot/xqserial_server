@@ -417,7 +417,14 @@ void StatusPublisher::Refresh()
         //Twist
         double angle_speed;
         CarTwist.linear.x=delta_car*50.0f;
-        angle_speed=-car_status.IMU[5];
+        if(car_status.upwoard == 0)
+        {
+          angle_speed=-car_status.IMU[5];
+        }
+        else
+        {
+          angle_speed=car_status.IMU[5];
+        }
         CarTwist.angular.z=angle_speed * PI /180.0f;
         mTwistPub.publish(CarTwist);
 
