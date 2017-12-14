@@ -235,7 +235,7 @@ void StatusPublisher::Refresh()
         var_angle=(0.01f/180.0f*PI)*(0.01f/180.0f*PI);
 
         delta_car=(car_status.encoder_delta_r+car_status.encoder_delta_l)/2.0f*1.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius;
-        if(delta_car>0.05||delta_car<-0.05)
+        if(delta_car>0.07||delta_car<-0.07)
         {
           // std::cout<<"get you!"<<std::endl;
           delta_car = 0;
@@ -256,7 +256,15 @@ void StatusPublisher::Refresh()
         if(delta_theta > 270 ) delta_theta -= 360;
         if(delta_theta < -270 ) delta_theta += 360;
 
-        if((!theta_updateflag) ||delta_theta>20||delta_theta<-20)
+        float delta_encode_theta=std::fabs(car_status.encoder_delta_r-car_status.encoder_delta_l)*1.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius/wheel_separation;
+        float delta_encode_theta2=(2.0)*1.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius/wheel_separation;
+
+        float delta_encode_theta3=delta_encode_theta/PI*180.0f;
+        float delta_encode_theta4=delta_encode_theta2/PI*180.0f;
+
+        //std::cout<< "delta_theta:"<< delta_theta << " " << delta_encode_theta3  << " " << delta_encode_theta4 << std::endl;
+
+        if((!theta_updateflag) ||delta_theta>10||delta_theta<-10 )//|| std::fabs(delta_theta - delta_encode_theta3)>(3*delta_encode_theta4) )
         {
           delta_theta = 0;
         }
@@ -415,18 +423,42 @@ void StatusPublisher::Refresh()
         }
 
         //Twist
-        double angle_speed;
-        CarTwist.linear.x=delta_car*50.0f;
-        if(car_status.upwoard == 0)
+
+        static float v_sums[8]={0,0,0,0,0,0,0,0},v_sum=0,v_set=0;
+        static float theta_sums[8]={0,0,0,0,0,0,0,0},theta_sum=0,theta_set=0;
+        static int v_sum_index=0;
+        static int theta_sum_index=0;
         {
-          angle_speed=-car_status.IMU[5];
+          //平滑
+          v_sum -=v_sums[v_sum_index];
+          v_sums[v_sum_index] = delta_car*50.0f;
+          v_sum +=v_sums[v_sum_index];
+
+          CarTwist.linear.x=v_sum/8.0f;
+          v_sum_index++;
+          if(v_sum_index>7) v_sum_index=0;
+
+          double angle_speed;
+          if(car_status.upwoard == 0)
+          {
+            angle_speed=-car_status.IMU[5];
+          }
+          else
+          {
+            angle_speed=car_status.IMU[5];
+          }
+
+          theta_sum -=theta_sums[theta_sum_index];
+          theta_sums[theta_sum_index] = angle_speed * PI /180.0f;
+          theta_sum +=theta_sums[theta_sum_index];
+          CarTwist.angular.z=theta_sum/8.0f;
+          theta_sum_index++;
+          if(theta_sum_index>7) theta_sum_index=0;
+
         }
-        else
-        {
-          angle_speed=car_status.IMU[5];
-        }
-        CarTwist.angular.z=angle_speed * PI /180.0f;
         mTwistPub.publish(CarTwist);
+
+      //  std::cout<<" " << CarTwist.linear.x << " " << CarTwist.angular.z<<std::endl;
 
         CarPower.data = car_status.power;
         mPowerPub.publish(CarPower);
@@ -473,6 +505,7 @@ void StatusPublisher::Refresh()
 }
 
 double StatusPublisher::get_wheel_separation(){
+
     return wheel_separation;
 }
 
@@ -481,13 +514,14 @@ double StatusPublisher::get_wheel_radius(){
 }
 
 int StatusPublisher::get_wheel_ppr(){
+
     return car_status.encoder_ppr;
 }
 
 void StatusPublisher::get_wheel_speed(double speed[2]){
     //右一左二
-    speed[0]=car_status.encoder_delta_r*50/car_status.encoder_ppr*2.0*PI*wheel_radius;
-    speed[1]=car_status.encoder_delta_l*50/car_status.encoder_ppr*2.0*PI*wheel_radius;
+    speed[0]=(double)(car_status.encoder_delta_r)*50.0/car_status.encoder_ppr;//*2.0*PI*wheel_radius;
+    speed[1]=(double)(car_status.encoder_delta_l)*50.0/car_status.encoder_ppr;//*2.0*PI*wheel_radius;
 }
 
 geometry_msgs::Pose2D StatusPublisher::get_CarPos2D(){

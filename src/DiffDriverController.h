@@ -19,6 +19,9 @@ public:
     void setStatusPtr(StatusPublisher& status);
     void updateMoveFlag(const std_msgs::Bool& moveFlag);
     void updateBarDetectFlag(const std_msgs::Bool& DetectFlag);
+
+    void updateCmd(const geometry_msgs::Twist &command);
+    void sendcmd2(void);
     int speed_debug[2];
     ros::WallTime last_ordertime;
     bool DetectFlag_;
@@ -29,6 +32,7 @@ private:
     CallbackAsyncSerial* cmd_serial;
     boost::mutex mMutex;
     bool MoveFlag;
+    geometry_msgs::Twist  cmdTwist_;//小车自身坐标系
 };
 
 }
