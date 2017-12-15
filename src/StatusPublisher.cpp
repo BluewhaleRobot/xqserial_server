@@ -415,12 +415,40 @@ void StatusPublisher::Refresh()
         }
 
         //Twist
-        double angle_speed;
-        CarTwist.linear.x=delta_car*50.0f;
-        angle_speed=-car_status.IMU[5];
-        CarTwist.angular.z=angle_speed * PI /180.0f;
-        mTwistPub.publish(CarTwist);
+        static float v_sums[8]={0,0,0,0,0,0,0,0},v_sum=0,v_set=0;
+        static float theta_sums[8]={0,0,0,0,0,0,0,0},theta_sum=0,theta_set=0;
+        static int v_sum_index=0;
+        static int theta_sum_index=0;
+        {
+          //平滑
+          v_sum -=v_sums[v_sum_index];
+          v_sums[v_sum_index] = delta_car*50.0f;
+          v_sum +=v_sums[v_sum_index];
 
+          CarTwist.linear.x=v_sum/8.0f;
+          v_sum_index++;
+          if(v_sum_index>7) v_sum_index=0;
+
+          double angle_speed;
+          if(car_status.upwoard == 0)
+          {
+            angle_speed=-car_status.IMU[5];
+          }
+          else
+          {
+            angle_speed=car_status.IMU[5];
+          }
+
+          theta_sum -=theta_sums[theta_sum_index];
+          theta_sums[theta_sum_index] = angle_speed * PI /180.0f;
+          theta_sum +=theta_sums[theta_sum_index];
+          CarTwist.angular.z=theta_sum/8.0f;
+          theta_sum_index++;
+          if(theta_sum_index>7) theta_sum_index=0;
+          //std::cout<<" " << angle_speed * PI /180.0f<<std::endl;
+        }
+        mTwistPub.publish(CarTwist);
+        
         CarPower.data = car_status.power;
         mPowerPub.publish(CarPower);
 

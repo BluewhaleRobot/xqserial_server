@@ -120,6 +120,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     speed_temp[1]=std::min(speed_temp[1],100.0);
     speed_temp[1]=std::max(-100.0,speed_temp[1]);
 
+  std::cout<<" "<<speed_temp[0]<<" " << speed_temp[1] <<  " "<< command.linear.x <<" "<< command.angular.z <<std::endl;
   //std::cout<<"radius "<<radius<<std::endl;
   //std::cout<<"ppr "<<wheel_ppr<<std::endl;
   //std::cout<<"pwm "<<speed_temp[0]<<std::endl;
