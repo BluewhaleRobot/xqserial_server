@@ -21,6 +21,7 @@ public:
     void updateBarDetectFlag(const std_msgs::Bool& DetectFlag);
     int speed_debug[2];
     ros::WallTime last_ordertime;
+    bool DetectFlag_;
 private:
     double max_wheelspeed;//单位为转每秒,只能为正数
     std::string cmd_topic;
