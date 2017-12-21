@@ -57,7 +57,7 @@ public:
     std_msgs::Float64 get_power();
     nav_msgs::Odometry get_odom();
     UPLOAD_STATUS car_status;
-
+    void get_distances(double distances[2]);
 private:
 
 
@@ -82,7 +82,7 @@ private:
     ros::Publisher pub_clearpoint_cloud_;
 
     bool mbUpdated;
-
+    double  distances_[2];
     boost::mutex mMutex;
 };
 

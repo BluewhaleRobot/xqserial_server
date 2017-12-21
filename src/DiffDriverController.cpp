@@ -32,7 +32,7 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
 void DiffDriverController::run()
 {
     ros::NodeHandle nodeHandler;
-    ros::Subscriber sub = nodeHandler.subscribe(cmd_topic, 1, &DiffDriverController::sendcmd, this);
+    ros::Subscriber sub = nodeHandler.subscribe(cmd_topic, 1, &DiffDriverController::sendcmd2, this);
     ros::Subscriber sub2 = nodeHandler.subscribe("/imu_cal", 1, &DiffDriverController::imuCalibration,this);
     ros::Subscriber sub3 = nodeHandler.subscribe("/globalMoveFlag", 1, &DiffDriverController::updateMoveFlag,this);
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag,this);
@@ -79,8 +79,74 @@ void DiffDriverController::updateBarDetectFlag(const std_msgs::Bool& DetectFlag)
     DetectFlag_=false;
   }
 }
+
+geometry_msgs::Twist DiffDriverController::get_cmdTwist(void)
+{
+  boost::mutex::scoped_lock lock(mMutex);
+  return cmdTwist_;
+}
+void DiffDriverController::sendcmd2(const geometry_msgs::Twist &command)
+{
+  {
+    boost::mutex::scoped_lock lock(mMutex);
+    cmdTwist_ = command;
+  }
+
+  geometry_msgs::Twist  cmdTwist = cmdTwist_;
+
+  float cmd_v = cmdTwist.linear.x;
+  if(DetectFlag_)
+  {
+    //超声波预处理
+    double distances[2]={0.0,0.0},distance=0;
+    xq_status->get_distances(distances);
+    distance=std::min(distances[0],distances[1]);
+
+    if(distance>=0.2001 && distance<=0.45)
+    {
+        float k=0.4;
+        float max_v = std::max(0.0,k*std::sqrt(distance-0.35)); //根据当前距离设置线速度最大值
+
+        geometry_msgs::Twist  carTwist = xq_status->get_CarTwist();
+        if(max_v<0.01 && carTwist.linear.x<0.1 && carTwist.linear.x>-0.1 && cmdTwist.linear.x> 0.01)
+        {
+            if(distances[0]>(distances[1]+0.05) )
+            {
+              if(cmdTwist.angular.z<0.005)
+              {
+                //可以右转
+                cmdTwist.angular.z = std::min(-0.1,cmdTwist.angular.z);
+              }
+              else
+              {
+                cmdTwist.angular.z = 0.1;
+              }
+            }
+            else if(distances[1]>(distances[0]+0.05)  && cmdTwist.angular.z > -0.01)
+            {
+              if(cmdTwist.angular.z > -0.005)
+              {
+                //可以左转
+                cmdTwist.angular.z = std::max(0.1,cmdTwist.angular.z);
+              }
+              else
+              {
+                cmdTwist.angular.z = -0.1;
+              }
+            }
+        }
+        if(cmd_v >= max_v)
+        {
+          cmd_v = max_v;
+        }
+    }
+  }
+  cmdTwist.linear.x = cmd_v;
+  sendcmd(cmdTwist);
+}
 void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
 {
+
     static time_t t1=time(NULL),t2;
     int i=0,wheel_ppr=1;
     double separation=0,radius=0,speed_lin=0,speed_ang=0,speed_temp[2];
@@ -91,6 +157,8 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     separation=xq_status->get_wheel_separation();
     radius=xq_status->get_wheel_radius();
     wheel_ppr=xq_status->get_wheel_ppr();
+    geometry_msgs::Twist  carTwist = xq_status->get_CarTwist();
+
     double vx_temp,vtheta_temp;
     vx_temp=command.linear.x;
     vtheta_temp=command.angular.z;
@@ -124,7 +192,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     speed_temp[1]=std::min(speed_temp[1],100.0);
     speed_temp[1]=std::max(-100.0,speed_temp[1]);
 
-  std::cout<<" "<<speed_temp[0]<<" " << speed_temp[1] <<  " "<< command.linear.x <<" "<< command.angular.z <<std::endl;
+  //std::cout<<" "<<speed_temp[0]<<" " << speed_temp[1] <<  " "<< command.linear.x <<" "<< command.angular.z <<  " "<< carTwist.linear.x <<" "<< carTwist.angular.z <<std::endl;
   //std::cout<<"radius "<<radius<<std::endl;
   //std::cout<<"ppr "<<wheel_ppr<<std::endl;
   //std::cout<<"pwm "<<speed_temp[0]<<std::endl;
@@ -182,6 +250,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     // }
 
     boost::mutex::scoped_lock lock(mMutex);
+
     if(!MoveFlag)
     {
       cmd_str[5]=(char)0x53;

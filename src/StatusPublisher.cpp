@@ -345,7 +345,7 @@ void StatusPublisher::Refresh()
           }
           if(ii%5==0)
           {
-            pub_barpoint_cloud_.publish(barcloud_msg);
+            //pub_barpoint_cloud_.publish(barcloud_msg);
           }
         }
         if(clearArea_nums>0)
@@ -410,7 +410,7 @@ void StatusPublisher::Refresh()
           }
           if(ii%5==0)
           {
-            pub_clearpoint_cloud_.publish(clearcloud_msg);
+            //pub_clearpoint_cloud_.publish(clearcloud_msg);
           }
         }
 
@@ -446,9 +446,14 @@ void StatusPublisher::Refresh()
           theta_sum_index++;
           if(theta_sum_index>7) theta_sum_index=0;
           //std::cout<<" " << angle_speed * PI /180.0f<<std::endl;
+
+          // CarTwist.linear.x=delta_car*50.0f;
+          // CarTwist.angular.z=angle_speed * PI /180.0f;
+
         }
+
         mTwistPub.publish(CarTwist);
-        
+
         CarPower.data = car_status.power;
         mPowerPub.publish(CarPower);
 
@@ -487,6 +492,32 @@ void StatusPublisher::Refresh()
         transform.setRotation(q);
         br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "odom", "base_footprint"));
 
+
+        //超声波测距
+        static float distance1_sums[8]={0,0,0,0,0,0,0,0},distance1_sum=0;
+        static float distance2_sums[8]={0,0,0,0,0,0,0,0},distance2_sum=0;
+
+        static int distance_sum_index=0,distance_sum_i=0;
+
+        if(distance_sum_i%5==0)
+        {
+          //平滑
+          distance1_sum -=distance1_sums[distance_sum_index];
+          distance1_sums[distance_sum_index] = car_status.distance1;
+          distance1_sum +=distance1_sums[distance_sum_index];
+
+          distance2_sum -=distance2_sums[distance_sum_index];
+          distance2_sums[distance_sum_index] = car_status.distance2;
+          distance2_sum +=distance2_sums[distance_sum_index];
+
+          distance_sum_index++;
+          if(distance_sum_index>1) distance_sum_index = 0;
+
+          distances_[0] = distance1_sum/2.0f;
+          distances_[1] = distance2_sum/2.0f;
+         //std::cout<<" " << car_status.distance1 << " " << car_status.distance2<<std::endl;
+        }
+        distance_sum_i++;
         ros::spinOnce();
 
         mbUpdated = false;
@@ -526,8 +557,15 @@ std_msgs::Float64 StatusPublisher::get_power(){
 nav_msgs::Odometry StatusPublisher::get_odom(){
   return CarOdom;
 }
+
 int StatusPublisher::get_status(){
   return car_status.status;
+}
+
+void StatusPublisher::get_distances(double distances[2])
+{
+  distances[0]=distances_[0];
+  distances[1]=distances_[1];
 }
 
 } //namespace xqserial_server
