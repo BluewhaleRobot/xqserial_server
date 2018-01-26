@@ -320,7 +320,7 @@ void StatusPublisher::Refresh()
           {
             for(int k=0;k<3;k++,++bariter_x, ++bariter_y,++bariter_z)
             {
-              *bariter_x=0.2;
+              *bariter_x=0.2+0.2;
               *bariter_y=-0.10-k*0.05;
               *bariter_z=0.15;
             }
@@ -329,7 +329,7 @@ void StatusPublisher::Refresh()
           {
             for(int k=0;k<3;k++,++bariter_x, ++bariter_y,++bariter_z)
             {
-              *bariter_x=0.2;
+              *bariter_x=0.2+0.2;
               *bariter_y=-0.1+k*0.05;
               *bariter_z=0.15;
             }
@@ -338,14 +338,14 @@ void StatusPublisher::Refresh()
           {
             for(int k=0;k<3;k++,++bariter_x, ++bariter_y,++bariter_z)
             {
-              *bariter_x=0.2;
+              *bariter_x=0.2+0.2;
               *bariter_y=0.05+k*0.05;
               *bariter_z=0.15;
             }
           }
           if(ii%5==0)
           {
-            //pub_barpoint_cloud_.publish(barcloud_msg);
+            pub_barpoint_cloud_.publish(barcloud_msg);
           }
         }
         if(clearArea_nums>0)
@@ -367,13 +367,13 @@ void StatusPublisher::Refresh()
           {
             for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.2;
+              *cleariter_x=0.2+0.2;
               *cleariter_y=-0.1-k*0.05;
               *cleariter_z=0.0;
             }
             for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.15;
+              *cleariter_x=0.15+0.2;
               *cleariter_y=-0.1-k*0.05;
               *cleariter_z=0.0;
             }
@@ -382,13 +382,13 @@ void StatusPublisher::Refresh()
           {
             for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.2;
+              *cleariter_x=0.2+0.2;
               *cleariter_y=-0.1+k*0.05;
               *cleariter_z=0.0;
             }
             for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.15;
+              *cleariter_x=0.15+0.2;
               *cleariter_y=-0.1+k*0.05;
               *cleariter_z=0.0;
             }
@@ -397,20 +397,20 @@ void StatusPublisher::Refresh()
           {
             for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.2;
+              *cleariter_x=0.2+0.2;
               *cleariter_y=0.05+k*0.05;
               *cleariter_z=0.0;
             }
             for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.15;
+              *cleariter_x=0.15+0.2;
               *cleariter_y=0.05+k*0.05;
               *cleariter_z=0.0;
             }
           }
           if(ii%5==0)
           {
-            //pub_clearpoint_cloud_.publish(clearcloud_msg);
+            pub_clearpoint_cloud_.publish(clearcloud_msg);
           }
         }
 
