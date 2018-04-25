@@ -4,7 +4,8 @@ xiaoqiang motor driver and low level ROS api package
 ## input topic
       name                                  type        
     /cmd_vel                         geometry_msgs/Twist
-      
+    /barDetectFlag                   std_msgs/Bool
+    
 ## output topic
        name                                 type                 frate
     /xqserial_server/Odom            nav_msgs/Odometry            50hz
