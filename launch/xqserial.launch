@@ -1,7 +1,7 @@
 <launch>
   <node pkg="xqserial_server" type="xqserial_server" name="motor_driver">
     <param name="debug_flag" value="false"/>
-    <param name="bar_flag" value="true"/>
+    <param name="bar_flag" value="false"/>
     <param name="wheel_separation" value="0.330"/>
     <param name="wheel_radius" value="0.070"/>
     <param name="max_speed" value="4.4"/>
@@ -12,6 +12,6 @@
   </node>
   <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster1" args="0 0 0.15 1.0472 0 0  base_footprint sonar1 50"/>
   <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster2" args="0 0 0.15 0 0 0  base_footprint sonar2 50"/>
-  <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster1" args="0 0 0.15 5.23599 0 0  base_footprint sonar3 50"/>
-  <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster1" args="0 0 0.15 3.1415926 0 0  base_footprint sonar4 50"/>
+  <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster3" args="0 0 0.15 5.23599 0 0  base_footprint sonar3 50"/>
+  <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster4" args="0 0 0.15 3.1415926 0 0  base_footprint sonar4 50"/>
 </launch>

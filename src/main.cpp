@@ -22,13 +22,13 @@ int main(int argc, char **argv)
 
     //获取串口参数
     std::string port_car;
-    ros::param::param<std::string>("~port_car", port_car, "/dev/ttyUSB0");
+    ros::param::param<std::string>("~port_car", port_car, "/dev/stm32Car");
     int baud_car;
     ros::param::param<int>("~baud_car", baud_car, 115200);
     cout<<"port_car:"<<port_car<<" baud_car:"<<baud_car<<endl;
 
     std::string port_imu;
-    ros::param::param<std::string>("~port_imu", port_imu, "/dev/ttyUSB1");
+    ros::param::param<std::string>("~port_imu", port_imu, "/dev/stm32Imu");
     int baud_imu;
     ros::param::param<int>("~baud_imu", baud_imu, 115200);
     cout<<"port_imu:"<<port_imu<<" baud_car:"<<baud_imu<<endl;
@@ -77,19 +77,24 @@ int main(int argc, char **argv)
       int i=0;
       while (ros::ok())
       {
-          xq_diffdriver.send_synergy_parmas_getOder();//下发协同运动参数上传指令
-          usleep(1000);//延时1MS，等待数据上传
+          i++;
+          if(i%10==0)
+          {
+
+            xq_diffdriver.send_synergy_parmas_getOder();//下发协同运动参数上传指令
+            //std::cout<<"encoder "<<xq_status.car_status.encoder_r_current << " "<< xq_status.car_status.encoder_l_current<<std::endl;
+            usleep(1000);//延时1MS，等待数据上传
+          }
           xq_diffdriver.send_wheel_ppr_delta_getOrder();  //下发编码器上传指令
           usleep(2000);//延时2MS，等待数据上传
           if(BarFlag)
           {
             //超声波避障处理
             int  v=0,r=0;
-            xq_status.filter_speed(xq_status.car_status.synergy_speed_set,xq_status.car_status.synergy_r_set, v,r);
-            xq_diffdriver.sendcmd(v,r);//普通减速
+            if(xq_status.filter_speed(xq_status.car_status.synergy_speed_set,xq_status.car_status.synergy_r_set, v,r)) xq_diffdriver.sendcmd(v,r);//普通减速
             xq_diffdriver.sendcmd(xq_status.isneed_faststop());//紧急减速
           }
-          i++;
+
           if(serial_car.errorStatus() || serial_car.isOpen()==false)
           {
               cerr<<"Error: serial port closed unexpectedly"<<endl;

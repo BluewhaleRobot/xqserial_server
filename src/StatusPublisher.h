@@ -73,7 +73,7 @@ public:
     geometry_msgs::Twist get_CarTwist();
     std_msgs::Float64 get_power();
     nav_msgs::Odometry get_odom();
-    void filter_speed(const int  v_in, const int r_in,int & v_out, int & r_out);
+    bool filter_speed(const int  v_in, const int r_in,int & v_out, int & r_out);
     bool isneed_faststop(void);
     UPLOAD_STATUS car_status;
 private:

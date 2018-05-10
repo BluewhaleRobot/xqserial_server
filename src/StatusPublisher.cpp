@@ -85,25 +85,25 @@ StatusPublisher::StatusPublisher(double separation,double radius,bool debugFlag)
     CarSonar1.radiation_type = 0;
     CarSonar1.field_of_view = 0.7;
     CarSonar1.min_range = 0.19;
-    CarSonar1.max_range = 0.41;
+    CarSonar1.max_range = 4.1;
 
     CarSonar2.header.frame_id = "sonar2";
     CarSonar2.radiation_type = 0;
     CarSonar2.field_of_view = 0.7;
     CarSonar2.min_range = 0.19;
-    CarSonar2.max_range = 0.41;
+    CarSonar2.max_range = 4.1;
 
     CarSonar3.header.frame_id = "sonar3";
     CarSonar3.radiation_type = 0;
     CarSonar3.field_of_view = 0.7;
     CarSonar3.min_range = 0.19;
-    CarSonar3.max_range = 0.41;
+    CarSonar3.max_range = 4.1;
 
     CarSonar4.header.frame_id = "sonar4";
     CarSonar4.radiation_type = 0;
     CarSonar4.field_of_view = 0.7;
     CarSonar4.min_range = 0.19;
-    CarSonar4.max_range = 0.41;
+    CarSonar4.max_range = 4.1;
 }
 
 void StatusPublisher::Update_car(const char data[], unsigned int len)
@@ -117,20 +117,21 @@ void StatusPublisher::Update_car(const char data[], unsigned int len)
     for(i=0;i<len;i++)
     {
         current_str=data[i];
-
+        //std::cout<< std::hex  << (int)current_str <<std::endl;
         unsigned char sum_check = (unsigned char) (-sum);
 
         if((cmd_string_buf[0]!=0x01 && cmd_string_buf[0]!=0x02)||sum_check!=current_str) //校验包头和包和
         {
+          sum -= cmd_string_buf[0];
           cmd_string_buf.pop_front();
           cmd_string_buf.push_back(current_str);
           sum += current_str;
           continue;
         }
         //校验res
-
-        if(cmd_string_buf[1]<0x40||cmd_string_buf[01]>0x50)
+        if(cmd_string_buf[1]<0x40||cmd_string_buf[1]>0x50)
         {
+          sum -= cmd_string_buf[0];
           cmd_string_buf.pop_front();
           cmd_string_buf.push_back(current_str);
           sum += current_str;
@@ -162,7 +163,10 @@ void StatusPublisher::Update_car(const char data[], unsigned int len)
               data_byte[1]=cmd_string_buf[6];
               data_byte[2]=cmd_string_buf[7];
               data_byte[3]=cmd_string_buf[8];
-              if(cmd_string_buf[0]==0x02)  mbUpdated_car=true;
+              if(cmd_string_buf[0]==0x02)
+              {
+                mbUpdated_car=true;
+              }
               break;
             case 0x430000:
               //协同使能 8u
@@ -215,6 +219,7 @@ void StatusPublisher::Update_car(const char data[], unsigned int len)
           }
         }
         //更新
+        sum -= cmd_string_buf[0];
         cmd_string_buf.pop_front();
         cmd_string_buf.push_back(current_str);
         sum += current_str;
@@ -331,6 +336,7 @@ void StatusPublisher::Refresh()
     {
       update_theta=false;
     }
+
     if(mbUpdated_imu && car_status.status_imu==1)
     {
       //4元数转角度
@@ -359,7 +365,7 @@ void StatusPublisher::Refresh()
             yaw_index = 0;
           }
           update_nums++;
-          if(update_nums>600)
+          if(update_nums>300)
           {
             yaw_ready = true;
             update_theta=true;
@@ -372,6 +378,7 @@ void StatusPublisher::Refresh()
      else
      {
        //更新飘逸速率
+      // std::cout<<"oups4: "<<std::endl;
        if(car_status.encoder_delta_r == 0 && car_status.encoder_delta_l == 0)
        {
          //
@@ -501,7 +508,7 @@ void StatusPublisher::Refresh()
   }
   //再处理car
   {
-   if(mbUpdated_car && car_status.status_car==1)
+   if(mbUpdated_car && car_status.status_imu==1)
    {
      boost::mutex::scoped_lock lock(mMutex_car);
      static double theta_last=0.0;
@@ -530,6 +537,7 @@ void StatusPublisher::Refresh()
          if(car_status.encoder_delta_r < -8000) car_status.encoder_delta_r += 2147483647;
          if(car_status.encoder_delta_l > 8000) car_status.encoder_delta_l -= 2147483648;
          if(car_status.encoder_delta_l < -8000) car_status.encoder_delta_l += 2147483647;
+         car_status.encoder_delta_r = -car_status.encoder_delta_r;//方向相反
          car_status.encoder_r_last = car_status.encoder_r_current;
          car_status.encoder_l_last = car_status.encoder_l_current;
        }
@@ -574,7 +582,7 @@ void StatusPublisher::Refresh()
 
        //flag
        std_msgs::Int32 flag;
-       if(car_status.status_imu==1 && car_status.status_car==1 && yaw_ready)
+       if(car_status.status_imu==1 && car_status.driver_error==0 && yaw_ready)
        {
          car_status.status=1;
        }
@@ -593,12 +601,12 @@ void StatusPublisher::Refresh()
 
        //Twist
        double angle_speed;
-       CarTwist.linear.x=delta_car*50.0f;
+       CarTwist.linear.x = CarTwist.linear.x*0.5f + 0.5f*delta_car*50.0f;
        angle_speed=-car_status.IMU[5];
-       CarTwist.angular.z=angle_speed * PI /180.0f;
+       CarTwist.angular.z = CarTwist.angular.z*0.5f + 0.5f*angle_speed * PI /180.0f;
        mTwistPub.publish(CarTwist);
 
-       CarPower.data = car_status.power_imu;
+       CarPower.data = car_status.power_imu*36.4f/35.55f;
        mPowerPub.publish(CarPower);
 
        CarOdom.header.stamp = current_time;
@@ -681,7 +689,7 @@ int StatusPublisher::get_status(){
   return car_status.status;
 }
 
-void StatusPublisher::filter_speed(const int  v_in, const int r_in,int & v_out, int & r_out)
+bool StatusPublisher::filter_speed(const int  v_in, const int r_in,int & v_out, int & r_out)
 {
   //安全速度的设定依据是：100ms后再制动可以在安全距离0.2m范围外停车
   const float delay_time = 0.1; //100ms
@@ -691,7 +699,7 @@ void StatusPublisher::filter_speed(const int  v_in, const int r_in,int & v_out, 
   r_out=r_in;
   if(r_in==-1||r_in==1||v_in==0)
   {
-    return;
+    return false;
   }
 
   if(v_in>=1)
@@ -731,6 +739,7 @@ void StatusPublisher::filter_speed(const int  v_in, const int r_in,int & v_out, 
       v_out=std::max(v_in,(int)(-sqrt(s4)*1000.0f));
     }
   }
+  return true;
 }
 bool StatusPublisher::isneed_faststop(void)
 {
