@@ -42,7 +42,7 @@ int main(int argc, char **argv)
     ros::param::param<bool>("~debug_flag", DebugFlag, false);
     xqserial_server::StatusPublisher xq_status(separation,radius,DebugFlag);
 
-    bool BarFlag = true;
+    bool BarFlag = false;
     ros::param::param<bool>("~bar_flag", BarFlag, true);
 
     //获取小车控制参数
@@ -60,6 +60,7 @@ int main(int argc, char **argv)
 
       xqserial_server::DiffDriverController xq_diffdriver(max_speed,cmd_topic,&xq_status,&serial_car,&serial_imu);
       boost::thread cmd2serialThread(& xqserial_server::DiffDriverController::run,&xq_diffdriver);
+
       xq_diffdriver.setBarFlag(BarFlag);
       // send test flag
       char debugFlagCmd[] = {(char)0xcd,(char)0xeb,(char)0xd7,(char)0x01, 'T'};
@@ -78,7 +79,7 @@ int main(int argc, char **argv)
       while (ros::ok())
       {
           i++;
-          if(i%10==0)
+          if(i%5==0)
           {
 
             xq_diffdriver.send_synergy_parmas_getOder();//下发协同运动参数上传指令

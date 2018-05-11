@@ -75,6 +75,7 @@ public:
     nav_msgs::Odometry get_odom();
     bool filter_speed(const int  v_in, const int r_in,int & v_out, int & r_out);
     bool isneed_faststop(void);
+    void set_synergy_speed(const int  v_in, const int r_in);
     UPLOAD_STATUS car_status;
 private:
 

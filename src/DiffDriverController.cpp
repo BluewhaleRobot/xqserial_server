@@ -92,7 +92,7 @@ void DiffDriverController::send_wheel_ppr_delta_getOrder()
 
 void DiffDriverController::send_synergy_parmas_getOder()
 {
-  
+
   //下发协同运动参数上传指令
   boost::mutex::scoped_lock lock(mMutex);
   char cmd_str1[10]={(char)0x01,(char)0x40,(char)0x00,(char)0x43,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x7c};
@@ -146,6 +146,7 @@ void DiffDriverController::sendcmd(bool faster_stop)
 void DiffDriverController::sendcmd(const int v, const int r)
 {
   boost::mutex::scoped_lock lock(mMutex);
+  xq_status->set_synergy_speed(v,r);
   char cmd_str1[10]={(char)0x01,(char)0x23,(char)0x02,(char)0x43,(char)0x04,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
   char cmd_str2[10]={(char)0x01,(char)0x23,(char)0x02,(char)0x43,(char)0x10,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
 
@@ -216,8 +217,9 @@ void DiffDriverController::dealCmd_vel(const geometry_msgs::Twist &command)
 {
     float separation = 0,radius = 0,speed_lin = 0,speed_ang = 0;
 
-    if(xq_status->get_status()==0) return;//底层还在初始化
     this->enable_synergy_control();
+    if(xq_status->get_status()==0) return;//底层还在初始化
+
     //转换成v,r
     separation = xq_status->get_wheel_separation();
     radius = xq_status->get_wheel_radius();
@@ -248,14 +250,7 @@ void DiffDriverController::dealCmd_vel(const geometry_msgs::Twist &command)
       else
       {
         r = (int)(speed_lin/speed_ang*1000.0f);
-        if(speed_lin>0)
-        {
-          v = (int)(std::fabs(speed_ang)*(std::fabs(speed_lin/speed_ang)+separation/2.0f)*1000.0f);
-        }
-        else
-        {
-          v = (int)(-std::fabs(speed_ang)*(std::fabs(speed_lin/speed_ang)+separation/2.0f)*1000.0f);
-        }
+        v = (int)(speed_ang*(std::fabs(speed_lin/speed_ang)+separation/2.0f)*1000.0f);
       }
     }
     int v_send,r_send;
@@ -269,6 +264,7 @@ void DiffDriverController::dealCmd_vel(const geometry_msgs::Twist &command)
       v_send = v;
       r_send = r;
     }
+
     this->sendcmd(v_send, r_send);
 }
 

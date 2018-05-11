@@ -85,25 +85,25 @@ StatusPublisher::StatusPublisher(double separation,double radius,bool debugFlag)
     CarSonar1.radiation_type = 0;
     CarSonar1.field_of_view = 0.7;
     CarSonar1.min_range = 0.19;
-    CarSonar1.max_range = 4.1;
+    CarSonar1.max_range = 4.2;
 
     CarSonar2.header.frame_id = "sonar2";
     CarSonar2.radiation_type = 0;
     CarSonar2.field_of_view = 0.7;
     CarSonar2.min_range = 0.19;
-    CarSonar2.max_range = 4.1;
+    CarSonar2.max_range = 4.2;
 
     CarSonar3.header.frame_id = "sonar3";
     CarSonar3.radiation_type = 0;
     CarSonar3.field_of_view = 0.7;
     CarSonar3.min_range = 0.19;
-    CarSonar3.max_range = 4.1;
+    CarSonar3.max_range = 4.2;
 
     CarSonar4.header.frame_id = "sonar4";
     CarSonar4.radiation_type = 0;
     CarSonar4.field_of_view = 0.7;
     CarSonar4.min_range = 0.19;
-    CarSonar4.max_range = 4.1;
+    CarSonar4.max_range = 4.2;
 }
 
 void StatusPublisher::Update_car(const char data[], unsigned int len)
@@ -465,45 +465,35 @@ void StatusPublisher::Refresh()
 
       static unsigned int ii=0;
       ii++;
-     //  if(ii%50==0)
-     //  {
-     //    std::cout<<"IMU_acc: x "<<  car_status.IMU[0] <<" y " << car_status.IMU[1] << " z "<< car_status.IMU[2] <<std::endl;
-     //    std::cout<<"IMU_gyo: x "<<  car_status.IMU[3] <<" y " << car_status.IMU[4] << " z "<< car_status.IMU[5] <<std::endl;
-     //    std::cout<<"IMU_cps: x "<<  car_status.IMU[6] <<" y " << car_status.IMU[7] << " z "<< car_status.IMU[8] <<std::endl;
-      //
 
-
-       //  std::cout<<"status_imu:"<< car_status.status_imu<<std::endl;
-       //  std::cout<<"power_imu:"<< car_status.power_imu <<std::endl;
-       //  std::cout<<"roll: "<< roll<<" pitch: "<<pitch<<" yaw: "<<yaw  << " theta: " << car_status.theta <<std::endl;
-       //  std::cout<<"time_stamp_imu:"<< car_status.time_stamp_imu <<std::endl;
-     //  }
-
-     //发布超声波topic
-     if(car_status.distance[0]>0.1)
-     {
-       CarSonar1.header.stamp = current_time;
-       CarSonar1.range = car_status.distance[0];
-       mSonar1Pub.publish(CarSonar1);
-     }
-     if(car_status.distance[1]>0.1)
-     {
-       CarSonar2.header.stamp = current_time;
-       CarSonar2.range = car_status.distance[1];
-       mSonar2Pub.publish(CarSonar2);
-     }
-     if(car_status.distance[2]>0.1)
-     {
-       CarSonar3.header.stamp = current_time;
-       CarSonar3.range = car_status.distance[2];
-       mSonar3Pub.publish(CarSonar3);
-     }
-     if(car_status.distance[3]>0.1)
-     {
-       CarSonar4.header.stamp = current_time;
-       CarSonar4.range = car_status.distance[3];
-       mSonar4Pub.publish(CarSonar4);
-     }
+       if(ii%5==0)
+       {
+         //发布超声波topic
+         if(car_status.distance[0]>0.1)
+         {
+           CarSonar1.header.stamp = current_time;
+           CarSonar1.range = car_status.distance[0];
+           mSonar1Pub.publish(CarSonar1);
+         }
+         if(car_status.distance[1]>0.1)
+         {
+           CarSonar2.header.stamp = current_time;
+           CarSonar2.range = car_status.distance[1];
+           mSonar2Pub.publish(CarSonar2);
+         }
+         if(car_status.distance[2]>0.1)
+         {
+           CarSonar3.header.stamp = current_time;
+           CarSonar3.range = car_status.distance[2];
+           mSonar3Pub.publish(CarSonar3);
+         }
+         if(car_status.distance[3]>0.1)
+         {
+           CarSonar4.header.stamp = current_time;
+           CarSonar4.range = car_status.distance[3];
+           mSonar4Pub.publish(CarSonar4);
+         }
+       }
     }
   }
   //再处理car
@@ -602,11 +592,11 @@ void StatusPublisher::Refresh()
        //Twist
        double angle_speed;
        CarTwist.linear.x = CarTwist.linear.x*0.5f + 0.5f*delta_car*50.0f;
-       angle_speed=-car_status.IMU[5];
+       angle_speed=car_status.IMU[5];
        CarTwist.angular.z = CarTwist.angular.z*0.5f + 0.5f*angle_speed * PI /180.0f;
        mTwistPub.publish(CarTwist);
 
-       CarPower.data = car_status.power_imu*36.4f/35.55f;
+       CarPower.data = car_status.power_imu;
        mPowerPub.publish(CarPower);
 
        CarOdom.header.stamp = current_time;
@@ -689,12 +679,18 @@ int StatusPublisher::get_status(){
   return car_status.status;
 }
 
+void StatusPublisher::set_synergy_speed(const int  v_in, const int r_in)
+{
+  car_status.synergy_speed_set = v_in;
+  car_status.synergy_r_set = r_in;
+}
+
 bool StatusPublisher::filter_speed(const int  v_in, const int r_in,int & v_out, int & r_out)
 {
   //安全速度的设定依据是：100ms后再制动可以在安全距离0.2m范围外停车
   const float delay_time = 0.1; //100ms
   const float safe_distance = 0.3; //0.3m
-  const float de_acc = 1.0;// m/s^2
+  const float de_acc = 0.88;// m/s^2
   v_out=v_in;
   r_out=r_in;
   if(r_in==-1||r_in==1||v_in==0)
@@ -702,41 +698,63 @@ bool StatusPublisher::filter_speed(const int  v_in, const int r_in,int & v_out, 
     return false;
   }
 
-  if(v_in>=1)
+  int sign= v_in*r_in;
+  if(r_in==0) sign = v_in;
+//  std::cout<<"sign "<<sign<<std::endl;
+  if(sign>0)
   {
     //前进
-    float s2=2*de_acc*(car_status.distance[1]-delay_time*v_in/1000.0-safe_distance);
+    float s2=2*de_acc*(car_status.distance[1]-delay_time*std::abs(v_in)/1000.0-safe_distance);
+  //  std::cout<<"s2 " << s2 <<std::endl;
     if(s2<0.000001)
     {
       v_out=0;
     }
     else
     {
-      v_out=std::min(v_in,(int)(sqrt(s2)*1000.0f));
+      int sign2=v_in/std::abs(v_in);
+      float temp= sqrt(s2);
+      // if(r_in !=0)
+      // {
+      //   temp = temp*(std::abs(r_in)+wheel_separation*1000.f/2.0f)/(std::abs(r_in));
+      // }
+      v_out = sign2*std::min(std::abs(v_in),(int)(temp*1000.0f));
+
       if(r_in>1 && car_status.distance[0]<=safe_distance)
       {
         //左转
         r_out=0;
+        v_out = std::abs(v_out);
       }
       else if(r_in<-1 && car_status.distance[2]<=safe_distance)
       {
         //右转
         r_out=0;
+        v_out = std::abs(v_out);
       }
+      //std::cout<<"sign20 "<<sign2<< " v_in " << v_in << " r_in " << r_in<< " v_out " << v_out <<" r_out " << r_out<<std::endl;
     }
 
   }
-  else if(v_in<=-1)
+  else if(sign<0)
   {
     //后退
-    float s4=2*de_acc*(car_status.distance[3]+delay_time*v_in/1000.0-safe_distance);
+    float s4=2*de_acc*(car_status.distance[3]+delay_time*std::abs(v_in)/1000.0f-safe_distance);
+  //  std::cout<<"s4 " << s4 <<std::endl;
     if(s4<0.000001)
     {
       v_out=0;
     }
     else
     {
-      v_out=std::max(v_in,(int)(-sqrt(s4)*1000.0f));
+      int sign2=v_in/std::abs(v_in);
+      float temp= sqrt(4);
+      // if(r_in !=0)
+      // {
+      //   temp = temp*(std::abs(r_in)+wheel_separation*1000.f/2.0f)/(std::abs(r_in));
+      // }
+      v_out = sign2*std::min(std::abs(v_in),(int)(temp*1000.0f));
+  //    std::cout<<"sign21 "<<sign2<< " v_in " << v_in << " r_in " << r_in<< " v_out " << v_out <<" r_out " << r_out<<std::endl;
     }
   }
   return true;
@@ -747,6 +765,7 @@ bool StatusPublisher::isneed_faststop(void)
 
   float v=CarTwist.linear.x;
   float w=(car_status.encoder_delta_r-car_status.encoder_delta_l)*1.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius/wheel_separation;
+
   if(v<-0.01 && car_status.distance[3]<=safe_distance)
   {
     // 后退
