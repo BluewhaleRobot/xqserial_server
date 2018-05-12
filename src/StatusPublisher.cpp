@@ -56,6 +56,8 @@ StatusPublisher::StatusPublisher()
    mSonar2Pub = mNH.advertise<sensor_msgs::Range>("xqserial_server/Sonar2", 1, true);
    mSonar3Pub = mNH.advertise<sensor_msgs::Range>("xqserial_server/Sonar3", 1, true);
    mSonar4Pub = mNH.advertise<sensor_msgs::Range>("xqserial_server/Sonar4", 1, true);
+
+   mBatteryPub = mNH.advertise<std_msgs::Int32>("xqserial_server/Battery",1,true);
   /* static tf::TransformBroadcaster br;
    tf::Quaternion q;
    tf::Transform transform;
@@ -104,6 +106,7 @@ StatusPublisher::StatusPublisher(double separation,double radius,bool debugFlag)
     CarSonar4.field_of_view = 0.7;
     CarSonar4.min_range = 0.19;
     CarSonar4.max_range = 4.2;
+    battery=0;
 }
 
 void StatusPublisher::Update_car(const char data[], unsigned int len)
@@ -598,6 +601,14 @@ void StatusPublisher::Refresh()
 
        CarPower.data = car_status.power_imu;
        mPowerPub.publish(CarPower);
+
+      //电量
+      battery = (int)((CarPower.data-32.0f)/9.5f*100.f);
+      std_msgs::Int32 battery_pub;
+      if(battery<0) battery = 0;
+      if(battery>100) battery = 100;
+      battery_pub.data = battery;
+      mBatteryPub.publish(battery_pub);
 
        CarOdom.header.stamp = current_time;
        CarOdom.header.frame_id = "odom";

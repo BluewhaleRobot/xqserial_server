@@ -123,6 +123,8 @@ private:
     bool yaw_ready;
 
     bool debug_flag;
+    int battery;
+    ros::Publisher mBatteryPub;
 };
 
 } //namespace xqserial_server
