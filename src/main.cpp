@@ -82,62 +82,6 @@ int main(int argc, char **argv)
               char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x01};
               serial.write(cmd_str,6);
             }
-            //超声波处理
-            if(xq_diffdriver.DetectFlag_)
-            {
-              geometry_msgs::Twist  cmdTwist = xq_diffdriver.get_cmdTwist();
-              double distances[2]={0.0,0.0},distance=0;
-              xq_status.get_distances(distances);
-              distance=std::min(distances[0],distances[1]);
-              float cmd_v=cmdTwist.linear.x;
-              if(distance>=0.2001 && distance<=0.45)
-              {
-                  float k=0.4;
-                  float max_v = std::max(0.0,k*std::sqrt(distance-0.35)); //根据当前距离设置线速度最大值
-                  geometry_msgs::Twist  carTwist = xq_status.get_CarTwist();
-                  if(max_v<0.01 && carTwist.linear.x<0.1 && carTwist.linear.x>-0.1 && cmdTwist.linear.x> 0.01)
-                  {
-                    if(distances[0]>(distances[1]+0.05) )
-                    {
-                      if(cmdTwist.angular.z<0.005)
-                      {
-                        //可以右转
-                        cmdTwist.angular.z = std::min(-0.1,cmdTwist.angular.z);
-                      }
-                      else
-                      {
-                        cmdTwist.angular.z = 0.1;
-                      }
-                    }
-                    else if(distances[1]>(distances[0]+0.05)  && cmdTwist.angular.z > -0.01)
-                    {
-                      if(cmdTwist.angular.z > -0.005)
-                      {
-                        //可以左转
-                        cmdTwist.angular.z = std::max(0.1,cmdTwist.angular.z);
-                      }
-                      else
-                      {
-                        cmdTwist.angular.z = -0.1;
-                      }
-                    }
-                  }
-                  if(cmd_v >= max_v)
-                  {
-                    cmdTwist.linear.x = max_v;
-
-                  }
-                  if(i%5==0)
-                  {
-                    std::cout<<"v: " << cmd_v<< " "<< cmdTwist.linear.x << " "<< max_v <<" " << distances[0] << " " << distances[1]<<std::endl;
-                  }
-                  xq_diffdriver.sendcmd(cmdTwist);
-              }
-              else if(distance>=0.2001)
-              {
-                xq_diffdriver.sendcmd(cmdTwist);
-              }
-            }
             i++;
             r.sleep();
             //cout<<"run"<<endl;

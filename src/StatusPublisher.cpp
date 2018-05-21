@@ -46,6 +46,22 @@ StatusPublisher::StatusPublisher()
    mOdomPub = mNH.advertise<nav_msgs::Odometry>("xqserial_server/Odom", 1, true);
    pub_barpoint_cloud_ = mNH.advertise<PointCloud>("kinect/barpoints", 1, true);
    pub_clearpoint_cloud_ = mNH.advertise<PointCloud>("kinect/clearpoints", 1, true);
+
+   mSonar1Pub = mNH.advertise<sensor_msgs::Range>("xqserial_server/Sonar1", 1, true);
+   mSonar2Pub = mNH.advertise<sensor_msgs::Range>("xqserial_server/Sonar2", 1, true);
+
+   CarSonar1.header.frame_id = "sonar1";
+   CarSonar1.radiation_type = 0;
+   CarSonar1.field_of_view = 0.7;
+   CarSonar1.min_range = 0.19;
+   CarSonar1.max_range = 4.2;
+
+   CarSonar2.header.frame_id = "sonar2";
+   CarSonar2.radiation_type = 0;
+   CarSonar2.field_of_view = 0.7;
+   CarSonar2.min_range = 0.19;
+   CarSonar2.max_range = 4.2;
+
   /* static tf::TransformBroadcaster br;
    tf::Quaternion q;
    tf::Transform transform;
@@ -516,8 +532,23 @@ void StatusPublisher::Refresh()
           distances_[0] = distance1_sum/2.0f;
           distances_[1] = distance2_sum/2.0f;
          //std::cout<<" " << car_status.distance1 << " " << car_status.distance2<<std::endl;
+           //发布超声波topic
+           if(distances_[0]>0.1)
+           {
+             CarSonar1.header.stamp = current_time;
+             CarSonar1.range = distances_[0];
+             mSonar1Pub.publish(CarSonar1);
+           }
+
+           if(distances_[1]>0.1)
+           {
+             CarSonar2.header.stamp = current_time;
+             CarSonar2.range = distances_[1];
+             mSonar2Pub.publish(CarSonar2);
+           }
         }
         distance_sum_i++;
+
         ros::spinOnce();
 
         mbUpdated = false;

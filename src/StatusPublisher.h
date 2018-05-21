@@ -14,6 +14,7 @@
 #include "tf/transform_broadcaster.h"
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include <sensor_msgs/PointField.h>
+#include <sensor_msgs/Range.h>
 
 #define PI 3.14159265
 
@@ -68,6 +69,9 @@ private:
     //Wheel radius (assuming it's the same for the left and right wheels):meters
     double wheel_radius;
 
+    sensor_msgs::Range CarSonar1;
+    sensor_msgs::Range CarSonar2;
+    
     geometry_msgs::Pose2D CarPos2D;//小车开始启动原点坐标系
     geometry_msgs::Twist  CarTwist;//小车自身坐标系
     std_msgs::Float64 CarPower;// 小车电池信息
@@ -80,6 +84,8 @@ private:
     ros::Publisher mOdomPub;
     ros::Publisher pub_barpoint_cloud_;
     ros::Publisher pub_clearpoint_cloud_;
+    ros::Publisher mSonar1Pub;
+    ros::Publisher mSonar2Pub;
 
     bool mbUpdated;
     double  distances_[2];
