@@ -52,8 +52,10 @@ int main(int argc, char **argv)
         // send reset cmd
         char resetCmd[] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x01, 'I'};
         serial.write(resetCmd, 5);
+        ros::Duration(0.5).sleep();
 
-        ros::Rate r(50);//发布周期为50hz
+        ros::Rate r(100);//发布周期为50hz
+
         while (ros::ok())
         {
             if(serial.errorStatus() || serial.isOpen()==false)

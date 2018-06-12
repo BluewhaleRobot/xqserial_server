@@ -54,8 +54,6 @@ StatusPublisher::StatusPublisher()
    transform.setRotation(q);
    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "base_footprint", "base_link"));
    */
-   first_bag_ = true;
-   base_time_stamp_ = 0;
    base_time_ = ros::Time::now().toSec();
 }
 
@@ -174,17 +172,7 @@ void StatusPublisher::Update(const char data[], unsigned int len)
                     }
                     if(mbUpdated)
                     {
-                      if(first_bag_)
-                      {
                         base_time_ = ros::Time::now().toSec();
-                        first_bag_ = false;
-                        base_time_stamp_ = car_status.time_stamp;
-                      }
-                      else if(car_status.time_stamp < base_time_stamp_)
-                      {
-                        base_time_ = ros::Time::now().toSec();
-                        base_time_stamp_ = car_status.time_stamp;
-                      }
                     }
                     // if(mbUpdated&&(car_status.encoder_delta_car>3000||car_status.encoder_delta_car<-3000))
                     // {
@@ -329,7 +317,7 @@ void StatusPublisher::Refresh()
         {
           //发布雷区
           PointCloud::Ptr barcloud_msg(new PointCloud);
-          barcloud_msg->header.stamp = current_time.fromSec(base_time_ + (car_status.time_stamp - base_time_stamp_)*0.002);
+          barcloud_msg->header.stamp = current_time.fromSec(base_time_);
           barcloud_msg->height = 1;
           barcloud_msg->width  = barArea_nums;
           barcloud_msg->is_dense = true;
@@ -376,7 +364,7 @@ void StatusPublisher::Refresh()
         {
           //发布雷区
           PointCloud::Ptr clearcloud_msg(new PointCloud);
-          clearcloud_msg->header.stamp = current_time.fromSec(base_time_ + (car_status.time_stamp - base_time_stamp_)*0.002);
+          clearcloud_msg->header.stamp = current_time.fromSec(base_time_);
           clearcloud_msg->height = 1;
           clearcloud_msg->width  = clearArea_nums;
           clearcloud_msg->is_dense = true;
@@ -448,7 +436,7 @@ void StatusPublisher::Refresh()
         CarPower.data = car_status.power;
         mPowerPub.publish(CarPower);
 
-        CarOdom.header.stamp = current_time.fromSec(base_time_ + (car_status.time_stamp - base_time_stamp_)*0.002);
+        CarOdom.header.stamp = current_time.fromSec(base_time_);
         CarOdom.header.frame_id = "odom";
         CarOdom.pose.pose.position.x = CarPos2D.x;
         CarOdom.pose.pose.position.y = CarPos2D.y;
@@ -481,7 +469,7 @@ void StatusPublisher::Refresh()
         transform.setOrigin( tf::Vector3(CarPos2D.x, CarPos2D.y, 0.0) );
         q.setRPY(0, 0, CarPos2D.theta/180*PI);
         transform.setRotation(q);
-        br.sendTransform(tf::StampedTransform(transform, current_time.fromSec(base_time_ + (car_status.time_stamp - base_time_stamp_)*0.002), "odom", "base_footprint"));
+        br.sendTransform(tf::StampedTransform(transform, current_time.fromSec(base_time_), "odom", "base_footprint"));
 
         ros::spinOnce();
 

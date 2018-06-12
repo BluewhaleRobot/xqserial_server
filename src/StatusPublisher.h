@@ -83,8 +83,6 @@ private:
 
     boost::mutex mMutex;
     double base_time_;
-    unsigned int base_time_stamp_;
-    bool first_bag_;
 };
 
 } //namespace xqserial_server
