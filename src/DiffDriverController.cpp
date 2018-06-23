@@ -111,7 +111,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
   //  command.linear.x/
     for(i=0;i<2;i++)
     {
-     speed[i]=speed_temp[i];
+     speed[i]=(int8_t)speed_temp[i];
      if(speed[i]<0)
      {
          cmd_str[5+i]=(char)0x42;//B

@@ -17,7 +17,7 @@ int main(int argc, char **argv)
 
     ros::init(argc, argv, "xqserial_server");
     ros::start();
-
+    
     //获取串口参数
     std::string port;
     ros::param::param<std::string>("~port", port, "/dev/ttyUSB0");
@@ -60,7 +60,7 @@ int main(int argc, char **argv)
         {
             if(serial.errorStatus() || serial.isOpen()==false)
             {
-                cerr<<"Error: serial port closed unexpectedly"<<endl;
+                ROS_ERROR_STREAM("Error: serial port closed unexpectedly");
                 break;
             }
             xq_status.Refresh();//定时发布状态
@@ -72,7 +72,8 @@ int main(int argc, char **argv)
         serial.close();
 
     } catch (std::exception& e) {
-        cerr<<"Exception: "<<e.what()<<endl;
+        ROS_ERROR_STREAM("Open " << port << " failed.");
+        ROS_ERROR_STREAM("Exception: " << e.what());
     }
 
     ros::shutdown();
