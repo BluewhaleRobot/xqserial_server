@@ -71,9 +71,9 @@ int main(int argc, char **argv)
             if(t_diff.toSec()>1.5 && t_diff.toSec()<1.7)
             {
               //safety security
-              char cmd_str[13]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x09,(char)0x74,(char)0x53,(char)0x53,(char)0x53,(char)0x53,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
-              serial.write(cmd_str, 13);
-              std::cout << "oups!" << std::endl;
+              // char cmd_str[13]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x09,(char)0x74,(char)0x53,(char)0x53,(char)0x53,(char)0x53,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
+              // serial.write(cmd_str, 13);
+              // std::cout << "oups!" << std::endl;
               //xq_diffdriver.last_ordertime=ros::WallTime::now();
             }
             if(i%50==0 && xq_diffdriver.DetectFlag_)
