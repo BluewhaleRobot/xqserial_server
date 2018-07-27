@@ -90,7 +90,7 @@ int main(int argc, char **argv)
         ros::Duration(0.5).sleep();
 
         ros::Rate r(100);//发布周期为50hz
-
+        int ii = 0;
         while (ros::ok())
         {
             if(serial.errorStatus() || serial.isOpen()==false)
@@ -99,6 +99,11 @@ int main(int argc, char **argv)
                 break;
             }
             xq_status.Refresh();//定时发布状态
+            ii++;
+            if(ii%5==0)
+            {
+              xq_diffdriver.sendcmd2();
+            }
             r.sleep();
             //cout<<"run"<<endl;
         }
