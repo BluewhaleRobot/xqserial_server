@@ -1,4 +1,5 @@
 #include "StatusPublisher.h"
+#include "DiffDriverController.h"
 #include "AsyncSerial.h"
 #include <memory.h>
 #include <math.h>
@@ -284,35 +285,72 @@ void StatusPublisher::Refresh()
         //flag
         std_msgs::Int32 flag;
         flag.data=car_status.status;
-        //底层障碍物信息
-        if((car_status.distance1+car_status.distance2+car_status.distance3+car_status.distance4)>0.1&&(car_status.distance1+car_status.distance2+car_status.distance3+car_status.distance4)<5.0)
-        {
-          //有障碍物
-          flag.data=2;
-        }
-        mStatusFlagPub.publish(flag);
 
+        float ranges[4],view_angles[4],tf_angles[4],tf_xs[4],tf_ys[4];
+        //超声波障碍物信息
         int barArea_nums=0;
         int clearArea_nums=0;
-        if(car_status.distance1>0.1)
-        {
-          barArea_nums+=3;
-        }else{
-          clearArea_nums+=6;
-        }
-        if(car_status.distance2>0.1)
-        {
-          barArea_nums+=3;
-        }else{
-          clearArea_nums+=6;
-        }
-        if(car_status.distance4>0.1)
-        {
-          barArea_nums+=3;
-        }else{
-          clearArea_nums+=6;
-        }
 
+        if(diff_driver_->getSonarTf(tf_angles,tf_xs,tf_ys))
+        {
+          float x0,y0,r0;
+          diff_driver_->getSonarData(ranges,view_angles);
+          //模块1
+          if(ranges[0]>0 && ranges[0]<2.0)
+          {
+            barArea_nums += 2*((int)(ranges[0]*tan(view_angles[0])/kinect_stepsize_)) + 1;
+          }
+          x0 = ranges[0]*cos(tf_angles[0]) + tf_xs[0];
+          y0 = ranges[0]*sin(tf_angles[0]) + tf_ys[0];
+          r0 = x0*x0+y0*y0;
+          if(r0<0.26*0.26)
+          {
+            flag.data=2;
+          }
+          else{
+            clearArea_nums+=6;
+          }
+          //模块2
+          if(ranges[1]>0 && ranges[1]<2.0)
+          {
+            barArea_nums += 2*((int)(ranges[1]*tan(view_angles[1])/kinect_stepsize_)) + 1;
+          }
+          x0 = ranges[1]*cos(tf_angles[1]) + tf_xs[1];
+          y0 = ranges[1]*sin(tf_angles[1]) + tf_ys[1];
+          r0 = x0*x0+y0*y0;
+          if(r0<0.26*0.26)
+          {
+            flag.data=2;
+          }
+          else{
+            clearArea_nums+=6;
+          }
+          //模块3
+          if(ranges[2]>0 && ranges[2]<2.0)
+          {
+            barArea_nums += 2*((int)(ranges[2]*tan(view_angles[2])/kinect_stepsize_)) + 1;
+          }
+          x0 = ranges[2]*cos(tf_angles[2]) + tf_xs[2];
+          y0 = ranges[2]*sin(tf_angles[2]) + tf_ys[2];
+          r0 = x0*x0+y0*y0;
+          if(r0<0.26*0.26)
+          {
+            flag.data=2;
+          }
+          else{
+            clearArea_nums+=6;
+          }
+          //模块4
+          x0 = ranges[3]*cos(tf_angles[3]) + tf_xs[3];
+          y0 = ranges[3]*sin(tf_angles[3]) + tf_ys[3];
+          r0 = x0*x0+y0*y0;
+          if(r0<0.44*0.44)
+          {
+            flag.data=2;
+          }
+
+        }
+        mStatusFlagPub.publish(flag);
         if(barArea_nums>0)
         {
           //发布雷区
@@ -328,31 +366,46 @@ void StatusPublisher::Refresh()
           sensor_msgs::PointCloud2Iterator<float> bariter_x(*barcloud_msg, "x");
           sensor_msgs::PointCloud2Iterator<float> bariter_y(*barcloud_msg, "y");
           sensor_msgs::PointCloud2Iterator<float> bariter_z(*barcloud_msg, "z");
-          if(car_status.distance2>0.1)
+          //模块1
+          if(ranges[0]>0 && ranges[0]<2.0)
           {
-            for(int k=0;k<3;k++,++bariter_x, ++bariter_y,++bariter_z)
+            int nums1 = (int)(ranges[0]*tan(view_angles[0])/kinect_stepsize_);
+            for(int i = -nums1;i<=nums1;i++,++bariter_x,++bariter_y,++bariter_z)
             {
-              *bariter_x=0.2;
-              *bariter_y=-0.10-k*0.05;
-              *bariter_z=0.15;
+              float x0 ,y0;
+              x0 = ranges[0];
+              y0 = i*kinect_stepsize_;
+              *bariter_x = x0*cos(tf_angles[0]) - y0*sin(tf_angles[0]) + tf_xs[0] - kinect_x_;
+              *bariter_y = x0*sin(tf_angles[0]) + y0*cos(tf_angles[0]) + tf_ys[0];
+              *bariter_z = 0.15;
             }
           }
-          if(car_status.distance4>0.1)
+          //模2
+          if(ranges[1]>0 && ranges[1]<2.0)
           {
-            for(int k=0;k<3;k++,++bariter_x, ++bariter_y,++bariter_z)
+            int nums1 = (int)(ranges[1]*tan(view_angles[1])/kinect_stepsize_);
+            for(int i = -nums1;i<=nums1;i++,++bariter_x,++bariter_y,++bariter_z)
             {
-              *bariter_x=0.2;
-              *bariter_y=-0.1+k*0.05;
-              *bariter_z=0.15;
+              float x0 ,y0;
+              x0 = ranges[1];
+              y0 = i*kinect_stepsize_;
+              *bariter_x = x0*cos(tf_angles[1]) - y0*sin(tf_angles[1]) + tf_xs[1] - kinect_x_;
+              *bariter_y = x0*sin(tf_angles[1]) + y0*cos(tf_angles[1]) + tf_ys[1];
+              *bariter_z = 0.15;
             }
           }
-          if(car_status.distance1>0.1)
+          //模块3
+          if(ranges[2]>0 && ranges[2]<2.0)
           {
-            for(int k=0;k<3;k++,++bariter_x, ++bariter_y,++bariter_z)
+            int nums1 = (int)(ranges[2]*tan(view_angles[2])/kinect_stepsize_);
+            for(int i = -nums1;i<=nums1;i++,++bariter_x,++bariter_y,++bariter_z)
             {
-              *bariter_x=0.2;
-              *bariter_y=0.05+k*0.05;
-              *bariter_z=0.15;
+              float x0 ,y0;
+              x0 = ranges[2];
+              y0 = i*kinect_stepsize_;
+              *bariter_x = x0*cos(tf_angles[2]) - y0*sin(tf_angles[2]) + tf_xs[2] - kinect_x_;
+              *bariter_y = x0*sin(tf_angles[2]) + y0*cos(tf_angles[2]) + tf_ys[2];
+              *bariter_z = 0.15;
             }
           }
           if(ii%5==0)
@@ -375,48 +428,61 @@ void StatusPublisher::Refresh()
           sensor_msgs::PointCloud2Iterator<float> cleariter_x(*clearcloud_msg, "x");
           sensor_msgs::PointCloud2Iterator<float> cleariter_y(*clearcloud_msg, "y");
           sensor_msgs::PointCloud2Iterator<float> cleariter_z(*clearcloud_msg, "z");
-          if(car_status.distance2<0.1)
+          float x0,y0,r0;
+          //模块1
+          x0 = ranges[0]*cos(tf_angles[0]) + tf_xs[0];
+          y0 = ranges[0]*sin(tf_angles[0]) + tf_ys[0];
+          r0 = x0*x0+y0*y0;
+          if(r0>=0.26*0.26)
           {
             for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.2;
-              *cleariter_y=-0.1-k*0.05;
+              *cleariter_x=0.2 - kinect_x_;
+              *cleariter_y=0.1+k*0.05;
               *cleariter_z=0.0;
             }
             for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.15;
-              *cleariter_y=-0.1-k*0.05;
+              *cleariter_x=0.15 - kinect_x_;
+              *cleariter_y=0.1+k*0.05;
               *cleariter_z=0.0;
             }
           }
-          if(car_status.distance4<0.1)
+          //模块2
+          x0 = ranges[1]*cos(tf_angles[1]) + tf_xs[1];
+          y0 = ranges[1]*sin(tf_angles[1]) + tf_ys[1];
+          r0 = x0*x0+y0*y0;
+          if(r0>=0.26*0.26)
           {
             for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.2;
-              *cleariter_y=-0.1+k*0.05;
+              *cleariter_x=0.2 - kinect_x_;
+              *cleariter_y=-0.05+k*0.05;
               *cleariter_z=0.0;
             }
             for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.15;
-              *cleariter_y=-0.1+k*0.05;
+              *cleariter_x=0.15 - kinect_x_;
+              *cleariter_y=-0.05+k*0.05;
               *cleariter_z=0.0;
             }
           }
-          if(car_status.distance1<0.1)
+          //模块3
+          x0 = ranges[2]*cos(tf_angles[2]) + tf_xs[2];
+          y0 = ranges[2]*sin(tf_angles[2]) + tf_ys[2];
+          r0 = x0*x0+y0*y0;
+          if(r0>=0.26*0.26)
           {
             for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.2;
-              *cleariter_y=0.05+k*0.05;
+              *cleariter_x=0.2 - kinect_x_;
+              *cleariter_y=-0.10-k*0.05;
               *cleariter_z=0.0;
             }
             for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.15;
-              *cleariter_y=0.05+k*0.05;
+              *cleariter_x=0.15 - kinect_x_;
+              *cleariter_y=-0.10-k*0.05;
               *cleariter_z=0.0;
             }
           }
@@ -425,7 +491,6 @@ void StatusPublisher::Refresh()
             pub_clearpoint_cloud_.publish(clearcloud_msg);
           }
         }
-
         //Twist
         double angle_speed;
         CarTwist.linear.x=delta_car*50.0f;
@@ -510,8 +575,15 @@ std_msgs::Float64 StatusPublisher::get_power(){
 nav_msgs::Odometry StatusPublisher::get_odom(){
   return CarOdom;
 }
+
 int StatusPublisher::get_status(){
   return car_status.status;
 }
 
+void StatusPublisher::setBarparams(double kinect_x,double kinect_stepsize,DiffDriverController * diff_driver)
+{
+  kinect_x_ = kinect_x;
+  kinect_stepsize_ = kinect_stepsize;
+  diff_driver_ = diff_driver;
+}
 } //namespace xqserial_server

@@ -19,6 +19,7 @@
 
 namespace xqserial_server
 {
+
 typedef struct {
     int status;//小车状态，0表示未初始化，1表示正常，-1表示error
     float power;//电源电压【9 13】v
@@ -36,6 +37,8 @@ typedef struct {
     float IMU[9];//mpu9250 9轴数据
     unsigned int time_stamp;//时间戳
 }UPLOAD_STATUS;
+
+class DiffDriverController;
 
 class StatusPublisher
 {
@@ -55,7 +58,7 @@ public:
     std_msgs::Float64 get_power();
     nav_msgs::Odometry get_odom();
     UPLOAD_STATUS car_status;
-
+    void setBarparams(double kinect_x,double kinect_stepsize,DiffDriverController * diff_driver);
 private:
 
 
@@ -83,6 +86,9 @@ private:
 
     boost::mutex mMutex;
     double base_time_;
+    double kinect_x_;
+    double kinect_stepsize_;
+    DiffDriverController * diff_driver_;
 };
 
 } //namespace xqserial_server
