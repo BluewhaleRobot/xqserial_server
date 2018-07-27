@@ -296,49 +296,52 @@ void StatusPublisher::Refresh()
           float x0,y0,r0;
           diff_driver_->getSonarData(ranges,view_angles);
           //模块1
-          if(ranges[0]>0 && ranges[0]<2.0)
-          {
-            barArea_nums += 2*((int)(ranges[0]*tan(view_angles[0])/kinect_stepsize_)) + 1;
-          }
+          // if(ranges[0]>0 && ranges[0]<0.8)
+          // {
+          //   barArea_nums += 2*((int)(ranges[0]*tan(view_angles[0])/kinect_stepsize_)) + 1;
+          // }
           x0 = ranges[0]*cos(tf_angles[0]) + tf_xs[0];
           y0 = ranges[0]*sin(tf_angles[0]) + tf_ys[0];
           r0 = x0*x0+y0*y0;
           if(r0<0.26*0.26)
           {
+            barArea_nums += 2*((int)(ranges[0]*tan(view_angles[0])/kinect_stepsize_)) + 1;
             flag.data=2;
           }
           else{
-            clearArea_nums+=6;
+            clearArea_nums+=25;
           }
           //模块2
-          if(ranges[1]>0 && ranges[1]<2.0)
-          {
-            barArea_nums += 2*((int)(ranges[1]*tan(view_angles[1])/kinect_stepsize_)) + 1;
-          }
+          // if(ranges[1]>0 && ranges[1]<0.8)
+          // {
+          //   barArea_nums += 2*((int)(ranges[1]*tan(view_angles[1])/kinect_stepsize_)) + 1;
+          // }
           x0 = ranges[1]*cos(tf_angles[1]) + tf_xs[1];
           y0 = ranges[1]*sin(tf_angles[1]) + tf_ys[1];
           r0 = x0*x0+y0*y0;
           if(r0<0.26*0.26)
           {
+            barArea_nums += 2*((int)(ranges[1]*tan(view_angles[1])/kinect_stepsize_)) + 1;
             flag.data=2;
           }
           else{
-            clearArea_nums+=6;
+            clearArea_nums+=15;
           }
           //模块3
-          if(ranges[2]>0 && ranges[2]<2.0)
-          {
-            barArea_nums += 2*((int)(ranges[2]*tan(view_angles[2])/kinect_stepsize_)) + 1;
-          }
+          // if(ranges[2]>0 && ranges[2]<0.8)
+          // {
+          //   barArea_nums += 2*((int)(ranges[2]*tan(view_angles[2])/kinect_stepsize_)) + 1;
+          // }
           x0 = ranges[2]*cos(tf_angles[2]) + tf_xs[2];
           y0 = ranges[2]*sin(tf_angles[2]) + tf_ys[2];
           r0 = x0*x0+y0*y0;
           if(r0<0.26*0.26)
           {
+            barArea_nums += 2*((int)(ranges[2]*tan(view_angles[2])/kinect_stepsize_)) + 1;
             flag.data=2;
           }
           else{
-            clearArea_nums+=6;
+            clearArea_nums+=25;
           }
           //模块4
           x0 = ranges[3]*cos(tf_angles[3]) + tf_xs[3];
@@ -366,8 +369,12 @@ void StatusPublisher::Refresh()
           sensor_msgs::PointCloud2Iterator<float> bariter_x(*barcloud_msg, "x");
           sensor_msgs::PointCloud2Iterator<float> bariter_y(*barcloud_msg, "y");
           sensor_msgs::PointCloud2Iterator<float> bariter_z(*barcloud_msg, "z");
+          float x0,y0,r0;
           //模块1
-          if(ranges[0]>0 && ranges[0]<2.0)
+          x0 = ranges[0]*cos(tf_angles[0]) + tf_xs[0];
+          y0 = ranges[0]*sin(tf_angles[0]) + tf_ys[0];
+          r0 = x0*x0+y0*y0;
+          if(r0<0.26*0.26)
           {
             int nums1 = (int)(ranges[0]*tan(view_angles[0])/kinect_stepsize_);
             for(int i = -nums1;i<=nums1;i++,++bariter_x,++bariter_y,++bariter_z)
@@ -381,7 +388,10 @@ void StatusPublisher::Refresh()
             }
           }
           //模2
-          if(ranges[1]>0 && ranges[1]<2.0)
+          x0 = ranges[1]*cos(tf_angles[1]) + tf_xs[1];
+          y0 = ranges[1]*sin(tf_angles[1]) + tf_ys[1];
+          r0 = x0*x0+y0*y0;
+          if(r0<0.26*0.26)
           {
             int nums1 = (int)(ranges[1]*tan(view_angles[1])/kinect_stepsize_);
             for(int i = -nums1;i<=nums1;i++,++bariter_x,++bariter_y,++bariter_z)
@@ -395,7 +405,10 @@ void StatusPublisher::Refresh()
             }
           }
           //模块3
-          if(ranges[2]>0 && ranges[2]<2.0)
+          x0 = ranges[2]*cos(tf_angles[2]) + tf_xs[2];
+          y0 = ranges[2]*sin(tf_angles[2]) + tf_ys[2];
+          r0 = x0*x0+y0*y0;
+          if(r0<0.26*0.26)
           {
             int nums1 = (int)(ranges[2]*tan(view_angles[2])/kinect_stepsize_);
             for(int i = -nums1;i<=nums1;i++,++bariter_x,++bariter_y,++bariter_z)
@@ -435,15 +448,33 @@ void StatusPublisher::Refresh()
           r0 = x0*x0+y0*y0;
           if(r0>=0.26*0.26)
           {
-            for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            {
+              *cleariter_x=0.25 - kinect_x_;
+              *cleariter_y=0.1+k*0.05;
+              *cleariter_z=0.0;
+            }
+            for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
               *cleariter_x=0.2 - kinect_x_;
               *cleariter_y=0.1+k*0.05;
               *cleariter_z=0.0;
             }
-            for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
               *cleariter_x=0.15 - kinect_x_;
+              *cleariter_y=0.1+k*0.05;
+              *cleariter_z=0.0;
+            }
+            for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            {
+              *cleariter_x=0.1 - kinect_x_;
+              *cleariter_y=0.1+k*0.05;
+              *cleariter_z=0.0;
+            }
+            for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            {
+              *cleariter_x=0.05 - kinect_x_;
               *cleariter_y=0.1+k*0.05;
               *cleariter_z=0.0;
             }
@@ -456,6 +487,12 @@ void StatusPublisher::Refresh()
           {
             for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
+              *cleariter_x=0.25 - kinect_x_;
+              *cleariter_y=-0.05+k*0.05;
+              *cleariter_z=0.0;
+            }
+            for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            {
               *cleariter_x=0.2 - kinect_x_;
               *cleariter_y=-0.05+k*0.05;
               *cleariter_z=0.0;
@@ -463,6 +500,18 @@ void StatusPublisher::Refresh()
             for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
               *cleariter_x=0.15 - kinect_x_;
+              *cleariter_y=-0.05+k*0.05;
+              *cleariter_z=0.0;
+            }
+            for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            {
+              *cleariter_x=0.1 - kinect_x_;
+              *cleariter_y=-0.05+k*0.05;
+              *cleariter_z=0.0;
+            }
+            for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            {
+              *cleariter_x=0.05 - kinect_x_;
               *cleariter_y=-0.05+k*0.05;
               *cleariter_z=0.0;
             }
@@ -473,15 +522,33 @@ void StatusPublisher::Refresh()
           r0 = x0*x0+y0*y0;
           if(r0>=0.26*0.26)
           {
-            for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            {
+              *cleariter_x=0.25 - kinect_x_;
+              *cleariter_y=-0.10-k*0.05;
+              *cleariter_z=0.0;
+            }
+            for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
               *cleariter_x=0.2 - kinect_x_;
               *cleariter_y=-0.10-k*0.05;
               *cleariter_z=0.0;
             }
-            for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
               *cleariter_x=0.15 - kinect_x_;
+              *cleariter_y=-0.10-k*0.05;
+              *cleariter_z=0.0;
+            }
+            for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            {
+              *cleariter_x=0.10 - kinect_x_;
+              *cleariter_y=-0.10-k*0.05;
+              *cleariter_z=0.0;
+            }
+            for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            {
+              *cleariter_x=0.05 - kinect_x_;
               *cleariter_y=-0.10-k*0.05;
               *cleariter_z=0.0;
             }
