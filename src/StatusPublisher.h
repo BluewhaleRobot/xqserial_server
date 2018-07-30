@@ -18,6 +18,7 @@
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/Range.h>
 #include <stdint.h>
+#include <tf/transform_listener.h>
 
 #define PI 3.14159265
 
@@ -32,27 +33,27 @@ typedef struct {
     unsigned int time_stamp_imu;//时间戳
 
     int status_car;//小车状态，0表示未初始化，1表示正常，-1表示error
-    int encoder_r_current;//右轮编码器当期读数， 个为单位
-    int encoder_l_current;//左轮编码器当期读数， 个为单位
-    int mode_enable; //模式使能
-    int mode;//模式
-    int mode_power_control;//模式控制字状态
-    int faster_stop;//快速停止状态
-    int synergy_speed_set;// mm/s 协同运动速度
-    int synergy_r_set;// mm 协同运动半径
-    int driver_error;// mm 协同运动半径
-
+    float power_car;//电源电压【9 13】v
     float theta;//方位角，【0 360）°
-    int encoder_ppr;//车轮1转对应的编码器个数
+    unsigned int encoder_ppr;//车轮1转对应的编码器个数
+    int encoder_delta_r;//右轮编码器增量， 个为单位
+    int encoder_delta_l;//左轮编码器增量， 个为单位
     int encoder_delta_car;//两车轮中心位移，个为单位
+    unsigned int  upwoard;//0表示正面朝下安装，１表示正面朝上安装
+    float max_speed;//最大转速，圈每秒
+    int hbz1;//通道１红外状态，０表示正常１表示触发
+    int hbz2;//通道２红外状态，０表示正常１表示触发
+    int hbz3;//通道３红外状态，０表示正常１表示触发
+    int hbz4;//通道４红外状态，０表示正常１表示触发
+    float distance1;//第一个超声模块距离值 单位cm
+    float distance2;//第二个超声模块距离值 单位cm
+    float IMU_car[9];//mpu9250 9轴数据
+    unsigned int time_stamp_car;//时间戳
+
     int omga_r;//右轮转速 个每秒
     int omga_l;//左轮转速 个每秒
     int status;
 
-    int encoder_r_last;//右轮编码器上一次读数， 个为单位
-    int encoder_l_last;//左轮编码器上一次读数， 个为单位
-    int encoder_delta_r;//右轮编码器增量， 个为单位
-    int encoder_delta_l;//左轮编码器增量， 个为单位
 }UPLOAD_STATUS;
 
 class StatusPublisher
@@ -73,9 +74,10 @@ public:
     geometry_msgs::Twist get_CarTwist();
     std_msgs::Float64 get_power();
     nav_msgs::Odometry get_odom();
-    bool filter_speed(const int  v_in, const int r_in,int & v_out, int & r_out);
-    bool isneed_faststop(void);
-    void set_synergy_speed(const int  v_in, const int r_in);
+    void getSonarData(float (&ranges)[4],float (&view_angles)[4]);
+    bool getSonarTf(float (&tf_angles)[4],float (&tf_xs)[4],float (&tf_ys)[4]);
+    void setSonarTf(tf::StampedTransform &transform1,tf::StampedTransform &transform2,tf::StampedTransform &transform3,tf::StampedTransform &transform4);
+    void setBarparams(double kinect_x,double kinect_stepsize);
     UPLOAD_STATUS car_status;
 private:
 
@@ -123,8 +125,20 @@ private:
     bool yaw_ready;
 
     bool debug_flag;
-    int battery;
-    ros::Publisher mBatteryPub;
+
+    double kinect_x_;
+    double kinect_stepsize_;
+
+    boost::mutex mMutex_range;
+    float ranges_[4];
+    float view_angles_[4];
+
+    tf::StampedTransform transform1_;
+    tf::StampedTransform transform2_;
+    tf::StampedTransform transform3_;
+    tf::StampedTransform transform4_;
+    bool sonarTf_ready_;
+
 };
 
 } //namespace xqserial_server

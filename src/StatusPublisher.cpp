@@ -39,10 +39,10 @@ StatusPublisher::StatusPublisher()
     {
         status[i]=0;
     }
-    car_status.encoder_ppr=4096*7.5;
+    car_status.encoder_ppr=1024;
     for(i=0;i<4;i++)
     {
-      car_status.distance[i]=-0.2;
+      car_status.distance[i]=4.2;
     }
    mPose2DPub = mNH.advertise<geometry_msgs::Pose2D>("xqserial_server/Pose2D",1,true);
    mStatusFlagPub = mNH.advertise<std_msgs::Int32>("xqserial_server/StatusFlag",1,true);
@@ -57,7 +57,6 @@ StatusPublisher::StatusPublisher()
    mSonar3Pub = mNH.advertise<sensor_msgs::Range>("xqserial_server/Sonar3", 1, true);
    mSonar4Pub = mNH.advertise<sensor_msgs::Range>("xqserial_server/Sonar4", 1, true);
 
-   mBatteryPub = mNH.advertise<std_msgs::Int32>("xqserial_server/Battery",1,true);
   /* static tf::TransformBroadcaster br;
    tf::Quaternion q;
    tf::Transform transform;
@@ -75,6 +74,19 @@ StatusPublisher::StatusPublisher()
    {
      yaw_deltas[i]=0.0;
    }
+
+   ranges_[0] = 4.2;
+   ranges_[1] = 4.2;
+   ranges_[2] = 4.2;
+   ranges_[3] = 4.2;
+
+   view_angles_[0] = 0.35/2.0;
+   view_angles_[1] = 0.35/2.0;
+   view_angles_[2] = 0.35/2.0;
+   view_angles_[3] = 0.35/2.0;
+
+   sonarTf_ready_ = false;
+
 }
 
 StatusPublisher::StatusPublisher(double separation,double radius,bool debugFlag)
@@ -85,151 +97,119 @@ StatusPublisher::StatusPublisher(double separation,double radius,bool debugFlag)
     debug_flag=debugFlag;
     CarSonar1.header.frame_id = "sonar1";
     CarSonar1.radiation_type = 0;
-    CarSonar1.field_of_view = 0.7;
+    CarSonar1.field_of_view = 0.35;
     CarSonar1.min_range = 0.19;
     CarSonar1.max_range = 4.2;
 
     CarSonar2.header.frame_id = "sonar2";
     CarSonar2.radiation_type = 0;
-    CarSonar2.field_of_view = 0.7;
+    CarSonar2.field_of_view = 0.35;
     CarSonar2.min_range = 0.19;
     CarSonar2.max_range = 4.2;
 
     CarSonar3.header.frame_id = "sonar3";
     CarSonar3.radiation_type = 0;
-    CarSonar3.field_of_view = 0.7;
+    CarSonar3.field_of_view = 0.35;
     CarSonar3.min_range = 0.19;
     CarSonar3.max_range = 4.2;
 
     CarSonar4.header.frame_id = "sonar4";
     CarSonar4.radiation_type = 0;
-    CarSonar4.field_of_view = 0.7;
+    CarSonar4.field_of_view = 0.35;
     CarSonar4.min_range = 0.19;
     CarSonar4.max_range = 4.2;
-    battery=0;
+
 }
 
 void StatusPublisher::Update_car(const char data[], unsigned int len)
 {
-    int i=0,j=0;
-    int * receive_byte;
-    static std::deque<unsigned char>  cmd_string_buf={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
-    static int8_t sum=0;
-    unsigned char current_str=0x00;
+  int i=0,j=0;
+  int * receive_byte;
+  static unsigned char last_str[2]={0x00,0x00};
+  static unsigned char new_packed_ctr=DISABLE;//ENABLE表示新包开始，DISABLE 表示上一个包还未处理完；
+  static int new_packed_ok_len=0;//包的理论长度
+  static int new_packed_len=0;//包的实际长度
+  static unsigned char cmd_string_buf[512];
+  unsigned char current_str=0x00;
+  const int cmd_string_max_size=512;
+  receive_byte=(int *)&car_status.status_car;
 
-    for(i=0;i<len;i++)
-    {
-        current_str=data[i];
-        //std::cout<< std::hex  << (int)current_str <<std::endl;
-        unsigned char sum_check = (unsigned char) (-sum);
+  for(i=0;i<len;i++)
+  {
+      current_str=data[i];
+     // unsigned int temp=(unsigned int)current_str;
+     // std::cout<<temp<<std::endl;
+      //判断是否有新包头
+    if(last_str[0]==205&&last_str[1]==235&&current_str==215) //包头 205 235 215
+      {
+          //std::cout<<"runup1 "<<std::endl;
+          new_packed_ctr=ENABLE;
+          new_packed_ok_len=0;
+          new_packed_len=new_packed_ok_len;
+          last_str[0]=last_str[1];//保存最后两个字符，用来确定包头
+          last_str[1]=current_str;
+          continue;
+      }
+      last_str[0]=last_str[1];//保存最后两个字符，用来确定包头
+      last_str[1]=current_str;
+      if (new_packed_ctr==ENABLE)
+      {
 
-        if((cmd_string_buf[0]!=0x01 && cmd_string_buf[0]!=0x02)||sum_check!=current_str) //校验包头和包和
-        {
-          sum -= cmd_string_buf[0];
-          cmd_string_buf.pop_front();
-          cmd_string_buf.push_back(current_str);
-          sum += current_str;
-          continue;
-        }
-        //校验res
-        if(cmd_string_buf[1]<0x40||cmd_string_buf[1]>0x50)
-        {
-          sum -= cmd_string_buf[0];
-          cmd_string_buf.pop_front();
-          cmd_string_buf.push_back(current_str);
-          sum += current_str;
-          continue;
-        }
-        //有效包，开始提取数据
-        {
-          boost::mutex::scoped_lock lock(mMutex_car);
-          unsigned int data_address = cmd_string_buf[3]<<16|cmd_string_buf[2]<<8|cmd_string_buf[4];
-          unsigned char * data_byte;
-          switch (data_address) {
-            case 0x604100:
-              //驱动器报警 16us,右1左2
-              if(cmd_string_buf[0]==0x01)
-              {
-                car_status.driver_error=0;
-                car_status.driver_error=cmd_string_buf[5];
-              }
-              if(cmd_string_buf[0]==0x02)
-              {
-                car_status.driver_error += cmd_string_buf[5];
-              }
-              break;
-            case 0x606300:
-              //位置 32s,右1左2
-              if(cmd_string_buf[0]==0x01) data_byte = (unsigned char *)&car_status.encoder_r_current;
-              if(cmd_string_buf[0]==0x02) data_byte = (unsigned char *)&car_status.encoder_l_current;
-              data_byte[0]=cmd_string_buf[5];
-              data_byte[1]=cmd_string_buf[6];
-              data_byte[2]=cmd_string_buf[7];
-              data_byte[3]=cmd_string_buf[8];
-              if(cmd_string_buf[0]==0x02)
-              {
-                mbUpdated_car=true;
-              }
-              break;
-            case 0x430000:
-              //协同使能 8u
-              data_byte = (unsigned char *)&car_status.mode_enable;
-              data_byte[0]=cmd_string_buf[5];
-              data_byte[1]=cmd_string_buf[6];
-              data_byte[2]=cmd_string_buf[7];
-              data_byte[3]=cmd_string_buf[8];
-              break;
-            case 0x430001:
-              //协同模式 8s
-              data_byte = (unsigned char *)&car_status.mode;
-              data_byte[0]=cmd_string_buf[5];
-              data_byte[1]=cmd_string_buf[6];
-              data_byte[2]=cmd_string_buf[7];
-              data_byte[3]=cmd_string_buf[8];
-              break;
-            case 0x430002:
-              //协同控制字 8s
-              data_byte = (unsigned char *)&car_status.mode_power_control;
-              data_byte[0]=cmd_string_buf[5];
-              data_byte[1]=cmd_string_buf[6];
-              data_byte[2]=cmd_string_buf[7];
-              data_byte[3]=cmd_string_buf[8];
-              break;
-            case 0x201002:
-              //快速停止状态 16u
-              data_byte = (unsigned char *)&car_status.faster_stop;
-              data_byte[0]=cmd_string_buf[5];
-              data_byte[1]=cmd_string_buf[6];
-              data_byte[2]=cmd_string_buf[7];
-              data_byte[3]=cmd_string_buf[8];
-              break;
-            case 0x430204:
-              //协同运动速度 32s
-              data_byte = (unsigned char *)&car_status.synergy_speed_set;
-              data_byte[0]=cmd_string_buf[5];
-              data_byte[1]=cmd_string_buf[6];
-              data_byte[2]=cmd_string_buf[7];
-              data_byte[3]=cmd_string_buf[8];
-              break;
-            case 0x430210:
-              //协同运动半径 32s
-              data_byte = (unsigned char *)&car_status.synergy_r_set;
-              data_byte[0]=cmd_string_buf[5];
-              data_byte[1]=cmd_string_buf[6];
-              data_byte[2]=cmd_string_buf[7];
-              data_byte[3]=cmd_string_buf[8];
-              break;
+          //获取包长度
+          new_packed_ok_len=current_str;
+          if(new_packed_ok_len>cmd_string_max_size) new_packed_ok_len=cmd_string_max_size; //包内容最大长度有限制
+          new_packed_ctr=DISABLE;
+          //std::cout<<"runup2 "<< new_packed_len<< new_packed_ok_len<<std::endl;
+      }
+      else
+      {
+          //判断包当前大小
+          if(new_packed_ok_len<=new_packed_len)
+          {
+              //std::cout<<"runup3 "<< new_packed_len<< new_packed_ok_len<<std::endl;
+              //包长度已经大于等于理论长度，后续内容无效
+              continue;
           }
-        }
-        //更新
-        sum -= cmd_string_buf[0];
-        cmd_string_buf.pop_front();
-        cmd_string_buf.push_back(current_str);
-        sum += current_str;
-    }
+          else
+          {
+              //获取包内容
+              new_packed_len++;
+              cmd_string_buf[new_packed_len-1]=current_str;
+              if(new_packed_ok_len==new_packed_len&&new_packed_ok_len>0)
+              {
+                  // std::cout<<"runup4 "<<std::endl;
+                  //当前包已经处理完成，开始处理
+                  boost::mutex::scoped_lock lock(mMutex_car);
 
-    return;
+                  if(new_packed_ok_len==125)
+                  {
+                      for(j=0;j<25;j++)
+                      {
+                          memcpy(&receive_byte[j],&cmd_string_buf[5*j],4);
+                      }
+                      mbUpdated_car=true;
+                  }
+                  if(mbUpdated_car)
+                  {
+                    for(j=0;j<7;j++)
+                    {
+                        if(cmd_string_buf[5*j+4]!=32)
+                        {
+                          mbUpdated_car=false;
+                          car_status.encoder_ppr=1024;
+                          break;
+                        }
+                    }
+                  }
+                  new_packed_ok_len=0;
+                  new_packed_len=0;
+              }
+          }
+      }
+  }
+  return;
 }
+
 void StatusPublisher::Update_imu(const char data[], unsigned int len)
 {
     int i=0,j=0;
@@ -285,7 +265,8 @@ void StatusPublisher::Update_imu(const char data[], unsigned int len)
                 if(new_packed_ok_len==new_packed_len&&new_packed_ok_len>0)
                 {
                     //std::cout<<"runup4 "<<std::endl;
-                    boost::mutex::scoped_lock lock(mMutex_imu);
+                    boost::mutex::scoped_lock lock1(mMutex_imu);
+                    boost::mutex::scoped_lock lock2(mMutex_range);
                     //当前包已经处理完成，开始处理
                     if(new_packed_ok_len==100)
                     {
@@ -324,7 +305,6 @@ void StatusPublisher::Update_imu(const char data[], unsigned int len)
 void StatusPublisher::Refresh()
 {
   static bool update_theta=false;
-  static bool first_update_car=true;
   //先处理imu
   {
     static float yaw_last=0.0;
@@ -471,30 +451,35 @@ void StatusPublisher::Refresh()
 
        if(ii%5==0)
        {
+         boost::mutex::scoped_lock lock(mMutex_range);
          //发布超声波topic
-         if(car_status.distance[0]>0.1)
+         if(car_status.distance[0]>0.1&&car_status.distance[0]<4.0)
          {
            CarSonar1.header.stamp = current_time;
            CarSonar1.range = car_status.distance[0];
            mSonar1Pub.publish(CarSonar1);
+           ranges_[0] = CarSonar1.range;
          }
-         if(car_status.distance[1]>0.1)
+         if(car_status.distance[1]>0.1&&car_status.distance[0]<4.0)
          {
            CarSonar2.header.stamp = current_time;
            CarSonar2.range = car_status.distance[1];
            mSonar2Pub.publish(CarSonar2);
+           ranges_[1] = CarSonar2.range;
          }
-         if(car_status.distance[2]>0.1)
+         if(car_status.distance[2]>0.1&&car_status.distance[0]<4.0)
          {
            CarSonar3.header.stamp = current_time;
            CarSonar3.range = car_status.distance[2];
            mSonar3Pub.publish(CarSonar3);
+           ranges_[2] = CarSonar3.range;
          }
-         if(car_status.distance[3]>0.1)
+         if(car_status.distance[3]>0.1&&car_status.distance[0]<4.0)
          {
            CarSonar4.header.stamp = current_time;
            CarSonar4.range = car_status.distance[3];
            mSonar4Pub.publish(CarSonar4);
+           ranges_[3] = CarSonar4.range;
          }
        }
     }
@@ -510,30 +495,9 @@ void StatusPublisher::Refresh()
      // Time
      ros::Time current_time = ros::Time::now();
 
-     //pose
-     double delta_car,delta_x,delta_y,delta_theta,var_len,var_angle;
+      //pose
+       double delta_car,delta_x,delta_y,delta_theta,var_len,var_angle;
 
-       if(first_update_car)
-       {
-         //第一次更新
-         car_status.encoder_r_last = car_status.encoder_r_current;
-         car_status.encoder_l_last = car_status.encoder_l_current;
-         car_status.encoder_delta_r = 0;
-         car_status.encoder_delta_l = 0;
-         first_update_car=false;
-       }
-       else
-       {
-         car_status.encoder_delta_r = car_status.encoder_r_current - car_status.encoder_r_last;
-         car_status.encoder_delta_l = car_status.encoder_l_current - car_status.encoder_l_last;
-         if(car_status.encoder_delta_r > 8000) car_status.encoder_delta_r -= 2147483648;
-         if(car_status.encoder_delta_r < -8000) car_status.encoder_delta_r += 2147483647;
-         if(car_status.encoder_delta_l > 8000) car_status.encoder_delta_l -= 2147483648;
-         if(car_status.encoder_delta_l < -8000) car_status.encoder_delta_l += 2147483647;
-         car_status.encoder_delta_r = -car_status.encoder_delta_r;//方向相反
-         car_status.encoder_r_last = car_status.encoder_r_current;
-         car_status.encoder_l_last = car_status.encoder_l_current;
-       }
        var_len=(50.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius)*(50.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius);
        var_angle=(0.01f/180.0f*PI)*(0.01f/180.0f*PI);
 
@@ -575,7 +539,7 @@ void StatusPublisher::Refresh()
 
        //flag
        std_msgs::Int32 flag;
-       if(car_status.status_imu==1 && car_status.driver_error==0 && yaw_ready)
+       if(car_status.status_imu==1  && yaw_ready)
        {
          car_status.status=1;
        }
@@ -585,12 +549,278 @@ void StatusPublisher::Refresh()
        }
        flag.data=car_status.status;
        //底层障碍物信息
-       if((car_status.distance[0]+car_status.distance[1]+car_status.distance[2]+car_status.distance[3])>-0.8&&(car_status.distance[0]+car_status.distance[0]+car_status.distance[0]+car_status.distance[0])<1.2)
+       //超声波障碍物信息
+       int barArea_nums=0;
+       int clearArea_nums=0;
+
+       float ranges[4],view_angles[4],tf_angles[4],tf_xs[4],tf_ys[4];
+       if(this->getSonarTf(tf_angles,tf_xs,tf_ys))
        {
-         //有障碍物
-         flag.data=2;
+         float x0,y0,r0;
+         this->getSonarData(ranges,view_angles);
+         //模块1
+         // if(ranges[0]>0 && ranges[0]<0.8)
+         // {
+         //   barArea_nums += 2*((int)(ranges[0]*tan(view_angles[0])/kinect_stepsize_)) + 1;
+         // }
+         x0 = ranges[0]*cos(tf_angles[0]) + tf_xs[0];
+         y0 = ranges[0]*sin(tf_angles[0]) + tf_ys[0];
+         r0 = x0*x0+y0*y0;
+         if(r0<0.26*0.26)
+         {
+           barArea_nums += 2*((int)(ranges[0]*tan(view_angles[0])/kinect_stepsize_)) + 1;
+           flag.data=2;
+         }
+         else{
+           clearArea_nums+=25;
+         }
+         //模块2
+         // if(ranges[1]>0 && ranges[1]<0.8)
+         // {
+         //   barArea_nums += 2*((int)(ranges[1]*tan(view_angles[1])/kinect_stepsize_)) + 1;
+         // }
+         x0 = ranges[1]*cos(tf_angles[1]) + tf_xs[1];
+         y0 = ranges[1]*sin(tf_angles[1]) + tf_ys[1];
+         r0 = x0*x0+y0*y0;
+         if(r0<0.26*0.26)
+         {
+           barArea_nums += 2*((int)(ranges[1]*tan(view_angles[1])/kinect_stepsize_)) + 1;
+           flag.data=2;
+         }
+         else{
+           clearArea_nums+=15;
+         }
+         //模块3
+         // if(ranges[2]>0 && ranges[2]<0.8)
+         // {
+         //   barArea_nums += 2*((int)(ranges[2]*tan(view_angles[2])/kinect_stepsize_)) + 1;
+         // }
+         x0 = ranges[2]*cos(tf_angles[2]) + tf_xs[2];
+         y0 = ranges[2]*sin(tf_angles[2]) + tf_ys[2];
+         r0 = x0*x0+y0*y0;
+         if(r0<0.26*0.26)
+         {
+           barArea_nums += 2*((int)(ranges[2]*tan(view_angles[2])/kinect_stepsize_)) + 1;
+           flag.data=2;
+         }
+         else{
+           clearArea_nums+=25;
+         }
+         //模块4
+         x0 = ranges[3]*cos(tf_angles[3]) + tf_xs[3];
+         y0 = ranges[3]*sin(tf_angles[3]) + tf_ys[3];
+         r0 = x0*x0+y0*y0;
+         if(r0<0.44*0.44)
+         {
+           flag.data=2;
+         }
+
        }
        mStatusFlagPub.publish(flag);
+       if(barArea_nums>0)
+       {
+         //发布雷区
+         PointCloud::Ptr barcloud_msg(new PointCloud);
+         barcloud_msg->header.stamp = current_time;
+         barcloud_msg->height = 1;
+         barcloud_msg->width  = barArea_nums;
+         barcloud_msg->is_dense = true;
+         barcloud_msg->is_bigendian = false;
+         barcloud_msg->header.frame_id="kinect_link_new";
+         sensor_msgs::PointCloud2Modifier pcd_modifier1(*barcloud_msg);
+         pcd_modifier1.setPointCloud2FieldsByString(1,"xyz");
+         sensor_msgs::PointCloud2Iterator<float> bariter_x(*barcloud_msg, "x");
+         sensor_msgs::PointCloud2Iterator<float> bariter_y(*barcloud_msg, "y");
+         sensor_msgs::PointCloud2Iterator<float> bariter_z(*barcloud_msg, "z");
+         float x0,y0,r0;
+         //模块1
+         x0 = ranges[0]*cos(tf_angles[0]) + tf_xs[0];
+         y0 = ranges[0]*sin(tf_angles[0]) + tf_ys[0];
+         r0 = x0*x0+y0*y0;
+         if(r0<0.26*0.26)
+         {
+           int nums1 = (int)(ranges[0]*tan(view_angles[0])/kinect_stepsize_);
+           for(int i = -nums1;i<=nums1;i++,++bariter_x,++bariter_y,++bariter_z)
+           {
+             float x0 ,y0;
+             x0 = ranges[0];
+             y0 = i*kinect_stepsize_;
+             *bariter_x = x0*cos(tf_angles[0]) - y0*sin(tf_angles[0]) + tf_xs[0] - kinect_x_;
+             *bariter_y = x0*sin(tf_angles[0]) + y0*cos(tf_angles[0]) + tf_ys[0];
+             *bariter_z = 0.15;
+           }
+         }
+         //模2
+         x0 = ranges[1]*cos(tf_angles[1]) + tf_xs[1];
+         y0 = ranges[1]*sin(tf_angles[1]) + tf_ys[1];
+         r0 = x0*x0+y0*y0;
+         if(r0<0.26*0.26)
+         {
+           int nums1 = (int)(ranges[1]*tan(view_angles[1])/kinect_stepsize_);
+           for(int i = -nums1;i<=nums1;i++,++bariter_x,++bariter_y,++bariter_z)
+           {
+             float x0 ,y0;
+             x0 = ranges[1];
+             y0 = i*kinect_stepsize_;
+             *bariter_x = x0*cos(tf_angles[1]) - y0*sin(tf_angles[1]) + tf_xs[1] - kinect_x_;
+             *bariter_y = x0*sin(tf_angles[1]) + y0*cos(tf_angles[1]) + tf_ys[1];
+             *bariter_z = 0.15;
+           }
+         }
+         //模块3
+         x0 = ranges[2]*cos(tf_angles[2]) + tf_xs[2];
+         y0 = ranges[2]*sin(tf_angles[2]) + tf_ys[2];
+         r0 = x0*x0+y0*y0;
+         if(r0<0.26*0.26)
+         {
+           int nums1 = (int)(ranges[2]*tan(view_angles[2])/kinect_stepsize_);
+           for(int i = -nums1;i<=nums1;i++,++bariter_x,++bariter_y,++bariter_z)
+           {
+             float x0 ,y0;
+             x0 = ranges[2];
+             y0 = i*kinect_stepsize_;
+             *bariter_x = x0*cos(tf_angles[2]) - y0*sin(tf_angles[2]) + tf_xs[2] - kinect_x_;
+             *bariter_y = x0*sin(tf_angles[2]) + y0*cos(tf_angles[2]) + tf_ys[2];
+             *bariter_z = 0.15;
+           }
+         }
+         if(ii%5==0)
+         {
+           pub_barpoint_cloud_.publish(barcloud_msg);
+         }
+       }
+       if(clearArea_nums>0)
+       {
+         //发布雷区
+         PointCloud::Ptr clearcloud_msg(new PointCloud);
+         clearcloud_msg->header.stamp = current_time;
+         clearcloud_msg->height = 1;
+         clearcloud_msg->width  = clearArea_nums;
+         clearcloud_msg->is_dense = true;
+         clearcloud_msg->is_bigendian = false;
+         clearcloud_msg->header.frame_id="kinect_link_new";
+         sensor_msgs::PointCloud2Modifier pcd_modifier1(*clearcloud_msg);
+         pcd_modifier1.setPointCloud2FieldsByString(1,"xyz");
+         sensor_msgs::PointCloud2Iterator<float> cleariter_x(*clearcloud_msg, "x");
+         sensor_msgs::PointCloud2Iterator<float> cleariter_y(*clearcloud_msg, "y");
+         sensor_msgs::PointCloud2Iterator<float> cleariter_z(*clearcloud_msg, "z");
+         float x0,y0,r0;
+         //模块1
+         x0 = ranges[0]*cos(tf_angles[0]) + tf_xs[0];
+         y0 = ranges[0]*sin(tf_angles[0]) + tf_ys[0];
+         r0 = x0*x0+y0*y0;
+         if(r0>=0.26*0.26)
+         {
+           for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+           {
+             *cleariter_x=0.25 - kinect_x_;
+             *cleariter_y=0.1+k*0.05;
+             *cleariter_z=0.0;
+           }
+           for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+           {
+             *cleariter_x=0.2 - kinect_x_;
+             *cleariter_y=0.1+k*0.05;
+             *cleariter_z=0.0;
+           }
+           for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+           {
+             *cleariter_x=0.15 - kinect_x_;
+             *cleariter_y=0.1+k*0.05;
+             *cleariter_z=0.0;
+           }
+           for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+           {
+             *cleariter_x=0.1 - kinect_x_;
+             *cleariter_y=0.1+k*0.05;
+             *cleariter_z=0.0;
+           }
+           for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+           {
+             *cleariter_x=0.05 - kinect_x_;
+             *cleariter_y=0.1+k*0.05;
+             *cleariter_z=0.0;
+           }
+         }
+         //模块2
+         x0 = ranges[1]*cos(tf_angles[1]) + tf_xs[1];
+         y0 = ranges[1]*sin(tf_angles[1]) + tf_ys[1];
+         r0 = x0*x0+y0*y0;
+         if(r0>=0.26*0.26)
+         {
+           for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+           {
+             *cleariter_x=0.25 - kinect_x_;
+             *cleariter_y=-0.05+k*0.05;
+             *cleariter_z=0.0;
+           }
+           for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+           {
+             *cleariter_x=0.2 - kinect_x_;
+             *cleariter_y=-0.05+k*0.05;
+             *cleariter_z=0.0;
+           }
+           for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+           {
+             *cleariter_x=0.15 - kinect_x_;
+             *cleariter_y=-0.05+k*0.05;
+             *cleariter_z=0.0;
+           }
+           for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+           {
+             *cleariter_x=0.1 - kinect_x_;
+             *cleariter_y=-0.05+k*0.05;
+             *cleariter_z=0.0;
+           }
+           for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+           {
+             *cleariter_x=0.05 - kinect_x_;
+             *cleariter_y=-0.05+k*0.05;
+             *cleariter_z=0.0;
+           }
+         }
+         //模块3
+         x0 = ranges[2]*cos(tf_angles[2]) + tf_xs[2];
+         y0 = ranges[2]*sin(tf_angles[2]) + tf_ys[2];
+         r0 = x0*x0+y0*y0;
+         if(r0>=0.26*0.26)
+         {
+           for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+           {
+             *cleariter_x=0.25 - kinect_x_;
+             *cleariter_y=-0.10-k*0.05;
+             *cleariter_z=0.0;
+           }
+           for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+           {
+             *cleariter_x=0.2 - kinect_x_;
+             *cleariter_y=-0.10-k*0.05;
+             *cleariter_z=0.0;
+           }
+           for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+           {
+             *cleariter_x=0.15 - kinect_x_;
+             *cleariter_y=-0.10-k*0.05;
+             *cleariter_z=0.0;
+           }
+           for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+           {
+             *cleariter_x=0.10 - kinect_x_;
+             *cleariter_y=-0.10-k*0.05;
+             *cleariter_z=0.0;
+           }
+           for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+           {
+             *cleariter_x=0.05 - kinect_x_;
+             *cleariter_y=-0.10-k*0.05;
+             *cleariter_z=0.0;
+           }
+         }
+         if(ii%5==0)
+         {
+           pub_clearpoint_cloud_.publish(clearcloud_msg);
+         }
+       }
 
        //Twist
        double angle_speed;
@@ -601,14 +831,6 @@ void StatusPublisher::Refresh()
 
        CarPower.data = car_status.power_imu;
        mPowerPub.publish(CarPower);
-
-      //电量
-      battery = (int)((CarPower.data-32.0f)/9.5f*100.f);
-      std_msgs::Int32 battery_pub;
-      if(battery<0) battery = 0;
-      if(battery>100) battery = 100;
-      battery_pub.data = battery;
-      mBatteryPub.publish(battery_pub);
 
        CarOdom.header.stamp = current_time;
        CarOdom.header.frame_id = "odom";
@@ -690,104 +912,55 @@ int StatusPublisher::get_status(){
   return car_status.status;
 }
 
-void StatusPublisher::set_synergy_speed(const int  v_in, const int r_in)
+void StatusPublisher::getSonarData(float (&ranges)[4],float (&view_angles)[4])
 {
-  car_status.synergy_speed_set = v_in;
-  car_status.synergy_r_set = r_in;
+  boost::mutex::scoped_lock lock(mMutex_range);
+  for(int i =0 ;i<4;i++)
+  {
+    ranges[i] = ranges_[i];
+    view_angles[i] = view_angles_[i];
+  }
 }
 
-bool StatusPublisher::filter_speed(const int  v_in, const int r_in,int & v_out, int & r_out)
+void StatusPublisher::setSonarTf(tf::StampedTransform &transform1,tf::StampedTransform &transform2,tf::StampedTransform &transform3,tf::StampedTransform &transform4)
 {
-  //安全速度的设定依据是：100ms后再制动可以在安全距离0.2m范围外停车
-  const float delay_time = 0.1; //100ms
-  const float safe_distance = 0.3; //0.3m
-  const float de_acc = 0.88;// m/s^2
-  v_out=v_in;
-  r_out=r_in;
-  if(r_in==-1||r_in==1||v_in==0)
-  {
-    return false;
-  }
+  boost::mutex::scoped_lock lock(mMutex_range);
+  sonarTf_ready_ = true;
+  transform1_ = transform1;
+  transform2_ = transform2;
+  transform3_ = transform3;
+  transform4_ = transform4;
+}
 
-  int sign= v_in*r_in;
-  if(r_in==0) sign = v_in;
-//  std::cout<<"sign "<<sign<<std::endl;
-  if(sign>0)
+bool StatusPublisher::getSonarTf(float (&tf_angles)[4],float (&tf_xs)[4],float (&tf_ys)[4])
+{
+  boost::mutex::scoped_lock lock(mMutex_range);
+  if(!sonarTf_ready_)
   {
-    //前进
-    float s2=2*de_acc*(car_status.distance[1]-delay_time*std::abs(v_in)/1000.0-safe_distance);
-  //  std::cout<<"s2 " << s2 <<std::endl;
-    if(s2<0.000001)
-    {
-      v_out=0;
-    }
-    else
-    {
-      int sign2=v_in/std::abs(v_in);
-      float temp= sqrt(s2);
-      // if(r_in !=0)
-      // {
-      //   temp = temp*(std::abs(r_in)+wheel_separation*1000.f/2.0f)/(std::abs(r_in));
-      // }
-      v_out = sign2*std::min(std::abs(v_in),(int)(temp*1000.0f));
-
-      if(r_in>1 && car_status.distance[0]<=safe_distance)
-      {
-        //左转
-        r_out=0;
-        v_out = std::abs(v_out);
-      }
-      else if(r_in<-1 && car_status.distance[2]<=safe_distance)
-      {
-        //右转
-        r_out=0;
-        v_out = std::abs(v_out);
-      }
-      //std::cout<<"sign20 "<<sign2<< " v_in " << v_in << " r_in " << r_in<< " v_out " << v_out <<" r_out " << r_out<<std::endl;
-    }
-
+   return false;
   }
-  else if(sign<0)
-  {
-    //后退
-    float s4=2*de_acc*(car_status.distance[3]+delay_time*std::abs(v_in)/1000.0f-safe_distance);
-  //  std::cout<<"s4 " << s4 <<std::endl;
-    if(s4<0.000001)
-    {
-      v_out=0;
-    }
-    else
-    {
-      int sign2=v_in/std::abs(v_in);
-      float temp= sqrt(4);
-      // if(r_in !=0)
-      // {
-      //   temp = temp*(std::abs(r_in)+wheel_separation*1000.f/2.0f)/(std::abs(r_in));
-      // }
-      v_out = sign2*std::min(std::abs(v_in),(int)(temp*1000.0f));
-  //    std::cout<<"sign21 "<<sign2<< " v_in " << v_in << " r_in " << r_in<< " v_out " << v_out <<" r_out " << r_out<<std::endl;
-    }
-  }
+  tf_xs [0] = transform1_.getOrigin().x();
+  tf_ys [0] = transform1_.getOrigin().y();
+  tf_angles[0] = tf::getYaw(transform1_.getRotation()); //0 2pi
+
+  tf_xs [1] = transform2_.getOrigin().x();
+  tf_ys [1] = transform2_.getOrigin().y();
+  tf_angles[1] = tf::getYaw(transform2_.getRotation()); //0 2pi
+
+  tf_xs [2] = transform3_.getOrigin().x();
+  tf_ys [2] = transform3_.getOrigin().y();
+  tf_angles[2] = tf::getYaw(transform3_.getRotation()); //0 2pi
+
+  tf_xs [3] = transform4_.getOrigin().x();
+  tf_ys [3] = transform4_.getOrigin().y();
+  tf_angles[3] = tf::getYaw(transform4_.getRotation()); //0 2pi
   return true;
 }
-bool StatusPublisher::isneed_faststop(void)
+
+void StatusPublisher::setBarparams(double kinect_x,double kinect_stepsize)
 {
-  const float safe_distance = 0.25; //0.25m
-
-  float v=CarTwist.linear.x;
-  float w=(car_status.encoder_delta_r-car_status.encoder_delta_l)*1.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius/wheel_separation;
-
-  if(v<-0.01 && car_status.distance[3]<=safe_distance)
-  {
-    // 后退
-    return true;
-  }
-  if(v>0.01)
-  {
-      if(car_status.distance[1]<=safe_distance) return true; //前进
-      if(car_status.distance[0]<=safe_distance && w>=0.01) return true; //左转
-      if(car_status.distance[2]<=safe_distance && w<=-0.01) return true; //右转
-  }
-  return false;
+  kinect_x_ = kinect_x;
+  kinect_stepsize_ = kinect_stepsize;
 }
+
 } //namespace xqserial_server

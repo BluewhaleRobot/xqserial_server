@@ -15,17 +15,12 @@ public:
     DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_car_,CallbackAsyncSerial* cmd_serial_imu_);
 
     void run();
-    void dealCmd_vel(const geometry_msgs::Twist& command);
+    void sendcmd(const geometry_msgs::Twist& command);
     void imuCalibration(const std_msgs::Bool& calFlag);
     void setStatusPtr(StatusPublisher& status);
     void updateMoveFlag(const std_msgs::Bool& moveFlag);
     void updateBarDetectFlag(const std_msgs::Bool& DetectFlag);
-    void send_wheel_ppr_delta_getOrder();
-    void send_synergy_parmas_getOder();//下发协同运动参数上传指令
-    void setBarFlag(bool newBarflag);
-    void sendcmd(bool faster_stop);
-    void sendcmd(const int v, const int r);
-    void enable_synergy_control();
+    void sendcmd2();
 private:
     double max_wheelspeed;//单位为转每秒,只能为正数
     std::string cmd_topic;
@@ -35,6 +30,7 @@ private:
     boost::mutex mMutex;
     bool MoveFlag;
     bool BarFlag;
+    float speed_last_[2];
 };
 
 }

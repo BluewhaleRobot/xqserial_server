@@ -42,14 +42,43 @@ int main(int argc, char **argv)
     ros::param::param<bool>("~debug_flag", DebugFlag, false);
     xqserial_server::StatusPublisher xq_status(separation,radius,DebugFlag);
 
-    bool BarFlag = false;
-    ros::param::param<bool>("~bar_flag", BarFlag, true);
 
     //获取小车控制参数
     double max_speed;
     string cmd_topic;
     ros::param::param<double>("~max_speed", max_speed, 4.4);
     ros::param::param<std::string>("~cmd_topic", cmd_topic, "cmd_vel");
+
+    double kinect_x, kinect_stepsize;
+    ros::param::param<double>("~kinect_x", kinect_x, -0.1);
+    ros::param::param<double>("~kinect_stepsize", kinect_stepsize, 0.05);
+
+    bool sub_ultrasonic;
+    ros::param::param<bool>("~sub_ultrasonic", sub_ultrasonic, false);
+    tf::StampedTransform transform1;
+    tf::StampedTransform transform2;
+    tf::StampedTransform transform3;
+    tf::StampedTransform transform4;
+    if(sub_ultrasonic)
+    {
+      tf::TransformListener listener;
+      try{
+       listener.waitForTransform("base_link", "sonar1", ros::Time(0), ros::Duration(10) );
+       listener.waitForTransform("base_link", "sonar2", ros::Time(0), ros::Duration(10) );
+       listener.waitForTransform("base_link", "sonar3", ros::Time(0), ros::Duration(10) );
+       listener.waitForTransform("base_link", "sonar4", ros::Time(0), ros::Duration(10) );
+       listener.lookupTransform("/base_link", "/sonar1",  ros::Time(0), transform1);
+       listener.lookupTransform("/base_link", "/sonar2",  ros::Time(0), transform2);
+       listener.lookupTransform("/base_link", "/sonar3",  ros::Time(0), transform3);
+       listener.lookupTransform("/base_link", "/sonar4",  ros::Time(0), transform4);
+
+      }
+      catch (tf::TransformException &ex) {
+       ROS_ERROR("%s",ex.what());
+       return false;
+      }
+
+    }
 
     try {
       CallbackAsyncSerial serial_car(port_car,baud_car);
@@ -59,9 +88,11 @@ int main(int argc, char **argv)
       serial_imu.setCallback(boost::bind(&xqserial_server::StatusPublisher::Update_imu,&xq_status,_1,_2));
 
       xqserial_server::DiffDriverController xq_diffdriver(max_speed,cmd_topic,&xq_status,&serial_car,&serial_imu);
+      xq_status.setBarparams(kinect_x,kinect_stepsize);
+      xq_status.setSonarTf(transform1,transform2,transform3,transform4);
+
       boost::thread cmd2serialThread(& xqserial_server::DiffDriverController::run,&xq_diffdriver);
 
-      xq_diffdriver.setBarFlag(BarFlag);
       // send test flag
       char debugFlagCmd[] = {(char)0xcd,(char)0xeb,(char)0xd7,(char)0x01, 'T'};
       if(DebugFlag){
@@ -79,23 +110,6 @@ int main(int argc, char **argv)
       while (ros::ok())
       {
           i++;
-          if(i%5==0)
-          {
-
-            xq_diffdriver.send_synergy_parmas_getOder();//下发协同运动参数上传指令
-            //std::cout<<"encoder "<<xq_status.car_status.encoder_r_current << " "<< xq_status.car_status.encoder_l_current<<std::endl;
-            usleep(1000);//延时1MS，等待数据上传
-          }
-          xq_diffdriver.send_wheel_ppr_delta_getOrder();  //下发编码器上传指令
-          usleep(2000);//延时2MS，等待数据上传
-          if(BarFlag)
-          {
-            //超声波避障处理
-            int  v=0,r=0;
-            if(xq_status.filter_speed(xq_status.car_status.synergy_speed_set,xq_status.car_status.synergy_r_set, v,r)) xq_diffdriver.sendcmd(v,r);//普通减速
-            xq_diffdriver.sendcmd(xq_status.isneed_faststop());//紧急减速
-          }
-
           if(serial_car.errorStatus() || serial_car.isOpen()==false)
           {
               cerr<<"Error: serial port closed unexpectedly"<<endl;
@@ -103,6 +117,10 @@ int main(int argc, char **argv)
           }
           xq_status.Refresh();//定时发布状态
           //if(i%5==0) xq_diffdriver.Refresh();
+          if(i%5==0)
+          {
+            xq_diffdriver.sendcmd2();
+          }
           r.sleep();
           //cout<<"run"<<endl;
       }
