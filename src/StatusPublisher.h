@@ -34,7 +34,7 @@ typedef struct {
 
     int status_car;//小车状态，0表示未初始化，1表示正常，-1表示error
     float power_car;//电源电压【9 13】v
-    float theta;//方位角，【0 360）°
+    float theta_car;//方位角，【0 360）°
     unsigned int encoder_ppr;//车轮1转对应的编码器个数
     int encoder_delta_r;//右轮编码器增量， 个为单位
     int encoder_delta_l;//左轮编码器增量， 个为单位
@@ -53,7 +53,7 @@ typedef struct {
     int omga_r;//右轮转速 个每秒
     int omga_l;//左轮转速 个每秒
     int status;
-
+    float theta;
 }UPLOAD_STATUS;
 
 class StatusPublisher

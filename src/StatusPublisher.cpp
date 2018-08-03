@@ -453,28 +453,28 @@ void StatusPublisher::Refresh()
        {
          boost::mutex::scoped_lock lock(mMutex_range);
          //发布超声波topic
-         if(car_status.distance[0]>0.1&&car_status.distance[0]<4.0)
+         if(car_status.distance[0]>0.1&&car_status.distance[0]<4.30)
          {
            CarSonar1.header.stamp = current_time;
            CarSonar1.range = car_status.distance[0];
            mSonar1Pub.publish(CarSonar1);
            ranges_[0] = CarSonar1.range;
          }
-         if(car_status.distance[1]>0.1&&car_status.distance[0]<4.0)
+         if(car_status.distance[1]>0.1&&car_status.distance[0]<4.3)
          {
            CarSonar2.header.stamp = current_time;
            CarSonar2.range = car_status.distance[1];
            mSonar2Pub.publish(CarSonar2);
            ranges_[1] = CarSonar2.range;
          }
-         if(car_status.distance[2]>0.1&&car_status.distance[0]<4.0)
+         if(car_status.distance[2]>0.1&&car_status.distance[0]<4.3)
          {
            CarSonar3.header.stamp = current_time;
            CarSonar3.range = car_status.distance[2];
            mSonar3Pub.publish(CarSonar3);
            ranges_[2] = CarSonar3.range;
          }
-         if(car_status.distance[3]>0.1&&car_status.distance[0]<4.0)
+         if(car_status.distance[3]>0.1&&car_status.distance[0]<4.3)
          {
            CarSonar4.header.stamp = current_time;
            CarSonar4.range = car_status.distance[3];
