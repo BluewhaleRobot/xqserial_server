@@ -86,7 +86,10 @@ StatusPublisher::StatusPublisher()
    view_angles_[3] = 0.35/2.0;
 
    sonarTf_ready_ = false;
-
+   car_status.status = 0;
+   car_status.theta = 0;
+   car_status.omga_r = 0;
+   car_status.omga_l = 0;
 }
 
 StatusPublisher::StatusPublisher(double separation,double radius,bool debugFlag)
@@ -364,6 +367,7 @@ void StatusPublisher::Refresh()
       // std::cout<<"oups4: "<<std::endl;
        if(car_status.encoder_delta_r == 0 && car_status.encoder_delta_l == 0)
        {
+        // ROS_ERROR(" oups! yaw %f car_status.encoder_delta_r %d car_status.encoder_delta_l %d",yaw_last,car_status.encoder_delta_r,car_status.encoder_delta_l);
          //
          if(update_nums<25)
          {
@@ -423,7 +427,7 @@ void StatusPublisher::Refresh()
       if( car_status.theta > 360) car_status.theta -= 360;
       if( car_status.theta < 0 ) car_status.theta += 360;
       yaw_last=yaw;
-
+      //ROS_ERROR("yaw %f theta %f",yaw_last,car_status.theta);
       //发布IMU topic
       ros::Time current_time = ros::Time::now();
       tf::Quaternion q;
