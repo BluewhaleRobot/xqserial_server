@@ -50,6 +50,8 @@ StatusPublisher::StatusPublisher()
    mSonar1Pub = mNH.advertise<sensor_msgs::Range>("xqserial_server/Sonar1", 1, true);
    mSonar2Pub = mNH.advertise<sensor_msgs::Range>("xqserial_server/Sonar2", 1, true);
 
+   mIMUPub = mNH.advertise<sensor_msgs::Imu>("xqserial_server/IMU", 1, true);
+
    CarSonar1.header.frame_id = "sonar1";
    CarSonar1.radiation_type = 0;
    CarSonar1.field_of_view = 0.7;
@@ -508,6 +510,38 @@ void StatusPublisher::Refresh()
         transform.setRotation(q);
         br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "odom", "base_footprint"));
 
+
+        //publish IMU
+        tf::Quaternion q_imu;
+        q_imu.setRPY(0, 0, car_status.theta/180.0*PI);
+        CarIMU.header.stamp = current_time;
+        CarIMU.header.frame_id = "imu";
+        CarIMU.orientation.x=q_imu.x();
+        CarIMU.orientation.y=q_imu.y();
+        CarIMU.orientation.z=q_imu.z();
+        CarIMU.orientation.w=q_imu.w();
+        if(car_status.upwoard == 0)
+        {
+          CarIMU.angular_velocity.x=car_status.IMU[4]* PI /180.0f;
+          CarIMU.angular_velocity.y=car_status.IMU[3]* PI /180.0f;
+          CarIMU.angular_velocity.z=-car_status.IMU[5]* PI /180.0f;
+
+          CarIMU.linear_acceleration.x=car_status.IMU[1];
+          CarIMU.linear_acceleration.y=car_status.IMU[0];
+          CarIMU.linear_acceleration.z=-car_status.IMU[2];
+        }
+        else
+        {
+          CarIMU.angular_velocity.x=car_status.IMU[4]* PI /180.0f;
+          CarIMU.angular_velocity.y=-car_status.IMU[3]* PI /180.0f;
+          CarIMU.angular_velocity.z=car_status.IMU[5]* PI /180.0f;
+
+          CarIMU.linear_acceleration.x=car_status.IMU[1];
+          CarIMU.linear_acceleration.y=-car_status.IMU[0];
+          CarIMU.linear_acceleration.z=car_status.IMU[2];
+        }
+
+        mIMUPub.publish(CarIMU);
 
         //超声波测距
         static float distance1_sums[8]={0,0,0,0,0,0,0,0},distance1_sum=0;

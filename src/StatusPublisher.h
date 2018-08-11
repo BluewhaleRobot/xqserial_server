@@ -15,6 +15,7 @@
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include <sensor_msgs/PointField.h>
 #include <sensor_msgs/Range.h>
+#include <sensor_msgs/Imu.h>
 
 #define PI 3.14159265
 
@@ -71,7 +72,7 @@ private:
 
     sensor_msgs::Range CarSonar1;
     sensor_msgs::Range CarSonar2;
-    
+
     geometry_msgs::Pose2D CarPos2D;//小车开始启动原点坐标系
     geometry_msgs::Twist  CarTwist;//小车自身坐标系
     std_msgs::Float64 CarPower;// 小车电池信息
@@ -86,7 +87,9 @@ private:
     ros::Publisher pub_clearpoint_cloud_;
     ros::Publisher mSonar1Pub;
     ros::Publisher mSonar2Pub;
-
+    ros::Publisher mIMUPub;
+    sensor_msgs::Imu  CarIMU;
+    
     bool mbUpdated;
     double  distances_[2];
     boost::mutex mMutex;

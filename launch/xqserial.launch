@@ -10,4 +10,5 @@
   </node>
   <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster1" args="0.135 -0.130 0.24 0 0 0  base_link sonar1 50"/>
   <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster2" args="0.135 0.130 0.24 0 0 0  base_link sonar2 50"/>
+  <node pkg="tf" type="static_transform_publisher" name="imulink_broadcaster" args="0.07 -0.03 0 0 0 0 1 base_link imu 50"/>
 </launch>
