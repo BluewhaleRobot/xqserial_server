@@ -6,4 +6,5 @@
   </node>
   <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0.15 0 0 0 1 base_footprint base_link 50">
   </node>
+  <node pkg="tf" type="static_transform_publisher" name="imulink_broadcaster" args="-0.1 -0.03 0 0 0 0 1 base_link imu 50"/>
 </launch>

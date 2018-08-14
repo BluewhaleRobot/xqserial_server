@@ -46,6 +46,7 @@ StatusPublisher::StatusPublisher()
    mOdomPub = mNH.advertise<nav_msgs::Odometry>("xqserial_server/Odom", 1, true);
    pub_barpoint_cloud_ = mNH.advertise<PointCloud>("kinect/barpoints", 1, true);
    pub_clearpoint_cloud_ = mNH.advertise<PointCloud>("kinect/clearpoints", 1, true);
+   mIMUPub = mNH.advertise<sensor_msgs::Imu>("xqserial_server/IMU", 1, true);
   /* static tf::TransformBroadcaster br;
    tf::Quaternion q;
    tf::Transform transform;
@@ -460,6 +461,25 @@ void StatusPublisher::Refresh()
                                                               (0)   (0)   (0)  (0) (999) (0)
                                                               (0)   (0)   (0)  (0)  (0)  (var_angle) ;
         mOdomPub.publish(CarOdom);
+
+        //publish IMU
+        tf::Quaternion q_imu;
+        q_imu.setRPY(0, 0, car_status.theta/180.0*PI);
+        CarIMU.header.stamp = current_time;
+        CarIMU.header.frame_id = "imu";
+        CarIMU.orientation.x = q_imu.x();
+        CarIMU.orientation.y = q_imu.y();
+        CarIMU.orientation.z = q_imu.z();
+        CarIMU.orientation.w = q_imu.w();
+
+        CarIMU.angular_velocity.x = -car_status.IMU[3]* PI /180.0f;
+        CarIMU.angular_velocity.y = car_status.IMU[4]* PI /180.0f;
+        CarIMU.angular_velocity.z = -car_status.IMU[5]* PI /180.0f;
+        CarIMU.linear_acceleration.x = -car_status.IMU[0];
+        CarIMU.linear_acceleration.y = car_status.IMU[1];
+        CarIMU.linear_acceleration.z = -car_status.IMU[2];
+
+        mIMUPub.publish(CarIMU);
 
         // pub transform
 
