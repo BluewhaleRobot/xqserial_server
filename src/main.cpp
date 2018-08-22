@@ -57,7 +57,7 @@ int main(int argc, char **argv)
         char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x01};
         serial.write(cmd_str,6);
 
-        ros::Rate r(50);//发布周期为50hz
+        ros::Rate r(100);//发布周期为50hz
         while (ros::ok())
         {
             static int i=0;

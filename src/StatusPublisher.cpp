@@ -230,6 +230,7 @@ void StatusPublisher::Refresh()
      static double theta_last=0.0;
      static unsigned int ii=0;
      static bool theta_updateflag = false;
+     static int last_delta_l=0,last_delta_r=0;
      ii++;
     //std::cout<<"runR"<< mbUpdated<<std::endl;
     if(mbUpdated)
@@ -240,6 +241,7 @@ void StatusPublisher::Refresh()
       if(car_status.status == 0)
       {
         theta_updateflag = false;
+        theta_last = car_status.theta;
       }
       else
       {
@@ -252,6 +254,18 @@ void StatusPublisher::Refresh()
         var_len=(50.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius)*(50.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius);
         var_angle=(0.01f/180.0f*PI)*(0.01f/180.0f*PI);
 
+        if(car_status.encoder_delta_r>25 || car_status.encoder_delta_r<-25 || car_status.encoder_delta_l>25 || car_status.encoder_delta_l<-25)
+        {
+          ROS_ERROR("oups1: %d %d ",car_status.encoder_delta_r,car_status.encoder_delta_l);
+          car_status.encoder_delta_r = last_delta_r;
+          car_status.encoder_delta_l = last_delta_l;
+          ROS_ERROR("oups2: %d %d ",car_status.encoder_delta_r,car_status.encoder_delta_l);
+        }
+        else
+        {
+          last_delta_l=car_status.encoder_delta_l;
+          last_delta_r=car_status.encoder_delta_r;
+        }
         delta_car=(car_status.encoder_delta_r+car_status.encoder_delta_l)/2.0f*1.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius;
         if(delta_car>0.05||delta_car<-0.05)
         {
@@ -363,7 +377,7 @@ void StatusPublisher::Refresh()
           }
           if(ii%5==0)
           {
-            pub_barpoint_cloud_.publish(barcloud_msg);
+            //pub_barpoint_cloud_.publish(barcloud_msg);
           }
         }
         if(clearArea_nums>0)
@@ -428,15 +442,16 @@ void StatusPublisher::Refresh()
           }
           if(ii%5==0)
           {
-            pub_clearpoint_cloud_.publish(clearcloud_msg);
+            //pub_clearpoint_cloud_.publish(clearcloud_msg);
           }
         }
 
         //Twist
         static float v_sums[8]={0,0,0,0,0,0,0,0},v_sum=0,v_set=0;
-        static float theta_sums[8]={0,0,0,0,0,0,0,0},theta_sum=0,theta_set=0;
+        static float theta_sums[8]={0,0,0,0,0,0,0,0},theta_sum=0,theta_set=0,angle_speed_last=0;
         static int v_sum_index=0;
         static int theta_sum_index=0;
+        float angle_speed;
         {
           //平滑
           v_sum -=v_sums[v_sum_index];
@@ -447,7 +462,6 @@ void StatusPublisher::Refresh()
           v_sum_index++;
           if(v_sum_index>7) v_sum_index=0;
 
-          double angle_speed;
           if(car_status.upwoard == 0)
           {
             angle_speed=-car_status.IMU[5];
@@ -456,7 +470,14 @@ void StatusPublisher::Refresh()
           {
             angle_speed=car_status.IMU[5];
           }
-
+          if(isnan(angle_speed)|| std::fabs(angle_speed)>300)
+          {
+            angle_speed = angle_speed_last;
+          }
+          else
+          {
+            angle_speed_last = angle_speed;
+          }
           theta_sum -=theta_sums[theta_sum_index];
           theta_sums[theta_sum_index] = angle_speed * PI /180.0f;
           theta_sum +=theta_sums[theta_sum_index];
@@ -467,7 +488,7 @@ void StatusPublisher::Refresh()
 
           // CarTwist.linear.x=delta_car*50.0f;
           // CarTwist.angular.z=angle_speed * PI /180.0f;
-
+         //ROS_ERROR("angular %f %f %f %f %f %f %f %f %f %f",angle_speed,theta_sum,theta_sums[0],theta_sums[1],theta_sums[2],theta_sums[3],theta_sums[4],theta_sums[5],theta_sums[6],theta_sums[7]);
         }
 
         mTwistPub.publish(CarTwist);
@@ -522,22 +543,22 @@ void StatusPublisher::Refresh()
         CarIMU.orientation.w=q_imu.w();
         if(car_status.upwoard == 0)
         {
-          CarIMU.angular_velocity.x=car_status.IMU[4]* PI /180.0f;
-          CarIMU.angular_velocity.y=car_status.IMU[3]* PI /180.0f;
-          CarIMU.angular_velocity.z=-car_status.IMU[5]* PI /180.0f;
+          CarIMU.angular_velocity.x= -car_status.IMU[4]* PI /180.0f;
+          CarIMU.angular_velocity.y= -car_status.IMU[3]* PI /180.0f;
+          CarIMU.angular_velocity.z=CarTwist.angular.z;
 
-          CarIMU.linear_acceleration.x=car_status.IMU[1];
-          CarIMU.linear_acceleration.y=car_status.IMU[0];
+          CarIMU.linear_acceleration.x=-car_status.IMU[1];
+          CarIMU.linear_acceleration.y=-car_status.IMU[0];
           CarIMU.linear_acceleration.z=-car_status.IMU[2];
         }
         else
         {
-          CarIMU.angular_velocity.x=car_status.IMU[4]* PI /180.0f;
-          CarIMU.angular_velocity.y=-car_status.IMU[3]* PI /180.0f;
-          CarIMU.angular_velocity.z=car_status.IMU[5]* PI /180.0f;
+          CarIMU.angular_velocity.x=-car_status.IMU[4]* PI /180.0f;
+          CarIMU.angular_velocity.y=car_status.IMU[3]* PI /180.0f;
+          CarIMU.angular_velocity.z=CarTwist.angular.z;
 
-          CarIMU.linear_acceleration.x=car_status.IMU[1];
-          CarIMU.linear_acceleration.y=-car_status.IMU[0];
+          CarIMU.linear_acceleration.x=-car_status.IMU[1];
+          CarIMU.linear_acceleration.y=car_status.IMU[0];
           CarIMU.linear_acceleration.z=car_status.IMU[2];
         }
 
