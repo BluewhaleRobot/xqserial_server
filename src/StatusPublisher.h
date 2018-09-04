@@ -15,6 +15,7 @@
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include <sensor_msgs/PointField.h>
 #include <sensor_msgs/Imu.h>
+#include <sensor_msgs/Range.h>
 
 #define PI 3.14159265
 
@@ -24,17 +25,17 @@ typedef struct {
     int status;//小车状态，0表示未初始化，1表示正常，-1表示error
     float power;//电源电压【9 13】v
     float theta;//方位角，【0 360）°
-    int encoder_ppr;//车轮1转对应的编码器个数
-    int encoder_delta_r;//右轮编码器增量， 个为单位
-    int encoder_delta_l;//左轮编码器增量， 个为单位
-    int encoder_delta_car;//两车轮中心位移，个为单位
-    int omga_r;//右轮转速 个每秒
-    int omga_l;//左轮转速 个每秒
-    float distance1;//第一个超声模块距离值 单位cm
-    float distance2;//第二个超声模块距离值 单位cm
-    float distance3;//第三个超声模块距离值 单位cm
-    float distance4;//第四个超声模块距离值 单位cm
+    float roll;//方位角，【-180 180）°
+    float pitch;//方位角，【-90 90）°
+    unsigned int encoder_ppr;//车轮1转对应的编码器个数
+    int encoder_delta_1;//1号编码器增量， 个为单位
+    int encoder_delta_2;//1号编码器增量， 个为单位
+    int encoder_delta_3;//1号编码器增量， 个为单位
+    int encoder_delta_4;//1号编码器增量， 个为单位
+    float distance[4];//超声模块距离值 单位m
     float IMU[9];//mpu9250 9轴数据
+    unsigned int forward_switch;
+    unsigned int backward_switch;
     unsigned int time_stamp;//时间戳
 }UPLOAD_STATUS;
 
@@ -51,12 +52,11 @@ public:
     int get_wheel_ppr();
     int get_status();
     geometry_msgs::Pose2D get_CarPos2D();
-    void get_wheel_speed(double speed[2]);
     geometry_msgs::Twist get_CarTwist();
     std_msgs::Float64 get_power();
     nav_msgs::Odometry get_odom();
     UPLOAD_STATUS car_status;
-
+    void getSonarData(float (&ranges)[4],float (&view_angles)[4]);
 private:
 
 
@@ -80,6 +80,16 @@ private:
     ros::Publisher pub_barpoint_cloud_;
     ros::Publisher pub_clearpoint_cloud_;
 
+    sensor_msgs::Range CarSonar1;
+    sensor_msgs::Range CarSonar2;
+    sensor_msgs::Range CarSonar3;
+    sensor_msgs::Range CarSonar4;
+
+    ros::Publisher mSonar1Pub;
+    ros::Publisher mSonar2Pub;
+    ros::Publisher mSonar3Pub;
+    ros::Publisher mSonar4Pub;
+
     bool mbUpdated;
 
     boost::mutex mMutex;
@@ -87,6 +97,8 @@ private:
 
     ros::Publisher mIMUPub;
     sensor_msgs::Imu  CarIMU;
+    float ranges_[4];
+    float view_angles_[4];
 };
 
 } //namespace xqserial_server

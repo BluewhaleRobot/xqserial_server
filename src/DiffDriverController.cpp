@@ -21,6 +21,7 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
     cmd_topic=cmd_topic_;
     xq_status=xq_status_;
     cmd_serial=cmd_serial_;
+    barDetectFlag = true;
 }
 
 void DiffDriverController::run()
@@ -52,6 +53,7 @@ void DiffDriverController::imuCalibration(const std_msgs::Bool& calFlag)
 }
 void DiffDriverController::updateBarDetectFlag(const std_msgs::Bool& DetectFlag)
 {
+  barDetectFlag = DetectFlag.data;
   if(DetectFlag.data)
   {
     //下发底层红外开启命令
@@ -76,7 +78,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     static time_t t1=time(NULL),t2;
     int i=0,wheel_ppr=1;
     double separation=0,radius=0,speed_lin=0,speed_ang=0,speed_temp[2];
-    char speed[2]={0,0};//右一左二
+    char speed[2]={0,0};//左一右二
     char cmd_str[13]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x09,(char)0x74,(char)0x53,(char)0x53,(char)0x53,(char)0x53,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
 
     if(xq_status->get_status()==0) return;//底层还在初始化
@@ -97,13 +99,13 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
       scale=1.0;
     }
     //转出最大速度百分比,并进行限幅
-    speed_temp[0]=scale*(speed_lin+speed_ang/2)/max_wheelspeed*100.0;
-    speed_temp[0]=std::min(speed_temp[0],100.0);
-    speed_temp[0]=std::max(-100.0,speed_temp[0]);
+    speed_temp[1]=scale*(speed_lin+speed_ang/2)/max_wheelspeed*100.0;
+    speed_temp[1]=std::min(speed_temp[0],100.0);
+    speed_temp[1]=std::max(-100.0,speed_temp[0]);
 
-    speed_temp[1]=scale*(speed_lin-speed_ang/2)/max_wheelspeed*100.0;
-    speed_temp[1]=std::min(speed_temp[1],100.0);
-    speed_temp[1]=std::max(-100.0,speed_temp[1]);
+    speed_temp[0]=scale*(speed_lin-speed_ang/2)/max_wheelspeed*100.0;
+    speed_temp[0]=std::min(speed_temp[1],100.0);
+    speed_temp[0]=std::max(-100.0,speed_temp[1]);
 
   //std::cout<<"radius "<<radius<<std::endl;
   //std::cout<<"ppr "<<wheel_ppr<<std::endl;
@@ -114,57 +116,63 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
      speed[i]=(int8_t)speed_temp[i];
      if(speed[i]<0)
      {
-         cmd_str[5+i]=(char)0x42;//B
-         cmd_str[9+i]=-speed[i];
+         cmd_str[5+i*2]=(char)0x42;//B
+         cmd_str[9+i*2]=-speed[i];
+         cmd_str[5+i*2+1]=(char)0x42;//B
+         cmd_str[9+i*2+1]=-speed[i];
      }
      else if(speed[i]>0)
      {
-         cmd_str[5+i]=(char)0x46;//F
-         cmd_str[9+i]=speed[i];
+         cmd_str[5+i*2]=(char)0x46;//F
+         cmd_str[9+i*2]=speed[i];
+         cmd_str[5+i*2+1]=(char)0x46;//F
+         cmd_str[9+i*2+1]=speed[i];
      }
      else
      {
-         cmd_str[5+i]=(char)0x53;//S
-         cmd_str[9+i]=(char)0x00;
+         cmd_str[5+i*2]=(char)0x53;//S
+         cmd_str[9+i*2]=(char)0x00;
+         cmd_str[5+i*2+1]=(char)0x53;//S
+         cmd_str[9+i*2+1]=(char)0x00;
      }
     }
 
-    // std::cout<<"distance1 "<<xq_status->car_status.distance1<<std::endl;
-    // std::cout<<"distance2 "<<xq_status->car_status.distance2<<std::endl;
-    // std::cout<<"distance3 "<<xq_status->car_status.distance3<<std::endl;
-    // if(xq_status->get_status()==2)
-    // {
-    //   //有障碍物
-    //   if(xq_status->car_status.distance1<30&&xq_status->car_status.distance1>0&&cmd_str[6]==(char)0x46)
-    //   {
-    //     cmd_str[6]=(char)0x53;
-    //   }
-    //   if(xq_status->car_status.distance2<30&&xq_status->car_status.distance2>0&&cmd_str[5]==(char)0x46)
-    //   {
-    //     cmd_str[5]=(char)0x53;
-    //   }
-    //   if(xq_status->car_status.distance3<20&&xq_status->car_status.distance3>0&&(cmd_str[5]==(char)0x42||cmd_str[6]==(char)0x42))
-    //   {
-    //     cmd_str[5]=(char)0x53;
-    //     cmd_str[6]=(char)0x53;
-    //   }
-    //   if(xq_status->car_status.distance1<15&&xq_status->car_status.distance1>0&&(cmd_str[5]==(char)0x46||cmd_str[6]==(char)0x46))
-    //   {
-    //     cmd_str[5]=(char)0x53;
-    //     cmd_str[6]=(char)0x53;
-    //   }
-    //   if(xq_status->car_status.distance2<15&&xq_status->car_status.distance2>0&&(cmd_str[5]==(char)0x46||cmd_str[6]==(char)0x46))
-    //   {
-    //     cmd_str[5]=(char)0x53;
-    //     cmd_str[6]=(char)0x53;
-    //   }
-    // }
+
+    if(xq_status->get_status()==2 && barDetectFlag)
+    {
+      float ranges[4],view_angles[4];
+      xq_status->getSonarData(ranges,view_angles);
+      //有障碍物
+      if(ranges[0]>0.1&&ranges[0]<0.4&&cmd_str[5]==(char)0x46)
+      {
+        cmd_str[5]=(char)0x53;
+        cmd_str[6]=(char)0x53;
+      }
+      if(ranges[3]>0.1&&ranges[3]<0.4&&cmd_str[5]==(char)0x42)
+      {
+        cmd_str[5]=(char)0x53;
+        cmd_str[6]=(char)0x53;
+      }
+
+      if(ranges[1]>0.1&&ranges[1]<0.4&&cmd_str[5]==(char)0x46)
+      {
+        cmd_str[7]=(char)0x53;
+        cmd_str[8]=(char)0x53;
+      }
+      if(ranges[2]>0.1&&ranges[2]<0.4&&cmd_str[5]==(char)0x42)
+      {
+        cmd_str[7]=(char)0x53;
+        cmd_str[8]=(char)0x53;
+      }
+    }
 
     boost::mutex::scoped_lock lock(mMutex);
     if(!MoveFlag)
     {
       cmd_str[5]=(char)0x53;
       cmd_str[6]=(char)0x53;
+      cmd_str[7]=(char)0x53;
+      cmd_str[8]=(char)0x53;
     }
     if(NULL!=cmd_serial)
     {

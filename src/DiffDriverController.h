@@ -26,6 +26,7 @@ private:
     CallbackAsyncSerial* cmd_serial;
     boost::mutex mMutex;
     bool MoveFlag;
+    bool barDetectFlag;
 };
 
 }
