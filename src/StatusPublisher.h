@@ -22,13 +22,31 @@
 namespace xqserial_server
 {
 typedef struct {
-    int status;//小车状态，0表示未初始化，1表示正常，-1表示error
+    int status_left;//小车状态，0表示未初始化，1表示正常，-1表示error
+    float power_left;//电源电压【9 13】v
+    float theta_left;//方位角，【0 360）°
+    unsigned int encoder_ppr_left;//车轮1转对应的编码器个数
+    int encoder_delta_r_left;//右轮编码器增量， 个为单位
+    int encoder_delta_l_left;//左轮编码器增量， 个为单位
+    int encoder_delta_car_left;//两车轮中心位移，个为单位
+    unsigned int  upwoard_left;//0表示正面朝下安装，１表示正面朝上安装
+    float max_speed_left;//最大转速，圈每秒
+    int hbz1_left;//通道１红外状态，０表示正常１表示触发
+    int hbz2_left;//通道２红外状态，０表示正常１表示触发
+    int hbz3_left;//通道３红外状态，０表示正常１表示触发
+    int hbz4_left;//通道４红外状态，０表示正常１表示触发
+    float distance1_left;//第一个超声模块距离值 单位cm
+    float distance2_left;//第二个超声模块距离值 单位cm
+    float IMU_left[9];//mpu9250 9轴数据
+    unsigned int time_stamp_left;//时间戳
+
+    int status_right;//小车状态，0表示未初始化，1表示正常，-1表示error
     float power;//电源电压【9 13】v
     float theta;//方位角，【0 360）°
     unsigned int encoder_ppr;//车轮1转对应的编码器个数
-    int encoder_delta_r;//右轮编码器增量， 个为单位
-    int encoder_delta_l;//左轮编码器增量， 个为单位
-    int encoder_delta_car;//两车轮中心位移，个为单位
+    int encoder_delta_r_right;//右轮编码器增量， 个为单位
+    int encoder_delta_l_right;//左轮编码器增量， 个为单位
+    int encoder_delta_car_right;//两车轮中心位移，个为单位
     unsigned int  upwoard;//0表示正面朝下安装，１表示正面朝上安装
     float max_speed;//最大转速，圈每秒
     int hbz1;//通道１红外状态，０表示正常１表示触发
@@ -39,6 +57,11 @@ typedef struct {
     float distance2;//第二个超声模块距离值 单位cm
     float IMU[9];//mpu9250 9轴数据
     unsigned int time_stamp;//时间戳
+
+    int status;//小车状态，0表示未初始化，1表示正常，-1表示error
+    float encoder_delta_r;//右轮编码器增量， 个为单位
+    float encoder_delta_l;//左轮编码器增量， 个为单位
+    float encoder_delta_car;//两车轮中心位移，个为单位
 }UPLOAD_STATUS;
 
 class StatusPublisher
@@ -48,7 +71,8 @@ public:
     StatusPublisher();
     StatusPublisher(double separation,double radius);
     void Refresh();
-    void Update(const char *data, unsigned int len);
+    void Update_left(const char *data, unsigned int len);
+    void Update_right(const char *data, unsigned int len);
     double get_wheel_separation();
     double get_wheel_radius();
     int get_wheel_ppr();
@@ -89,10 +113,23 @@ private:
     ros::Publisher mSonar2Pub;
     ros::Publisher mIMUPub;
     sensor_msgs::Imu  CarIMU;
-    
-    bool mbUpdated;
+
+    bool mbUpdated_left;
+    bool mbUpdated_right;
     double  distances_[2];
-    boost::mutex mMutex;
+    boost::mutex mMutex_right;
+    boost::mutex mMutex_left;
+    boost::mutex mMutex_car;
+
+    ros::Publisher mleft1Pub;
+    ros::Publisher mleft2Pub;
+    ros::Publisher mright1Pub;
+    ros::Publisher mright2Pub;
+
+    std_msgs::Float64 carLeft1;
+    std_msgs::Float64 carLeft2;
+    std_msgs::Float64 carRight1;
+    std_msgs::Float64 carRight2;
 };
 
 } //namespace xqserial_server

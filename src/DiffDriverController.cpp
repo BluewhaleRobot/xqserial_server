@@ -7,22 +7,24 @@ namespace xqserial_server
 
 DiffDriverController::DiffDriverController()
 {
-    max_wheelspeed=2.0;
+    max_wheelspeed=5.0;
     cmd_topic="cmd_vel";
     xq_status=new StatusPublisher();
-    cmd_serial=NULL;
+    cmd_serial_left=NULL;
+    cmd_serial_right=NULL;
     MoveFlag=true;
     last_ordertime=ros::WallTime::now();
     DetectFlag_=true;
 }
 
-DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_)
+DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_left_,CallbackAsyncSerial* cmd_serial_right_)
 {
     MoveFlag=true;
     max_wheelspeed=max_speed_;
     cmd_topic=cmd_topic_;
     xq_status=xq_status_;
-    cmd_serial=cmd_serial_;
+    cmd_serial_left=cmd_serial_left_;
+    cmd_serial_right=cmd_serial_right_;
     speed_debug[0]=0.0;
     speed_debug[1]=0.0;
     last_ordertime=ros::WallTime::now();
@@ -50,9 +52,9 @@ void DiffDriverController::imuCalibration(const std_msgs::Bool& calFlag)
   {
     //下发底层ｉｍｕ标定命令
     char cmd_str[5]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x01,(char)0x43};
-    if(NULL!=cmd_serial)
+    if(NULL!=cmd_serial_right)
     {
-        cmd_serial->write(cmd_str,5);
+        cmd_serial_right->write(cmd_str,5);
     }
   }
 }
@@ -62,9 +64,13 @@ void DiffDriverController::updateBarDetectFlag(const std_msgs::Bool& DetectFlag)
   {
     //下发底层红外开启命令
     char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x01};
-    if(NULL!=cmd_serial)
+    if(NULL!=cmd_serial_left)
     {
-        cmd_serial->write(cmd_str,6);
+        cmd_serial_left->write(cmd_str,6);
+    }
+    if(NULL!=cmd_serial_right)
+    {
+        cmd_serial_right->write(cmd_str,6);
     }
     DetectFlag_=true;
   }
@@ -72,9 +78,13 @@ void DiffDriverController::updateBarDetectFlag(const std_msgs::Bool& DetectFlag)
   {
     //下发底层红外禁用命令
     char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x00};
-    if(NULL!=cmd_serial)
+    if(NULL!=cmd_serial_left)
     {
-        cmd_serial->write(cmd_str,6);
+        cmd_serial_left->write(cmd_str,6);
+    }
+    if(NULL!=cmd_serial_right)
+    {
+        cmd_serial_right->write(cmd_str,6);
     }
     DetectFlag_=false;
   }
@@ -84,65 +94,6 @@ geometry_msgs::Twist DiffDriverController::get_cmdTwist(void)
 {
   boost::mutex::scoped_lock lock(mMutex);
   return cmdTwist_;
-}
-void DiffDriverController::sendcmd2(const geometry_msgs::Twist &command)
-{
-  {
-    boost::mutex::scoped_lock lock(mMutex);
-    cmdTwist_ = command;
-  }
-
-  geometry_msgs::Twist  cmdTwist = cmdTwist_;
-
-  float cmd_v = cmdTwist.linear.x;
-  if(DetectFlag_)
-  {
-    //超声波预处理
-    double distances[2]={0.0,0.0},distance=0;
-    xq_status->get_distances(distances);
-    distance=std::min(distances[0],distances[1]);
-
-    if(distance>=0.2001 && distance<=0.45)
-    {
-        float k=0.4;
-        float max_v = std::max(0.0,k*std::sqrt(distance-0.35)); //根据当前距离设置线速度最大值
-
-        geometry_msgs::Twist  carTwist = xq_status->get_CarTwist();
-        if(max_v<0.01 && carTwist.linear.x<0.1 && carTwist.linear.x>-0.1 && cmdTwist.linear.x> 0.01)
-        {
-            if(distances[0]>(distances[1]+0.05) )
-            {
-              if(cmdTwist.angular.z<0.005)
-              {
-                //可以右转
-                cmdTwist.angular.z = std::min(-0.1,cmdTwist.angular.z);
-              }
-              else
-              {
-                cmdTwist.angular.z = 0.1;
-              }
-            }
-            else if(distances[1]>(distances[0]+0.05)  && cmdTwist.angular.z > -0.01)
-            {
-              if(cmdTwist.angular.z > -0.005)
-              {
-                //可以左转
-                cmdTwist.angular.z = std::max(0.1,cmdTwist.angular.z);
-              }
-              else
-              {
-                cmdTwist.angular.z = -0.1;
-              }
-            }
-        }
-        if(cmd_v >= max_v)
-        {
-          cmd_v = max_v;
-        }
-    }
-  }
-  cmdTwist.linear.x = cmd_v;
-  sendcmd(cmdTwist);
 }
 void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
 {
@@ -250,15 +201,35 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     // }
 
     boost::mutex::scoped_lock lock(mMutex);
+    char cmd_str_left[13]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x09,(char)0x74,(char)0x53,(char)0x53,(char)0x53,(char)0x53,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
+    char cmd_str_right[13]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x09,(char)0x74,(char)0x53,(char)0x53,(char)0x53,(char)0x53,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
 
     if(!MoveFlag)
     {
       cmd_str[5]=(char)0x53;
       cmd_str[6]=(char)0x53;
     }
-    if(NULL!=cmd_serial)
+
+    for(i=0;i<13;i++)
     {
-        cmd_serial->write(cmd_str,13);
+      cmd_str_right[i] = cmd_str[i];
+      cmd_str_left[i] = cmd_str[i];
+    }
+
+    cmd_str_left[5+0] = cmd_str_left[5+1]; //一变二
+    cmd_str_left[9+0] = cmd_str_left[9+1]; //一变二
+
+    cmd_str_right[5+1] = cmd_str_right[5+0]; //一变二
+    cmd_str_right[9+1] = cmd_str_right[9+0]; //一变二
+
+    if(NULL!=cmd_serial_right)
+    {
+        cmd_serial_right->write(cmd_str_right,13);
+    }
+
+    if(NULL!=cmd_serial_left)
+    {
+        cmd_serial_left->write(cmd_str_left,13);
     }
     last_ordertime=ros::WallTime::now();
    // command.linear.x
