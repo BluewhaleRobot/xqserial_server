@@ -104,6 +104,12 @@ int main(int argc, char **argv)
             {
               xq_diffdriver.sendcmd2();
             }
+            if(ii%50==0)
+            {
+	      //下发底层红外禁用命令
+              char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x00};
+              serial.write(cmd_str,6);
+            }
             r.sleep();
             //cout<<"run"<<endl;
         }

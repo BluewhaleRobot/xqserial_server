@@ -305,7 +305,7 @@ void StatusPublisher::Refresh()
           r0 = x0*x0+y0*y0;
           if(r0<0.26*0.26)
           {
-            barArea_nums += 2*((int)(ranges[0]*tan(view_angles[0])/kinect_stepsize_)) + 1;
+            barArea_nums += 2*((int)(0.3*tan(view_angles[0])/kinect_stepsize_)) + 1;
             flag.data=2;
           }
           else{
@@ -321,7 +321,7 @@ void StatusPublisher::Refresh()
           r0 = x0*x0+y0*y0;
           if(r0<0.26*0.26)
           {
-            barArea_nums += 2*((int)(ranges[1]*tan(view_angles[1])/kinect_stepsize_)) + 1;
+            barArea_nums += 2*((int)(0.3*tan(view_angles[1])/kinect_stepsize_)) + 1;
             flag.data=2;
           }
           else{
@@ -337,7 +337,7 @@ void StatusPublisher::Refresh()
           r0 = x0*x0+y0*y0;
           if(r0<0.26*0.26)
           {
-            barArea_nums += 2*((int)(ranges[2]*tan(view_angles[2])/kinect_stepsize_)) + 1;
+            barArea_nums += 2*((int)(0.3*tan(view_angles[2])/kinect_stepsize_)) + 1;
             flag.data=2;
           }
           else{
@@ -376,52 +376,55 @@ void StatusPublisher::Refresh()
           r0 = x0*x0+y0*y0;
           if(r0<0.26*0.26)
           {
-            int nums1 = (int)(ranges[0]*tan(view_angles[0])/kinect_stepsize_);
+            int nums1 = (int)(0.3*tan(view_angles[0])/kinect_stepsize_);//(int)(ranges[0]*tan(view_angles[0])/kinect_stepsize_);
             for(int i = -nums1;i<=nums1;i++,++bariter_x,++bariter_y,++bariter_z)
             {
               float x0 ,y0;
-              x0 = ranges[0];
+              x0 = 0.3;//ranges[0];
               y0 = i*kinect_stepsize_;
               *bariter_x = x0*cos(tf_angles[0]) - y0*sin(tf_angles[0]) + tf_xs[0] - kinect_x_;
               *bariter_y = x0*sin(tf_angles[0]) + y0*cos(tf_angles[0]) + tf_ys[0];
               *bariter_z = 0.15;
             }
           }
+	  										
           //模2
           x0 = ranges[1]*cos(tf_angles[1]) + tf_xs[1];
           y0 = ranges[1]*sin(tf_angles[1]) + tf_ys[1];
           r0 = x0*x0+y0*y0;
           if(r0<0.26*0.26)
           {
-            int nums1 = (int)(ranges[1]*tan(view_angles[1])/kinect_stepsize_);
+            int nums1 = (int)(0.3*tan(view_angles[1])/kinect_stepsize_);
             for(int i = -nums1;i<=nums1;i++,++bariter_x,++bariter_y,++bariter_z)
             {
               float x0 ,y0;
-              x0 = ranges[1];
+              x0 = 0.3;
               y0 = i*kinect_stepsize_;
               *bariter_x = x0*cos(tf_angles[1]) - y0*sin(tf_angles[1]) + tf_xs[1] - kinect_x_;
               *bariter_y = x0*sin(tf_angles[1]) + y0*cos(tf_angles[1]) + tf_ys[1];
               *bariter_z = 0.15;
             }
           }
+          
           //模块3
           x0 = ranges[2]*cos(tf_angles[2]) + tf_xs[2];
           y0 = ranges[2]*sin(tf_angles[2]) + tf_ys[2];
           r0 = x0*x0+y0*y0;
           if(r0<0.26*0.26)
           {
-            int nums1 = (int)(ranges[2]*tan(view_angles[2])/kinect_stepsize_);
+            int nums1 = (int)(0.3*tan(view_angles[2])/kinect_stepsize_);
             for(int i = -nums1;i<=nums1;i++,++bariter_x,++bariter_y,++bariter_z)
             {
               float x0 ,y0;
-              x0 = ranges[2];
+              x0 = 0.3;
               y0 = i*kinect_stepsize_;
               *bariter_x = x0*cos(tf_angles[2]) - y0*sin(tf_angles[2]) + tf_xs[2] - kinect_x_;
               *bariter_y = x0*sin(tf_angles[2]) + y0*cos(tf_angles[2]) + tf_ys[2];
               *bariter_z = 0.15;
             }
           }
-          if(ii%5==0)
+          
+          if(ii%2==0)
           {
             pub_barpoint_cloud_.publish(barcloud_msg);
           }

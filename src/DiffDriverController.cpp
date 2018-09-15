@@ -55,21 +55,21 @@ void DiffDriverController::updateSonar1(const sensor_msgs::Range& range_msg)
 {
   boost::mutex::scoped_lock lock(mMutex_range);
   ranges_[0] = range_msg.range;
-  view_angles_[0] = range_msg.field_of_view/2.0;
+  view_angles_[0] = range_msg.field_of_view*1.5;
 }
 
 void DiffDriverController::updateSonar2(const sensor_msgs::Range& range_msg)
 {
   boost::mutex::scoped_lock lock(mMutex_range);
   ranges_[1] = range_msg.range;
-  view_angles_[1] = range_msg.field_of_view/2.0;
+  view_angles_[1] = range_msg.field_of_view*1.5;
 }
 
 void DiffDriverController::updateSonar3(const sensor_msgs::Range& range_msg)
 {
   boost::mutex::scoped_lock lock(mMutex_range);
   ranges_[2] = range_msg.range;
-  view_angles_[2] = range_msg.field_of_view/2.0;
+  view_angles_[2] = range_msg.field_of_view*1.5;
 }
 
 void DiffDriverController::updateSonar4(const sensor_msgs::Range& range_msg)
@@ -144,6 +144,7 @@ void DiffDriverController::imuCalibration(const std_msgs::Bool& calFlag)
 }
 void DiffDriverController::updateBarDetectFlag(const std_msgs::Bool& DetectFlag)
 {
+  return;
   boost::mutex::scoped_lock lock(mMutex);
   detectFlag_ = DetectFlag.data;
   if(DetectFlag.data)
@@ -189,6 +190,11 @@ void DiffDriverController::sendcmd2()
         {
             speed_last_[1] = 0.0;
         }
+	//右轮不能前进
+        if(speed_last_[0]>0)
+        {
+            speed_last_[0] = 0.0;
+        }
       }
 
       //模块2
@@ -215,6 +221,11 @@ void DiffDriverController::sendcmd2()
       r0 = x0*x0+y0*y0;
       if(r0<0.26*0.26)
       {
+	//左轮不能前进
+        if(speed_last_[1]>0)
+        {
+            speed_last_[1] = 0.0;
+        }
         //右轮不能前进
         if(speed_last_[0]>0)
         {
