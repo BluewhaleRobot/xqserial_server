@@ -101,7 +101,6 @@ void StatusPublisher::Update(const char data[], unsigned int len)
   // if(len <1) return;
   // static char data2[1024];
   // static int len2=0;
-    boost::mutex::scoped_lock lock(mMutex);
 
     int i=0,j=0;
     int * receive_byte;
@@ -167,6 +166,9 @@ void StatusPublisher::Update(const char data[], unsigned int len)
                 {
                     // std::cout<<"runup4 "<<std::endl;
                     //当前包已经处理完成，开始处理
+                    //std::cout<<"oups4 "<<std::endl;
+                    boost::mutex::scoped_lock lock(mMutex);
+                    //std::cout<<"oups5 "<<std::endl;
                     if(new_packed_ok_len==130)
                     {
                         for(j=0;j<26;j++)
@@ -197,6 +199,10 @@ void StatusPublisher::Update(const char data[], unsigned int len)
                     if(mbUpdated)
                     {
                         base_time_ = ros::Time::now().toSec();
+                        //static int counter1=0,counter2=0;
+                        //counter1 += car_status.encoder_delta_1;
+                        //counter2 += car_status.encoder_delta_4;
+                        //std::cout<<"time "<< car_status.time_stamp <<" counter1 "<< counter1 <<" counter2 "<<counter2<<std::endl;
                     }
                     //ii++;
                     //std::cout << ii << std::endl;
@@ -221,7 +227,9 @@ void StatusPublisher::Update(const char data[], unsigned int len)
 
 void StatusPublisher::Refresh()
 {
+     //std::cout<<"oups6"<<std::endl;
      boost::mutex::scoped_lock lock(mMutex);
+     //std::cout<<"oups7"<<std::endl;
      static double theta_last=0.0;
      static unsigned int ii=0;
      static bool theta_updateflag = false;
@@ -247,7 +255,8 @@ void StatusPublisher::Refresh()
         var_len=(50.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius)*(50.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius);
         var_angle=(0.01f/180.0f*PI)*(0.01f/180.0f*PI);
 
-        delta_car=(car_status.encoder_delta_1+car_status.encoder_delta_2+car_status.encoder_delta_3+car_status.encoder_delta_4)/4.0f*1.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius;
+        //delta_car=(car_status.encoder_delta_1+car_status.encoder_delta_2+car_status.encoder_delta_3+car_status.encoder_delta_4)/4.0f*1.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius;
+        delta_car=(car_status.encoder_delta_1+car_status.encoder_delta_4)/2.0f*1.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius;
         if(delta_car>0.05||delta_car<-0.05)
         {
           // std::cout<<"get you!"<<std::endl;
@@ -417,16 +426,34 @@ nav_msgs::Odometry StatusPublisher::get_odom(){
 }
 
 int StatusPublisher::get_status(){
-  boost::mutex::scoped_lock lock(mMutex);
-  return car_status.status;
+  boost::mutex::scoped_lock lock(mMutex,boost::try_to_lock);
+  if(lock)
+  {
+    return car_status.status;
+  }
+  else
+  {
+    return 0;
+  }
 }
 void StatusPublisher::getSonarData(float (&ranges)[4],float (&view_angles)[4])
 {
-  boost::mutex::scoped_lock lock(mMutex);
-  for(int i =0 ;i<4;i++)
+  boost::mutex::scoped_lock lock(mMutex,boost::try_to_lock);
+  if(lock)
   {
-    ranges[i] = ranges_[i];
-    view_angles[i] = view_angles_[i];
+    for(int i =0 ;i<4;i++)
+    {
+      ranges[i] = ranges_[i];
+      view_angles[i] = view_angles_[i];
+    }
+  }
+  else
+  {
+    for(int i =0 ;i<4;i++)
+    {
+      ranges[i] = 4.2;
+      view_angles[i] = 0.35/2.0;
+    }
   }
 }
 } //namespace xqserial_server

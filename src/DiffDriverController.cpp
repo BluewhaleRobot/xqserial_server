@@ -51,6 +51,7 @@ void DiffDriverController::imuCalibration(const std_msgs::Bool& calFlag)
     }
   }
 }
+
 void DiffDriverController::updateBarDetectFlag(const std_msgs::Bool& DetectFlag)
 {
   barDetectFlag = DetectFlag.data;
@@ -73,8 +74,10 @@ void DiffDriverController::updateBarDetectFlag(const std_msgs::Bool& DetectFlag)
     }
   }
 }
+
 void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
 {
+    //std::cout<<"oups1 "<<std::endl;
     static time_t t1=time(NULL),t2;
     int i=0,wheel_ppr=1;
     double separation=0,radius=0,speed_lin=0,speed_ang=0,speed_temp[2];
@@ -100,22 +103,26 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     }
     //转出最大速度百分比,并进行限幅
     speed_temp[1]=scale*(speed_lin+speed_ang/2)/max_wheelspeed*100.0;
-    speed_temp[1]=std::min(speed_temp[0],100.0);
-    speed_temp[1]=std::max(-100.0,speed_temp[0]);
+    speed_temp[1]=std::min(speed_temp[1],100.0);
+    speed_temp[1]=std::max(-100.0,speed_temp[1]);
 
     speed_temp[0]=scale*(speed_lin-speed_ang/2)/max_wheelspeed*100.0;
-    speed_temp[0]=std::min(speed_temp[1],100.0);
-    speed_temp[0]=std::max(-100.0,speed_temp[1]);
+    speed_temp[0]=std::min(speed_temp[0],100.0);
+    speed_temp[0]=std::max(-100.0,speed_temp[0]);
 
   //std::cout<<"radius "<<radius<<std::endl;
   //std::cout<<"ppr "<<wheel_ppr<<std::endl;
-  //std::cout<<"pwm "<<speed_temp[0]<<std::endl;
+  //std::cout<<"max_speed "<<max_wheelspeed<<std::endl;
+  //std::cout<<"speed_lin "<<speed_lin<<std::endl;
   //  command.linear.x/
     for(i=0;i<2;i++)
     {
      speed[i]=(int8_t)speed_temp[i];
+     //std::cout<<"i "<< i <<" speed_temp[i]  "<<speed_temp[i] << " speed[i] " << speed[i]<<std::endl;
+
      if(speed[i]<0)
      {
+         if(speed[i]>-10) speed[i]=-10;
          cmd_str[5+i*2]=(char)0x42;//B
          cmd_str[9+i*2]=-speed[i];
          cmd_str[5+i*2+1]=(char)0x42;//B
@@ -123,6 +130,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
      }
      else if(speed[i]>0)
      {
+         if(speed[i]<10) speed[i]=10;
          cmd_str[5+i*2]=(char)0x46;//F
          cmd_str[9+i*2]=speed[i];
          cmd_str[5+i*2+1]=(char)0x46;//F
@@ -148,6 +156,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
         cmd_str[5]=(char)0x53;
         cmd_str[6]=(char)0x53;
       }
+
       if(ranges[3]>0.1&&ranges[3]<0.4&&cmd_str[5]==(char)0x42)
       {
         cmd_str[5]=(char)0x53;
@@ -159,6 +168,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
         cmd_str[7]=(char)0x53;
         cmd_str[8]=(char)0x53;
       }
+
       if(ranges[2]>0.1&&ranges[2]<0.4&&cmd_str[5]==(char)0x42)
       {
         cmd_str[7]=(char)0x53;

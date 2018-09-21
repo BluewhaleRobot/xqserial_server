@@ -17,7 +17,7 @@ int main(int argc, char **argv)
 
     ros::init(argc, argv, "xqserial_server");
     ros::start();
-    
+
     //获取串口参数
     std::string port;
     ros::param::param<std::string>("~port", port, "/dev/ttyUSB0");
@@ -27,8 +27,8 @@ int main(int argc, char **argv)
     //获取小车机械参数
     double separation=0,radius=0;
     bool DebugFlag = false;
-    ros::param::param<double>("~wheel_separation", separation, 0.37);
-    ros::param::param<double>("~wheel_radius", radius, 0.0625);
+    ros::param::param<double>("~wheel_separation", separation, 0.36);
+    ros::param::param<double>("~wheel_radius", radius, 0.078);
     ros::param::param<bool>("~debug_flag", DebugFlag, false);
     xqserial_server::StatusPublisher xq_status(separation,radius);
 

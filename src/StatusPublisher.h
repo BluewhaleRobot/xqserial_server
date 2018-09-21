@@ -41,7 +41,6 @@ typedef struct {
 
 class StatusPublisher
 {
-
 public:
     StatusPublisher();
     StatusPublisher(double separation,double radius);
@@ -91,7 +90,6 @@ private:
     ros::Publisher mSonar4Pub;
 
     bool mbUpdated;
-
     boost::mutex mMutex;
     double base_time_;
 
