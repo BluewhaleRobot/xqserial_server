@@ -162,10 +162,10 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     double vx_temp,vtheta_temp;
     vx_temp=command.linear.x;
     vtheta_temp=command.angular.z;
-    if(std::fabs(vx_temp)<0.11)
+    if(std::fabs(vx_temp)<0.3)
     {
-      if(vtheta_temp>0.02&&vtheta_temp<0.3) vtheta_temp=0.3;
-      if(vtheta_temp<-0.02&&vtheta_temp>-0.3) vtheta_temp=-0.3;
+      if(vtheta_temp>0.0002&&vtheta_temp<0.3) vtheta_temp=0.3;
+      if(vtheta_temp<-0.0002&&vtheta_temp>-0.3) vtheta_temp=-0.3;
     }
     if(vx_temp>0 && vx_temp<0.1) vx_temp=0.1;
     if(vx_temp<0 && vx_temp>-0.1) vx_temp=-0.1;
@@ -203,11 +203,13 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
      speed_debug[i]=speed_temp[i];
      if(speed[i]<0)
      {
+         //if(speed[i]>-5) speed[i]=-4;
          cmd_str[5+i]=(char)0x42;//B
          cmd_str[9+i]=-speed[i];
      }
      else if(speed[i]>0)
      {
+         //if(speed[i]<5) speed[i]=4;
          cmd_str[5+i]=(char)0x46;//F
          cmd_str[9+i]=speed[i];
      }

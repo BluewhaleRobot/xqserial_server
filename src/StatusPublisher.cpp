@@ -230,10 +230,13 @@ void StatusPublisher::Refresh()
      static double theta_last=0.0;
      static unsigned int ii=0;
      static bool theta_updateflag = false;
-     ii++;
+     static bool theta_update_first = true;
+     static int hbz1_num=0,hbz2_num=0,hbz4_num=0;
     //std::cout<<"runR"<< mbUpdated<<std::endl;
     if(mbUpdated)
     {
+      ii++;
+      if(car_status.status>5) return; //错误更新
       // Time
       ros::Time current_time = ros::Time::now();
 
@@ -268,7 +271,11 @@ void StatusPublisher::Refresh()
         // }
         delta_x=delta_car*cos(CarPos2D.theta* PI / 180.0f);
         delta_y=delta_car*sin(CarPos2D.theta* PI / 180.0f);
-
+        if(theta_update_first && theta_updateflag)
+        {
+          theta_last=car_status.theta;
+          theta_update_first=false;
+        }
         delta_theta=car_status.theta-theta_last;
         theta_last=car_status.theta;
         if(delta_theta > 270 ) delta_theta -= 360;
@@ -302,21 +309,30 @@ void StatusPublisher::Refresh()
         int clearArea_nums=0;
         if(car_status.hbz1>0.1)
         {
-          barArea_nums+=3;
+          hbz1_num++;
+          if(hbz1_num>10) barArea_nums+=3;
         }else{
-          clearArea_nums+=6;
+          hbz1_num--;
+          if(hbz1_num<0) hbz1_num=0;
+          if(hbz1_num==0) clearArea_nums+=6;
         }
         if(car_status.hbz2>0.1)
         {
-          barArea_nums+=3;
+          hbz2_num++;
+          if(hbz2_num>10) barArea_nums+=3;
         }else{
-          clearArea_nums+=6;
+          hbz2_num--;
+          if(hbz2_num<0) hbz2_num=0;
+          if(hbz2_num==0) clearArea_nums+=6;
         }
         if(car_status.hbz4>0.1)
         {
-          barArea_nums+=3;
+          hbz4_num++;
+          if(hbz4_num>10) barArea_nums+=3;
         }else{
-          clearArea_nums+=6;
+          hbz4_num--;
+          if(hbz4_num<0) hbz4_num=0;
+          if(hbz4_num==0) clearArea_nums+=6;
         }
 
         if(barArea_nums>0)
@@ -334,7 +350,7 @@ void StatusPublisher::Refresh()
           sensor_msgs::PointCloud2Iterator<float> bariter_x(*barcloud_msg, "x");
           sensor_msgs::PointCloud2Iterator<float> bariter_y(*barcloud_msg, "y");
           sensor_msgs::PointCloud2Iterator<float> bariter_z(*barcloud_msg, "z");
-          if(car_status.hbz2>0.1)
+          if(car_status.hbz2>0.1&&hbz2_num>10)
           {
             for(int k=0;k<3;k++,++bariter_x, ++bariter_y,++bariter_z)
             {
@@ -343,7 +359,7 @@ void StatusPublisher::Refresh()
               *bariter_z=0.15;
             }
           }
-          if(car_status.hbz4>0.1)
+          if(car_status.hbz4>0.1&&hbz4_num>10)
           {
             for(int k=0;k<3;k++,++bariter_x, ++bariter_y,++bariter_z)
             {
@@ -352,7 +368,7 @@ void StatusPublisher::Refresh()
               *bariter_z=0.15;
             }
           }
-          if(car_status.hbz1>0.1)
+          if(car_status.hbz1>0.1&&hbz1_num>10)
           {
             for(int k=0;k<3;k++,++bariter_x, ++bariter_y,++bariter_z)
             {
@@ -361,7 +377,7 @@ void StatusPublisher::Refresh()
               *bariter_z=0.15;
             }
           }
-          if(ii%5==0)
+          if(ii%1==0)
           {
             pub_barpoint_cloud_.publish(barcloud_msg);
           }
@@ -381,7 +397,7 @@ void StatusPublisher::Refresh()
           sensor_msgs::PointCloud2Iterator<float> cleariter_x(*clearcloud_msg, "x");
           sensor_msgs::PointCloud2Iterator<float> cleariter_y(*clearcloud_msg, "y");
           sensor_msgs::PointCloud2Iterator<float> cleariter_z(*clearcloud_msg, "z");
-          if(car_status.hbz2<0.1)
+          if(car_status.hbz2<0.1&&hbz2_num==0)
           {
             for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
@@ -396,7 +412,7 @@ void StatusPublisher::Refresh()
               *cleariter_z=0.0;
             }
           }
-          if(car_status.hbz4<0.1)
+          if(car_status.hbz4<0.1&&hbz4_num==0)
           {
             for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
@@ -411,7 +427,7 @@ void StatusPublisher::Refresh()
               *cleariter_z=0.0;
             }
           }
-          if(car_status.hbz1<0.1)
+          if(car_status.hbz1<0.1&&hbz1_num==0)
           {
             for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
@@ -426,7 +442,7 @@ void StatusPublisher::Refresh()
               *cleariter_z=0.0;
             }
           }
-          if(ii%5==0)
+          if(ii%1==0)
           {
             pub_clearpoint_cloud_.publish(clearcloud_msg);
           }
