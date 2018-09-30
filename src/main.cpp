@@ -51,7 +51,7 @@ int main(int argc, char **argv)
         }
         // send reset cmd
         char resetCmd[] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x01, 'I'};
-        serial.write(resetCmd, 5);
+        //serial.write(resetCmd, 5);
 
         //下发底层红外开启命令
         char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x01};

@@ -236,7 +236,7 @@ void StatusPublisher::Refresh()
     if(mbUpdated)
     {
       ii++;
-      if(car_status.status>5) return; //错误更新
+      if(car_status.status>5 || car_status.IMU[5]<=-2000 || car_status.IMU[5]>=2000) return; //错误更新
       // Time
       ros::Time current_time = ros::Time::now();
 
@@ -476,11 +476,11 @@ void StatusPublisher::Refresh()
           theta_sum -=theta_sums[theta_sum_index];
           theta_sums[theta_sum_index] = angle_speed * PI /180.0f;
           theta_sum +=theta_sums[theta_sum_index];
-          CarTwist.angular.z=theta_sum/8.0f;
+          CarTwist.angular.z=theta_sum/8.0f; 
           theta_sum_index++;
           if(theta_sum_index>7) theta_sum_index=0;
           //std::cout<<" " << angle_speed * PI /180.0f<<std::endl;
-
+         //ROS_ERROR("%d %f,%f,%f,%f,%f,%f,%f,%f,%f",theta_sum_index,theta_sum,theta_sums[0],theta_sums[1],theta_sums[2],theta_sums[3],theta_sums[4],theta_sums[5],theta_sums[6],theta_sums[7]);
           // CarTwist.linear.x=delta_car*50.0f;
           // CarTwist.angular.z=angle_speed * PI /180.0f;
 
