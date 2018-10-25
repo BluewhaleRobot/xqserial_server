@@ -169,28 +169,43 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     }
     if(vx_temp>0 && vx_temp<0.1) vx_temp=0.1;
     if(vx_temp<0 && vx_temp>-0.1) vx_temp=-0.1;
-    //转换速度单位，由米转换成转
+
+    // //转换速度单位，由米转换成转
+    // speed_lin=command.linear.x/(2.0*PI*radius);
+    // //speed_ang=command.angular.z*separation/(2.0*PI*radius);
+    // speed_ang=vtheta_temp*separation/(2.0*PI*radius);
+    //
+    // float scale=std::max(std::abs(speed_lin+speed_ang/2.0),std::abs(speed_lin-speed_ang/2.0))/max_wheelspeed;
+    // if(scale>1.0)
+    // {
+    //   scale=1.0/scale;
+    // }
+    // else
+    // {
+    //   scale=1.0;
+    // }
+    // //转出最大速度百分比,并进行限幅
+    // speed_temp[0]=scale*(speed_lin+speed_ang/2)/max_wheelspeed*100.0;
+    // speed_temp[0]=std::min(speed_temp[0],100.0);
+    // speed_temp[0]=std::max(-100.0,speed_temp[0]);
+    //
+    // speed_temp[1]=scale*(speed_lin-speed_ang/2)/max_wheelspeed*100.0;
+    // speed_temp[1]=std::min(speed_temp[1],100.0);
+    // speed_temp[1]=std::max(-100.0,speed_temp[1]);
+
     speed_lin=command.linear.x/(2.0*PI*radius);
     //speed_ang=command.angular.z*separation/(2.0*PI*radius);
-    speed_ang=vtheta_temp*separation/(2.0*PI*radius);
+    speed_ang=vtheta_temp;
 
-    float scale=std::max(std::abs(speed_lin+speed_ang/2.0),std::abs(speed_lin-speed_ang/2.0))/max_wheelspeed;
-    if(scale>1.0)
-    {
-      scale=1.0/scale;
-    }
-    else
-    {
-      scale=1.0;
-    }
     //转出最大速度百分比,并进行限幅
-    speed_temp[0]=scale*(speed_lin+speed_ang/2)/max_wheelspeed*100.0;
+    speed_temp[0]=speed_lin/max_wheelspeed*100.0;
     speed_temp[0]=std::min(speed_temp[0],100.0);
     speed_temp[0]=std::max(-100.0,speed_temp[0]);
 
-    speed_temp[1]=scale*(speed_lin-speed_ang/2)/max_wheelspeed*100.0;
+    speed_temp[1]=speed_ang/3.0*100.0;
     speed_temp[1]=std::min(speed_temp[1],100.0);
     speed_temp[1]=std::max(-100.0,speed_temp[1]);
+
 
   //std::cout<<" "<<speed_temp[0]<<" " << speed_temp[1] <<  " "<< command.linear.x <<" "<< command.angular.z <<  " "<< carTwist.linear.x <<" "<< carTwist.angular.z <<std::endl;
   //std::cout<<"radius "<<radius<<std::endl;
