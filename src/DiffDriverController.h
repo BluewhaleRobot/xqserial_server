@@ -8,6 +8,7 @@
 namespace xqserial_server
 {
 
+
 class DiffDriverController
 {
 public:

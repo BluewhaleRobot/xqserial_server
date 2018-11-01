@@ -14,6 +14,8 @@
 #include "tf/transform_broadcaster.h"
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include <sensor_msgs/PointField.h>
+#include <sensor_msgs/Imu.h>
+
 
 #define PI 3.14159265
 
@@ -82,6 +84,10 @@ private:
     bool mbUpdated;
 
     boost::mutex mMutex;
+    double base_time_;
+
+    ros::Publisher mIMUPub;
+    sensor_msgs::Imu  CarIMU;
 };
 
 } //namespace xqserial_server
