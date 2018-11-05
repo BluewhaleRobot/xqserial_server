@@ -45,7 +45,7 @@ set(SRCS src/main.cpp src/AsyncSerial.cpp src/DiffDriverController.cpp src/Statu
 add_executable(${PROJECT_NAME} ${SRCS})
 add_dependencies(
   ${PROJECT_NAME}
-  ${catkin_EXPORTED_TARGETS} xiaoqiang_log_generate_messages_cpp
+  ${catkin_EXPORTED_TARGETS} xiaoqiang_log_cpp
 )
 
 target_link_libraries(${PROJECT_NAME}
