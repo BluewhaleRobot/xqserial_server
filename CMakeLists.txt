@@ -19,6 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   tf
+  xiaoqiang_log
 )
 
 set(BOOST_LIBS thread date_time system)
@@ -30,7 +31,7 @@ pkg_check_modules(JSONCPP REQUIRED jsoncpp)
 
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS nav_msgs roscpp rospy sensor_msgs std_msgs geometry_msgs
+  CATKIN_DEPENDS nav_msgs roscpp rospy sensor_msgs std_msgs geometry_msgs xiaoqiang_log
 )
 
 include_directories(
@@ -42,6 +43,10 @@ include_directories(
 
 set(SRCS src/main.cpp src/AsyncSerial.cpp src/DiffDriverController.cpp src/StatusPublisher.cpp)
 add_executable(${PROJECT_NAME} ${SRCS})
+add_dependencies(
+  ${PROJECT_NAME}
+  ${catkin_EXPORTED_TARGETS} xiaoqiang_log_generate_messages_cpp
+)
 
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
