@@ -441,7 +441,7 @@ void StatusPublisher::Refresh()
     CarTwist.angular.z = angle_speed * PI / 180.0f;
     mTwistPub.publish(CarTwist);
 
-    CarPower.data = car_status.power;
+    CarPower.data = car_status.power * 7.7 / 4.0;
     mPowerPub.publish(CarPower);
 
     CarOdom.header.stamp = current_time.fromSec(base_time_);
