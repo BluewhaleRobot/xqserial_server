@@ -64,6 +64,8 @@ StatusPublisher::StatusPublisher()
    CarSonar2.min_range = 0.19;
    CarSonar2.max_range = 4.2;
 
+   move_forward_flag = true;
+   move_backward_flag = true;
   /* static tf::TransformBroadcaster br;
    tf::Quaternion q;
    tf::Transform transform;
@@ -303,6 +305,24 @@ void StatusPublisher::Refresh()
           //有障碍物
           flag.data=2;
         }
+
+        if((car_status.hbz1+car_status.hbz2+car_status.hbz4)>0.1&&(car_status.hbz1+car_status.hbz2+car_status.hbz4)<4.0)
+        {
+          move_forward_flag = false;
+        }
+        else{
+          if(!move_forward_flag)
+          {
+            if((delta_car*50.0f)>=0) move_forward_flag = true;
+          }
+        }
+        if(car_status.hbz3>0.1&&car_status.hbz3<2.0)
+        {
+          move_backward_flag = false;
+        }
+        else{
+          move_backward_flag = true;
+        }
         mStatusFlagPub.publish(flag);
 
         int barArea_nums=0;
@@ -379,7 +399,7 @@ void StatusPublisher::Refresh()
           }
           if(ii%1==0)
           {
-            pub_barpoint_cloud_.publish(barcloud_msg);
+            //pub_barpoint_cloud_.publish(barcloud_msg);
           }
         }
         if(clearArea_nums>0)
@@ -444,7 +464,7 @@ void StatusPublisher::Refresh()
           }
           if(ii%1==0)
           {
-            pub_clearpoint_cloud_.publish(clearcloud_msg);
+            //pub_clearpoint_cloud_.publish(clearcloud_msg);
           }
         }
 
@@ -476,7 +496,7 @@ void StatusPublisher::Refresh()
           theta_sum -=theta_sums[theta_sum_index];
           theta_sums[theta_sum_index] = angle_speed * PI /180.0f;
           theta_sum +=theta_sums[theta_sum_index];
-          CarTwist.angular.z=theta_sum/8.0f; 
+          CarTwist.angular.z=theta_sum/8.0f;
           theta_sum_index++;
           if(theta_sum_index>7) theta_sum_index=0;
           //std::cout<<" " << angle_speed * PI /180.0f<<std::endl;
@@ -579,12 +599,23 @@ void StatusPublisher::Refresh()
           distance_sum_index++;
           if(distance_sum_index>1) distance_sum_index = 0;
 
-          distances_[0] = distance1_sum/2.0f;
-          distances_[1] = distance2_sum/2.0f;
+          //distances_[0] = distance1_sum/2.0f;
+          //distances_[1] = distance2_sum/2.0f;
+          distances_[0] = distances_[0]*0.5 + car_status.distance1*0.5;
+          distances_[1] = distances_[1]*0.5 + car_status.distance2*0.5;
+          // if(distances_[0]<0.3&&distances_[0]>0.2&& distances_[1]>0.2 )
+          // {
+          //   if(distances_[1]>0.8) distances_[0] = 0.6;
+          // }
+          if(distances_[1]<0.5&&distances_[1]>0.2&& distances_[0]>0.2 )
+          {
+            if(distances_[0]>0.6) distances_[1] = 0.6;
+          }
          //std::cout<<" " << car_status.distance1 << " " << car_status.distance2<<std::endl;
            //发布超声波topic
            if(distances_[0]>0.1)
            {
+             if(distances_[0]>2.0||distances_[0]<0.201) distances_[0]=2.0;
              CarSonar1.header.stamp = current_time;
              CarSonar1.range = distances_[0];
              mSonar1Pub.publish(CarSonar1);
@@ -592,10 +623,16 @@ void StatusPublisher::Refresh()
 
            if(distances_[1]>0.1)
            {
+             if(distances_[1]>2.0||distances_[1]<0.201) distances_[1]=2.0;
              CarSonar2.header.stamp = current_time;
              CarSonar2.range = distances_[1];
              mSonar2Pub.publish(CarSonar2);
            }
+           if(distances_[0]<0.22&&distances_[1]<0.22)
+           {
+             move_forward_flag = false;
+           }
+
         }
         distance_sum_i++;
 
@@ -647,6 +684,16 @@ void StatusPublisher::get_distances(double distances[2])
 {
   distances[0]=distances_[0];
   distances[1]=distances_[1];
+}
+
+bool StatusPublisher::can_movefoward()
+{
+  return move_forward_flag;
+}
+
+float StatusPublisher::get_ultrasonic_min_distance()
+{
+  return distances_[1];
 }
 
 } //namespace xqserial_server

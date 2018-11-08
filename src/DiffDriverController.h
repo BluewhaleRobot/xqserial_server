@@ -21,6 +21,7 @@ public:
     void updateBarDetectFlag(const std_msgs::Bool& DetectFlag);
     geometry_msgs::Twist get_cmdTwist(void);
     void sendcmd2(const geometry_msgs::Twist &command);
+    void check_faster_stop();
     int speed_debug[2];
     ros::WallTime last_ordertime;
     bool DetectFlag_;

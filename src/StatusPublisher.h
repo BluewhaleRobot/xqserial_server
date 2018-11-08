@@ -60,6 +60,8 @@ public:
     nav_msgs::Odometry get_odom();
     UPLOAD_STATUS car_status;
     void get_distances(double distances[2]);
+    bool can_movefoward();
+    float get_ultrasonic_min_distance();
 private:
 
 
@@ -89,10 +91,12 @@ private:
     ros::Publisher mSonar2Pub;
     ros::Publisher mIMUPub;
     sensor_msgs::Imu  CarIMU;
-    
+
     bool mbUpdated;
     double  distances_[2];
     boost::mutex mMutex;
+    bool move_forward_flag;
+    bool move_backward_flag;
 };
 
 } //namespace xqserial_server

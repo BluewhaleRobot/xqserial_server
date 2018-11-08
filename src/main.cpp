@@ -53,9 +53,10 @@ int main(int argc, char **argv)
         char resetCmd[] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x01, 'I'};
         serial.write(resetCmd, 5);
 
+        ros::Duration(0.5).sleep();
         //下发底层红外开启命令
         char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x01};
-        serial.write(cmd_str,6);
+        //serial.write(cmd_str,6);
 
         ros::Rate r(100);//发布周期为50hz
         while (ros::ok())
@@ -80,7 +81,11 @@ int main(int argc, char **argv)
             {
               //下发底层红外开启命令
               char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x01};
-              serial.write(cmd_str,6);
+              //serial.write(cmd_str,6);
+            }
+            if(i%1 == 0)
+            {
+              xq_diffdriver.check_faster_stop();
             }
             i++;
             r.sleep();

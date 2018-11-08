@@ -64,7 +64,7 @@ void DiffDriverController::updateBarDetectFlag(const std_msgs::Bool& DetectFlag)
     char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x01};
     if(NULL!=cmd_serial)
     {
-        cmd_serial->write(cmd_str,6);
+        //cmd_serial->write(cmd_str,6);
     }
     DetectFlag_=true;
   }
@@ -162,14 +162,33 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     double vx_temp,vtheta_temp;
     vx_temp=command.linear.x;
     vtheta_temp=command.angular.z;
-    if(std::fabs(vx_temp)<0.3)
+    if(std::fabs(vx_temp)<0.1)
     {
-      if(vtheta_temp>0.0002&&vtheta_temp<0.3) vtheta_temp=0.3;
-      if(vtheta_temp<-0.0002&&vtheta_temp>-0.3) vtheta_temp=-0.3;
+      if(vtheta_temp>0.0002&&vtheta_temp<0.1) vtheta_temp=0.1;
+      if(vtheta_temp<-0.0002&&vtheta_temp>-0.1) vtheta_temp=-0.1;
     }
-    if(vx_temp>0 && vx_temp<0.1) vx_temp=0.1;
-    if(vx_temp<0 && vx_temp>-0.1) vx_temp=-0.1;
+    //if(vx_temp>0 && vx_temp<0.1) vx_temp=0.1;
+    //if(vx_temp<0 && vx_temp>-0.1) vx_temp=-0.1;
 
+    if((!xq_status->can_movefoward()) && DetectFlag_)
+    {
+      if(command.linear.x>0)
+      {
+        vx_temp=-2.3;
+        vtheta_temp=0;
+      }
+      if(command.linear.x==0)
+      {
+        vx_temp=0.0;
+        vtheta_temp=0;
+      }
+    }
+
+    float bar_distance = xq_status->get_ultrasonic_min_distance();
+    if(bar_distance<=0.8)
+    {
+      vx_temp = std::min(vx_temp,(bar_distance-0.2));
+    }
     // //转换速度单位，由米转换成转
     // speed_lin=command.linear.x/(2.0*PI*radius);
     // //speed_ang=command.angular.z*separation/(2.0*PI*radius);
@@ -193,7 +212,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     // speed_temp[1]=std::min(speed_temp[1],100.0);
     // speed_temp[1]=std::max(-100.0,speed_temp[1]);
 
-    speed_lin=command.linear.x/(2.0*PI*radius);
+    speed_lin=vx_temp/(2.0*PI*radius);
     //speed_ang=command.angular.z*separation/(2.0*PI*radius);
     speed_ang=vtheta_temp;
 
@@ -206,7 +225,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     speed_temp[1]=std::min(speed_temp[1],100.0);
     speed_temp[1]=std::max(-100.0,speed_temp[1]);
 
-
+    //ROS_ERROR("speed %f %f %f",speed_temp[0],vx_temp,bar_distance);
   //std::cout<<" "<<speed_temp[0]<<" " << speed_temp[1] <<  " "<< command.linear.x <<" "<< command.angular.z <<  " "<< carTwist.linear.x <<" "<< carTwist.angular.z <<std::endl;
   //std::cout<<"radius "<<radius<<std::endl;
   //std::cout<<"ppr "<<wheel_ppr<<std::endl;
@@ -267,7 +286,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     // }
 
     boost::mutex::scoped_lock lock(mMutex);
-
+    cmdTwist_ = command;
     if(!MoveFlag)
     {
       cmd_str[5]=(char)0x53;
@@ -281,7 +300,71 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
    // command.linear.x
 }
 
+void DiffDriverController::check_faster_stop()
+{
+  int i =0;
+  if(xq_status->can_movefoward() || (!DetectFlag_) || xq_status->get_status()==0 || cmdTwist_.linear.x<=-0.001)
+  {
+    return;
+  }
+  geometry_msgs::Twist car_twist = xq_status->get_CarTwist();
+  float current_speed = car_twist.linear.x;
+  float vx_temp=0;
+  //pid快速制动
+  const float k=1.0;
+  vx_temp = -2.3;
+  if(car_twist.linear.x<=0.01) vx_temp =0.0;
+  //下发速度
+  double radius=0,speed_lin=0,speed_ang=0,speed_temp[2];
+  char speed[2]={0,0};//右一左二
+  char cmd_str[13]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x09,(char)0x74,(char)0x53,(char)0x53,(char)0x53,(char)0x53,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
+  radius=xq_status->get_wheel_radius();
 
+  speed_lin=vx_temp/(2.0*PI*radius);
+  //speed_ang=command.angular.z*separation/(2.0*PI*radius);
+  speed_ang=0.0;
+  //转出最大速度百分比,并进行限幅
+  speed_temp[0]=speed_lin/max_wheelspeed*100.0;
+  speed_temp[0]=std::min(speed_temp[0],100.0);
+  speed_temp[0]=std::max(-100.0,speed_temp[0]);
+
+  speed_temp[1]=speed_ang/3.0*100.0;
+  speed_temp[1]=std::min(speed_temp[1],100.0);
+  speed_temp[1]=std::max(-100.0,speed_temp[1]);
+
+
+  //ROS_ERROR("speed %f",speed_temp[0]);
+  for(i=0;i<2;i++)
+  {
+   speed[i]=speed_temp[i];
+   speed_debug[i]=speed_temp[i];
+   if(speed[i]<0)
+   {
+       //if(speed[i]>-5) speed[i]=-4;
+       cmd_str[5+i]=(char)0x42;//B
+       cmd_str[9+i]=-speed[i];
+   }
+   else if(speed[i]>0)
+   {
+       //if(speed[i]<5) speed[i]=4;
+       cmd_str[5+i]=(char)0x46;//F
+       cmd_str[9+i]=speed[i];
+   }
+   else
+   {
+       cmd_str[5+i]=(char)0x53;//S
+       cmd_str[9+i]=(char)0x00;
+   }
+  }
+
+  boost::mutex::scoped_lock lock(mMutex);
+
+  if(NULL!=cmd_serial)
+  {
+      cmd_serial->write(cmd_str,13);
+  }
+  last_ordertime=ros::WallTime::now();
+}
 
 
 
