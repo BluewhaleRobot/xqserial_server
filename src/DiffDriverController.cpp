@@ -27,6 +27,7 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
     speed_debug[1]=0.0;
     last_ordertime=ros::WallTime::now();
     DetectFlag_=true;
+    stopFlag_ = false;
 }
 
 void DiffDriverController::run()
@@ -36,8 +37,16 @@ void DiffDriverController::run()
     ros::Subscriber sub2 = nodeHandler.subscribe("/imu_cal", 1, &DiffDriverController::imuCalibration,this);
     ros::Subscriber sub3 = nodeHandler.subscribe("/globalMoveFlag", 1, &DiffDriverController::updateMoveFlag,this);
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag,this);
+    ros::Subscriber sub5 = nodeHandler.subscribe("/stopFlag", 1, &DiffDriverController::updateStopFlag,this);
     ros::spin();
 }
+
+void DiffDriverController::updateStopFlag(const std_msgs::Bool& stopFlag)
+{
+  boost::mutex::scoped_lock lock(mMutex);
+  stopFlag_=stopFlag.data;
+}
+
 void DiffDriverController::updateMoveFlag(const std_msgs::Bool& moveFlag)
 {
   boost::mutex::scoped_lock lock(mMutex);
@@ -174,6 +183,12 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     //speed_ang=command.angular.z*separation/(2.0*PI*radius);
     speed_ang=vtheta_temp*separation/(2.0*PI*radius);
 
+    if(stopFlag_)
+    {
+      speed_lin=0.0;
+      speed_ang=0.0;
+    }
+
     float scale=std::max(std::abs(speed_lin+speed_ang/2.0),std::abs(speed_lin-speed_ang/2.0))/max_wheelspeed;
     if(scale>1.0)
     {
@@ -264,6 +279,108 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
    // command.linear.x
 }
 
+void DiffDriverController::checkStop()
+{
+
+    static time_t t1=time(NULL),t2;
+    int i=0;
+    double speed_lin=0,speed_ang=0,speed_temp[2];
+    char speed[2]={0,0};//右一左二
+    char cmd_str[13]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x09,(char)0x74,(char)0x53,(char)0x53,(char)0x53,(char)0x53,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
+
+    if(xq_status->get_status()==0) return;//底层还在初始化
+
+    if(stopFlag_)
+    {
+      speed_lin=0.0;
+      speed_ang=0.0;
+    }
+    else
+    {
+      return;
+    }
+    float scale=1.0;
+
+    //转出最大速度百分比,并进行限幅
+    speed_temp[1]=scale*(speed_lin+speed_ang/2)/max_wheelspeed*100.0;
+    speed_temp[1]=std::min(speed_temp[1],100.0);
+    speed_temp[1]=std::max(-100.0,speed_temp[1]);
+
+    speed_temp[0]=scale*(speed_lin-speed_ang/2)/max_wheelspeed*100.0;
+    speed_temp[0]=std::min(speed_temp[0],100.0);
+    speed_temp[0]=std::max(-100.0,speed_temp[0]);
+
+  //std::cout<<" "<<speed_temp[0]<<" " << speed_temp[1] <<  " "<< command.linear.x <<" "<< command.angular.z <<  " "<< carTwist.linear.x <<" "<< carTwist.angular.z <<std::endl;
+  //std::cout<<"radius "<<radius<<std::endl;
+  //std::cout<<"ppr "<<wheel_ppr<<std::endl;
+  //std::cout<<"pwm "<<speed_temp[0]<<std::endl;
+  //  command.linear.x/
+    for(i=0;i<2;i++)
+    {
+     speed[i]=-(int8_t)speed_temp[i];
+     speed_debug[i]=speed_temp[i];
+     if(speed[i]<0)
+     {
+         cmd_str[5+i]=(char)0x42;//B
+         cmd_str[9+i]=-speed[i];
+     }
+     else if(speed[i]>0)
+     {
+         cmd_str[5+i]=(char)0x46;//F
+         cmd_str[9+i]=speed[i];
+     }
+     else
+     {
+         cmd_str[5+i]=(char)0x53;//S
+         cmd_str[9+i]=(char)0x00;
+     }
+    }
+
+    // std::cout<<"hbz1 "<<xq_status->car_status.hbz1<<std::endl;
+    // std::cout<<"hbz2 "<<xq_status->car_status.hbz2<<std::endl;
+    // std::cout<<"hbz3 "<<xq_status->car_status.hbz3<<std::endl;
+    // if(xq_status->get_status()==2)
+    // {
+    //   //有障碍物
+    //   if(xq_status->car_status.hbz1<30&&xq_status->car_status.hbz1>0&&cmd_str[6]==(char)0x46)
+    //   {
+    //     cmd_str[6]=(char)0x53;
+    //   }
+    //   if(xq_status->car_status.hbz2<30&&xq_status->car_status.hbz2>0&&cmd_str[5]==(char)0x46)
+    //   {
+    //     cmd_str[5]=(char)0x53;
+    //   }
+    //   if(xq_status->car_status.hbz3<20&&xq_status->car_status.hbz3>0&&(cmd_str[5]==(char)0x42||cmd_str[6]==(char)0x42))
+    //   {
+    //     cmd_str[5]=(char)0x53;
+    //     cmd_str[6]=(char)0x53;
+    //   }
+    //   if(xq_status->car_status.hbz1<15&&xq_status->car_status.hbz1>0&&(cmd_str[5]==(char)0x46||cmd_str[6]==(char)0x46))
+    //   {
+    //     cmd_str[5]=(char)0x53;
+    //     cmd_str[6]=(char)0x53;
+    //   }
+    //   if(xq_status->car_status.hbz2<15&&xq_status->car_status.hbz2>0&&(cmd_str[5]==(char)0x46||cmd_str[6]==(char)0x46))
+    //   {
+    //     cmd_str[5]=(char)0x53;
+    //     cmd_str[6]=(char)0x53;
+    //   }
+    // }
+
+    boost::mutex::scoped_lock lock(mMutex);
+
+    if(!MoveFlag)
+    {
+      cmd_str[5]=(char)0x53;
+      cmd_str[6]=(char)0x53;
+    }
+    if(NULL!=cmd_serial)
+    {
+        cmd_serial->write(cmd_str,13);
+    }
+    last_ordertime=ros::WallTime::now();
+   // command.linear.x
+}
 
 
 

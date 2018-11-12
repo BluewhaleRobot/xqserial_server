@@ -21,9 +21,12 @@ public:
     void updateBarDetectFlag(const std_msgs::Bool& DetectFlag);
     geometry_msgs::Twist get_cmdTwist(void);
     void sendcmd2(const geometry_msgs::Twist &command);
+    void updateStopFlag(const std_msgs::Bool& stopFlag);
+    void checkStop();
     int speed_debug[2];
     ros::WallTime last_ordertime;
     bool DetectFlag_;
+    bool stopFlag_;
 private:
     double max_wheelspeed;//单位为转每秒,只能为正数
     std::string cmd_topic;
