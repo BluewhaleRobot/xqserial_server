@@ -26,8 +26,8 @@ typedef struct {
     float power;//电源电压【9 13】v
     float theta;//方位角，【0 360）°
     unsigned int encoder_ppr;//车轮1转对应的编码器个数
-    int encoder_delta_r;//右轮编码器增量， 个为单位
     int encoder_delta_l;//左轮编码器增量， 个为单位
+    int encoder_delta_r;//右轮编码器增量， 个为单位
     int encoder_delta_car;//两车轮中心位移，个为单位
     unsigned int  upwoard;//0表示正面朝下安装，１表示正面朝上安装
     float max_speed;//最大转速，圈每秒
@@ -89,7 +89,7 @@ private:
     ros::Publisher mSonar2Pub;
     ros::Publisher mIMUPub;
     sensor_msgs::Imu  CarIMU;
-    
+
     bool mbUpdated;
     double  distances_[2];
     boost::mutex mMutex;

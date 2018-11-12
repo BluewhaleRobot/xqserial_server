@@ -184,13 +184,13 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
       scale=1.0;
     }
     //转出最大速度百分比,并进行限幅
-    speed_temp[0]=scale*(speed_lin+speed_ang/2)/max_wheelspeed*100.0;
-    speed_temp[0]=std::min(speed_temp[0],100.0);
-    speed_temp[0]=std::max(-100.0,speed_temp[0]);
-
-    speed_temp[1]=scale*(speed_lin-speed_ang/2)/max_wheelspeed*100.0;
+    speed_temp[1]=scale*(speed_lin+speed_ang/2)/max_wheelspeed*100.0;
     speed_temp[1]=std::min(speed_temp[1],100.0);
     speed_temp[1]=std::max(-100.0,speed_temp[1]);
+
+    speed_temp[0]=scale*(speed_lin-speed_ang/2)/max_wheelspeed*100.0;
+    speed_temp[0]=std::min(speed_temp[0],100.0);
+    speed_temp[0]=std::max(-100.0,speed_temp[0]);
 
   //std::cout<<" "<<speed_temp[0]<<" " << speed_temp[1] <<  " "<< command.linear.x <<" "<< command.angular.z <<  " "<< carTwist.linear.x <<" "<< carTwist.angular.z <<std::endl;
   //std::cout<<"radius "<<radius<<std::endl;
@@ -199,7 +199,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
   //  command.linear.x/
     for(i=0;i<2;i++)
     {
-     speed[i]=speed_temp[i];
+     speed[i]=-(int8_t)speed_temp[i];
      speed_debug[i]=speed_temp[i];
      if(speed[i]<0)
      {
