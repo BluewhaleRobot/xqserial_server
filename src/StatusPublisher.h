@@ -62,6 +62,7 @@ public:
     void get_distances(double distances[2]);
     bool can_movefoward();
     float get_ultrasonic_min_distance();
+    float get_wheel_v_theta();
 private:
 
 
@@ -97,6 +98,7 @@ private:
     boost::mutex mMutex;
     bool move_forward_flag;
     bool move_backward_flag;
+    double base_time_;
 };
 
 } //namespace xqserial_server

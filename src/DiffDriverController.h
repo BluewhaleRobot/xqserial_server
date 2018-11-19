@@ -22,9 +22,11 @@ public:
     geometry_msgs::Twist get_cmdTwist(void);
     void sendcmd2(const geometry_msgs::Twist &command);
     void check_faster_stop();
+    void updateFastStopFlag(const std_msgs::Int32& fastStopmsg);
     int speed_debug[2];
     ros::WallTime last_ordertime;
     bool DetectFlag_;
+    bool fastStopFlag_;
 private:
     double max_wheelspeed;//单位为转每秒,只能为正数
     std::string cmd_topic;

@@ -74,7 +74,7 @@ StatusPublisher::StatusPublisher()
    transform.setRotation(q);
    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "base_footprint", "base_link"));
    */
-
+   base_time_ = ros::Time::now().toSec();
 }
 
 StatusPublisher::StatusPublisher(double separation,double radius)
@@ -181,6 +181,10 @@ void StatusPublisher::Update(const char data[], unsigned int len)
                             break;
                           }
                       }
+                    }
+                    if (mbUpdated)
+                    {
+                      base_time_ = ros::Time::now().toSec();
                     }
                     // if(mbUpdated&&(car_status.encoder_delta_car>3000||car_status.encoder_delta_car<-3000))
                     // {
@@ -359,7 +363,7 @@ void StatusPublisher::Refresh()
         {
           //发布雷区
           PointCloud::Ptr barcloud_msg(new PointCloud);
-          barcloud_msg->header.stamp = current_time;
+          barcloud_msg->header.stamp = current_time.fromSec(base_time_);
           barcloud_msg->height = 1;
           barcloud_msg->width  = barArea_nums;
           barcloud_msg->is_dense = true;
@@ -406,7 +410,7 @@ void StatusPublisher::Refresh()
         {
           //发布雷区
           PointCloud::Ptr clearcloud_msg(new PointCloud);
-          clearcloud_msg->header.stamp = current_time;
+          clearcloud_msg->header.stamp = current_time.fromSec(base_time_);
           clearcloud_msg->height = 1;
           clearcloud_msg->width  = clearArea_nums;
           clearcloud_msg->is_dense = true;
@@ -492,6 +496,15 @@ void StatusPublisher::Refresh()
           {
             angle_speed=car_status.IMU[5];
           }
+          static float angle_speed_last=0;
+          if(isnan(angle_speed)|| std::fabs(angle_speed)>500)
+          {
+            angle_speed = angle_speed_last;
+          }
+          else
+          {
+            angle_speed_last = angle_speed;
+          }
 
           theta_sum -=theta_sums[theta_sum_index];
           theta_sums[theta_sum_index] = angle_speed * PI /180.0f;
@@ -511,7 +524,7 @@ void StatusPublisher::Refresh()
         CarPower.data = car_status.power;
         mPowerPub.publish(CarPower);
 
-        CarOdom.header.stamp = current_time;
+        CarOdom.header.stamp = current_time.fromSec(base_time_);
         CarOdom.header.frame_id = "odom";
         CarOdom.pose.pose.position.x = CarPos2D.x;
         CarOdom.pose.pose.position.y = CarPos2D.y;
@@ -544,13 +557,13 @@ void StatusPublisher::Refresh()
         transform.setOrigin( tf::Vector3(CarPos2D.x, CarPos2D.y, 0.0) );
         q.setRPY(0, 0, CarPos2D.theta/180*PI);
         transform.setRotation(q);
-        br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "odom", "base_footprint"));
+        br.sendTransform(tf::StampedTransform(transform, current_time.fromSec(base_time_), "odom", "base_footprint"));
 
 
         //publish IMU
         tf::Quaternion q_imu;
         q_imu.setRPY(0, 0, car_status.theta/180.0*PI);
-        CarIMU.header.stamp = current_time;
+        CarIMU.header.stamp = current_time.fromSec(base_time_);
         CarIMU.header.frame_id = "imu";
         CarIMU.orientation.x=q_imu.x();
         CarIMU.orientation.y=q_imu.y();
@@ -601,8 +614,8 @@ void StatusPublisher::Refresh()
 
           //distances_[0] = distance1_sum/2.0f;
           //distances_[1] = distance2_sum/2.0f;
-          distances_[0] = distances_[0]*0.5 + car_status.distance1*0.5;
-          distances_[1] = distances_[1]*0.5 + car_status.distance2*0.5;
+          distances_[0] = 2.0;//distances_[0]*0.5 + car_status.distance1*0.5;
+          distances_[1] = 2.0;//distances_[1]*0.5 + car_status.distance2*0.5;
           // if(distances_[0]<0.3&&distances_[0]>0.2&& distances_[1]>0.2 )
           // {
           //   if(distances_[1]>0.8) distances_[0] = 0.6;
@@ -616,7 +629,7 @@ void StatusPublisher::Refresh()
            if(distances_[0]>0.1)
            {
              if(distances_[0]>2.0||distances_[0]<0.201) distances_[0]=2.0;
-             CarSonar1.header.stamp = current_time;
+             CarSonar1.header.stamp = current_time.fromSec(base_time_);
              CarSonar1.range = distances_[0];
              mSonar1Pub.publish(CarSonar1);
            }
@@ -624,7 +637,7 @@ void StatusPublisher::Refresh()
            if(distances_[1]>0.1)
            {
              if(distances_[1]>2.0||distances_[1]<0.201) distances_[1]=2.0;
-             CarSonar2.header.stamp = current_time;
+             CarSonar2.header.stamp = current_time.fromSec(base_time_);
              CarSonar2.range = distances_[1];
              mSonar2Pub.publish(CarSonar2);
            }
@@ -693,7 +706,27 @@ bool StatusPublisher::can_movefoward()
 
 float StatusPublisher::get_ultrasonic_min_distance()
 {
-  return distances_[1];
+  return 2.0;
 }
 
+float StatusPublisher::get_wheel_v_theta()
+{
+  float delta_car_r,delta_car_l;
+  delta_car_r=car_status.encoder_delta_r*1.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius;
+  delta_car_l=car_status.encoder_delta_l*1.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius;
+
+  if(delta_car_l>0.1||delta_car_l<-0.1)
+  {
+    // std::cout<<"get you!"<<std::endl;
+    delta_car_l = 0;
+  }
+  if(delta_car_r>0.1||delta_car_r<-0.1)
+  {
+    // std::cout<<"get you!"<<std::endl;
+    delta_car_r = 0;
+  }
+  static float last_value=0.0;
+  last_value = last_value*0.8 + (delta_car_r - delta_car_l)*50.f/wheel_separation*0.2;
+  return last_value;
+}
 } //namespace xqserial_server

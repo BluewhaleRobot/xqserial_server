@@ -36,6 +36,7 @@ void DiffDriverController::run()
     ros::Subscriber sub2 = nodeHandler.subscribe("/imu_cal", 1, &DiffDriverController::imuCalibration,this);
     ros::Subscriber sub3 = nodeHandler.subscribe("/global_move_flag", 1, &DiffDriverController::updateMoveFlag,this);
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag,this);
+    ros::Subscriber sub5 = nodeHandler.subscribe("/move_base/StatusFlag", 1, &DiffDriverController::updateFastStopFlag,this);
     ros::spin();
 }
 void DiffDriverController::updateMoveFlag(const std_msgs::Bool& moveFlag)
@@ -56,6 +57,18 @@ void DiffDriverController::imuCalibration(const std_msgs::Bool& calFlag)
     }
   }
 }
+void DiffDriverController::updateFastStopFlag(const std_msgs::Int32& fastStopmsg)
+{
+  if(fastStopmsg.data == 2)
+  {
+    fastStopFlag_ = true;
+  }
+  else
+  {
+    fastStopFlag_ = false;
+  }
+}
+
 void DiffDriverController::updateBarDetectFlag(const std_msgs::Bool& DetectFlag)
 {
   if(DetectFlag.data)
@@ -170,6 +183,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     //if(vx_temp>0 && vx_temp<0.1) vx_temp=0.1;
     //if(vx_temp<0 && vx_temp>-0.1) vx_temp=-0.1;
 
+    if(std::fabs(xq_status->get_wheel_v_theta()-carTwist.angular.z)>1.0) vtheta_temp=0;
     if((!xq_status->can_movefoward()) && DetectFlag_)
     {
       if(command.linear.x>0)
@@ -302,18 +316,37 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
 
 void DiffDriverController::check_faster_stop()
 {
+  static bool last_flag=true;
   int i =0;
-  if(xq_status->can_movefoward() || (!DetectFlag_) || xq_status->get_status()==0 || cmdTwist_.linear.x<=-0.001)
-  {
-    return;
-  }
   geometry_msgs::Twist car_twist = xq_status->get_CarTwist();
-  float current_speed = car_twist.linear.x;
-  float vx_temp=0;
-  //pid快速制动
-  const float k=1.0;
-  vx_temp = -2.3;
-  if(car_twist.linear.x<=0.01) vx_temp =0.0;
+  float vx_temp=0,vtheta_temp=0;
+  if(std::fabs(xq_status->get_wheel_v_theta()-car_twist.angular.z)>1.0)
+  {
+    vtheta_temp=0;
+  }else
+  {
+    if( (!DetectFlag_) || xq_status->get_status()==0 || cmdTwist_.linear.x<=-0.001)
+    {
+      fastStopFlag_ = false;
+      return;
+    }
+    bool current_fag = !fastStopFlag_;
+    if(current_fag) current_fag = xq_status->can_movefoward();
+    if( current_fag && last_flag)
+    {
+      last_flag = current_fag;
+      return;
+    }
+
+    float current_speed = car_twist.linear.x;
+    //pid快速制动
+    const float k=1.0;
+    vx_temp = -2.3;
+    if(car_twist.linear.x<=0.01) vx_temp =0.0;
+
+    if(current_fag) vx_temp =0.0;
+    last_flag = current_fag;
+  }
   //下发速度
   double radius=0,speed_lin=0,speed_ang=0,speed_temp[2];
   char speed[2]={0,0};//右一左二
@@ -322,7 +355,7 @@ void DiffDriverController::check_faster_stop()
 
   speed_lin=vx_temp/(2.0*PI*radius);
   //speed_ang=command.angular.z*separation/(2.0*PI*radius);
-  speed_ang=0.0;
+  speed_ang=vtheta_temp;
   //转出最大速度百分比,并进行限幅
   speed_temp[0]=speed_lin/max_wheelspeed*100.0;
   speed_temp[0]=std::min(speed_temp[0],100.0);
