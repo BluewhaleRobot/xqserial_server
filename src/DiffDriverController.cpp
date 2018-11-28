@@ -123,9 +123,30 @@ void DiffDriverController::dealCmd_vel(const geometry_msgs::Twist &command)
     speed_temp[0] = 0;
     speed_temp[1] = 0;
   }
-  left_speed_ = (int16_t)(speed_temp[1]*max_wheelspeed*60.0f*8192/3000.0f);
-  right_speed_ = (int16_t)(speed_temp[0]*max_wheelspeed*60.0f*8192/3000.0f);
+  left_speed_ = -(int16_t)(speed_temp[1]*max_wheelspeed*60.0f*8192/3000.0f/100.0f);
+  right_speed_ = (int16_t)(speed_temp[0]*max_wheelspeed*60.0f*8192/3000.0f/100.0f);
   send_flag_ = true;
+  //下发速度指令
+   char speed_cmd[8] = {(char)0x01,(char)0x06,(char)0x00,(char)0x11,(char)0x00,(char)0x00,(char)0x94,(char)0x32};//电压电流
+  uint8_t crc_hl[2];
+  speed_cmd[0] = 0x01;
+  speed_cmd[4] = (left_speed_>>8)&0xff;
+  speed_cmd[5] = left_speed_&0xff;
+  xqserial_server::CRC16CheckSum((unsigned char *)speed_cmd, 6, crc_hl);
+  speed_cmd[6] = crc_hl[0];
+  speed_cmd[7] = crc_hl[1];
+  cmd_serial_car->write(speed_cmd,8);
+  //ROS_ERROR("oups50 %x %x %x %x %d %d",speed_cmd[4],speed_cmd[5],left_speed_,right_speed_,left_speed_,right_speed_);
+  usleep(15000);//延时1MS，等待数据上传
+
+  speed_cmd[0] = 0x02;
+  speed_cmd[4] = (right_speed_>>8)&0xff;
+  speed_cmd[5] = right_speed_&0xff;
+  xqserial_server::CRC16CheckSum((unsigned char *)speed_cmd, 6, crc_hl);
+  speed_cmd[6] = crc_hl[0];
+  speed_cmd[7] = crc_hl[1];
+  cmd_serial_car->write(speed_cmd,8);
+  usleep(15000);//延时1MS，等待数据上传
 }
 
 bool DiffDriverController::get_speed(int16_t & left_speed ,int16_t & right_speed)

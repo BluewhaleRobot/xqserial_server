@@ -26,10 +26,19 @@ namespace xqserial_server
 {
 typedef struct {
     int status_imu;//小车状态，0表示未初始化，1表示正常，-1表示error
-    float power_imu;//电源电压【9 13】v
-    float quat[4];//4元数
-    float IMU[9];//mpu9250 9轴数据
-    float distance[4];//超声波距离，单位m
+    float power_imu;             //电源电压【9 13】v
+    float theta;             //方位角，【0 360）°
+    int encoder_ppr;         //车轮1转对应的编码器个数
+    int encoder_delta_r;     //右轮编码器增量， 个为单位
+    int encoder_delta_l;     //左轮编码器增量， 个为单位
+    int encoder_delta_car;   //两车轮中心位移，个为单位
+    int omga_r;              //右轮转速 个每秒
+    int omga_l;              //左轮转速 个每秒
+    float distance1;         //第一个超声模块距离值 单位cm
+    float distance2;         //第二个超声模块距离值 单位cm
+    float distance3;         //第三个超声模块距离值 单位cm
+    float distance4;         //第四个超声模块距离值 单位cm
+    float IMU[9];            //mpu9250 9轴数据
     unsigned int time_stamp_imu;//时间戳
 
     int encoder_r_current;//右轮编码器当期读数， 个为单位
@@ -44,17 +53,8 @@ typedef struct {
     int current_right; //0.01A
     unsigned int current_register;
 
-    float theta;//方位角，【0 360）°
-    int encoder_ppr;//车轮1转对应的编码器个数
-    int encoder_delta_car;//两车轮中心位移，个为单位
-    int omga_r;//右轮转速 个每秒
-    int omga_l;//左轮转速 个每秒
     int status;
 
-    int encoder_r_last;//右轮编码器上一次读数， 个为单位
-    int encoder_l_last;//左轮编码器上一次读数， 个为单位
-    int encoder_delta_r;//右轮编码器增量， 个为单位
-    int encoder_delta_l;//左轮编码器增量， 个为单位
 }UPLOAD_STATUS;
 
 class StatusPublisher
@@ -99,8 +99,6 @@ private:
     ros::Publisher mStatusFlagPub;
     ros::Publisher mPowerPub;
     ros::Publisher mOdomPub;
-    ros::Publisher pub_barpoint_cloud_;
-    ros::Publisher pub_clearpoint_cloud_;
     ros::Publisher mIMUPub;
 
     bool mbUpdated_imu;
@@ -116,8 +114,7 @@ private:
     bool yaw_ready;
 
     bool debug_flag;
-    int battery;
-    ros::Publisher mBatteryPub;
+    double base_time_;
 };
 
 } //namespace xqserial_server

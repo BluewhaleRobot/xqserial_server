@@ -152,7 +152,7 @@ set(BOOST_LIBS thread date_time system)
 find_package(Boost COMPONENTS ${BOOST_LIBS} REQUIRED)
 find_package(Threads REQUIRED)
 
-set(SRCS src/main.cpp src/AsyncSerial.cpp src/DiffDriverController.cpp src/StatusPublisher.cpp src/crc16.cpp src/TimeoutSerial.cpp)
+set(SRCS src/main.cpp src/AsyncSerial.cpp src/DiffDriverController.cpp src/StatusPublisher.cpp src/crc16.cpp)
 add_executable(${PROJECT_NAME} ${SRCS})
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME} PREFIX "")

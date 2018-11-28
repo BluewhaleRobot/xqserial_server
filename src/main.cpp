@@ -1,6 +1,5 @@
 
 #include "AsyncSerial.h"
-#include "TimeoutSerial.h"
 
 #include <iostream>
 #include <boost/thread.hpp>
@@ -73,9 +72,9 @@ int main(int argc, char **argv)
       char resetCmd[] = {(char)0xcd,(char)0xeb,(char)0xd7,(char)0x01, 'I'};
       //serial_car.write(resetCmd, 5);
       serial_imu.write(resetCmd, 5);
-      ros::Duration(0.5).sleep();
+      ros::Duration(5).sleep();
 
-      ros::Rate r(50);//发布周期为50hz
+      ros::Rate r(100);//发布周期为50hz
       int i=0;
       const char left_speed_mode_cmd1[8] = {(char)0x01,(char)0x06,(char)0x00,(char)0x19,(char)0x00,(char)0x2f,(char)0x19,(char)0xd1}; //模式
       const char left_speed_mode_cmd2[8] = {(char)0x01,(char)0x06,(char)0x00,(char)0x13,(char)0x0a,(char)0x0a,(char)0xfe,(char)0xa8};//加减速度
@@ -95,14 +94,12 @@ int main(int argc, char **argv)
       const char left_query2[8] = {(char)0x01,(char)0x03,(char)0x00,(char)0xd2,(char)0x00,(char)0x02,(char)0x64,(char)0x32};//状态、转速
       const char left_query3[8] = {(char)0x01,(char)0x03,(char)0x00,(char)0xd4,(char)0x00,(char)0x02,(char)0x84,(char)0x33};//编码器计数
 
-      const char right_query1[8] = {(char)0x01,(char)0x03,(char)0x00,(char)0xd1,(char)0x00,(char)0x02,(char)0x94,(char)0x01};//电压电流
-      const char right_query2[8] = {(char)0x01,(char)0x03,(char)0x00,(char)0xd2,(char)0x00,(char)0x02,(char)0x64,(char)0x01};//状态、转速
-      const char right_query3[8] = {(char)0x01,(char)0x03,(char)0x00,(char)0xd4,(char)0x00,(char)0x02,(char)0x84,(char)0x00};//编码器计数
+      const char right_query1[8] = {(char)0x02,(char)0x03,(char)0x00,(char)0xd1,(char)0x00,(char)0x02,(char)0x94,(char)0x01};//电压电流
+      const char right_query2[8] = {(char)0x02,(char)0x03,(char)0x00,(char)0xd2,(char)0x00,(char)0x02,(char)0x64,(char)0x01};//状态、转速
+      const char right_query3[8] = {(char)0x02,(char)0x03,(char)0x00,(char)0xd4,(char)0x00,(char)0x02,(char)0x84,(char)0x00};//编码器计数
 
       while (ros::ok())
       {
-          r.sleep();
-          //continue;
           if(serial_car.errorStatus() || serial_car.isOpen()==false)
           {
               cerr<<"Error: serial port closed unexpectedly"<<endl;
@@ -112,127 +109,60 @@ int main(int argc, char **argv)
           //先配置速度模式
           if(xq_status.car_status.left_driver_status==0)
           {
-            ROS_ERROR("oups1");
+            ROS_ERROR("enable left motor!");
             serial_car.write(left_speed_mode_cmd1,8);
-            usleep(2000);//延时1MS，等待数据上传
+            usleep(15000);//延时1MS，等待数据上传
             serial_car.write(left_speed_mode_cmd2,8);
-            usleep(2000);//延时1MS，等待数据上传
+            usleep(15000);//延时1MS，等待数据上传
             serial_car.write(left_speed_mode_cmd3,8);
-            usleep(2000);//延时1MS，等待数据上传
+            usleep(15000);//延时1MS，等待数据上传
             serial_car.write(left_speed_mode_cmd4,8);
-            usleep(2000);//延时1MS，等待数据上传
-            ROS_ERROR("oups1.2");
+            usleep(15000);//延时1MS，等待数据上传
+            xq_status.set_register(0x000000d2);
             serial_car.write(left_query2,8);
-            usleep(6000);//延时1MS，等待数据上传
+            usleep(200000);//延时1MS，等待数据上传
             continue;
           }
           if(xq_status.car_status.left_driver_status>1 && xq_status.car_status.left_driver_status<0x80)
           {
-            ROS_ERROR("oups2");
+            ROS_ERROR("clear left motor error!");
             serial_car.write(left_speed_mode_cmd6,8);
-            usleep(1000);//延时1MS，等待数据上传
+            usleep(15000);//延时1MS，等待数据上传
+            xq_status.set_register(0x000000d2);
             serial_car.write(left_query2,8);
-            usleep(1000);//延时1MS，等待数据上传
+            usleep(200000);//延时1MS，等待数据上传
             continue;
           }
 
           if(xq_status.car_status.right_driver_status==0)
           {
-            ROS_ERROR("oups3");
+            ROS_ERROR("enable right motor!");
             serial_car.write(right_speed_mode_cmd1,8);
-            usleep(1000);//延时1MS，等待数据上传
+            usleep(15000);//延时1MS，等待数据上传
             serial_car.write(right_speed_mode_cmd2,8);
-            usleep(1000);//延时1MS，等待数据上传
+            usleep(15000);//延时1MS，等待数据上传
             serial_car.write(right_speed_mode_cmd3,8);
-            usleep(1000);//延时1MS，等待数据上传
+            usleep(15000);//延时1MS，等待数据上传
             serial_car.write(right_speed_mode_cmd4,8);
-            usleep(1000);//延时1MS，等待数据上传
+            usleep(15000);//延时1MS，等待数据上传
+            xq_status.set_register(0x000000d2);
             serial_car.write(right_query2,8);
-            usleep(1000);//延时1MS，等待数据上传
+            usleep(20000);//延时1MS，等待数据上传
             continue;
           }
           if(xq_status.car_status.right_driver_status>1 && xq_status.car_status.right_driver_status<0x80)
           {
-            ROS_ERROR("oups4");
+            ROS_ERROR("clear right motor error!");
             serial_car.write(right_speed_mode_cmd6,8);
-            usleep(1000);//延时1MS，等待数据上传
+            usleep(15000);//延时1MS，等待数据上传
+            xq_status.set_register(0x000000d2);
             serial_car.write(right_query2,8);
-            usleep(1000);//延时1MS，等待数据上传
+            usleep(20000);//延时1MS，等待数据上传
             continue;
           }
-
           i++;
-          int16_t left_speed ,right_speed;
-          char speed_cmd[8] = {(char)0x01,(char)0x06,(char)0x00,(char)0x11,(char)0x00,(char)0x00,(char)0x94,(char)0x32};//电压电流
-          if(xq_diffdriver.get_speed(left_speed ,right_speed))
-          {
-            //下发速度指令
-            uint8_t crc_hl[2];
-            speed_cmd[0] = 0x01;
-            speed_cmd[4] = (left_speed>>8)|0xff;
-            speed_cmd[5] = left_speed|0xff;
-            xqserial_server::CRC16CheckSum((unsigned char *)speed_cmd, 6, crc_hl);
-            speed_cmd[6] = crc_hl[0];
-            speed_cmd[7] = crc_hl[1];
-            serial_car.write(speed_cmd,8);
-            usleep(1000);//延时1MS，等待数据上传
-
-            speed_cmd[0] = 0x02;
-            speed_cmd[4] = (right_speed>>8)|0xff;
-            speed_cmd[5] = right_speed|0xff;
-            xqserial_server::CRC16CheckSum((unsigned char *)speed_cmd, 6, crc_hl);
-            speed_cmd[6] = crc_hl[0];
-            speed_cmd[7] = crc_hl[1];
-            serial_car.write(speed_cmd,8);
-            usleep(1000);//延时1MS，等待数据上传
-          }
-          else if(i%50)
-          {
-            //下发速度指令
-            uint8_t crc_hl[2];
-            speed_cmd[0] = 0x01;
-            speed_cmd[4] = (left_speed>>8)|0xff;
-            speed_cmd[5] = left_speed|0xff;
-            xqserial_server::CRC16CheckSum((unsigned char *)speed_cmd, 6, crc_hl);
-            speed_cmd[6] = crc_hl[0];
-            speed_cmd[7] = crc_hl[1];
-            serial_car.write(speed_cmd,8);
-            usleep(1000);//延时1MS，等待数据上传
-
-            speed_cmd[0] = 0x02;
-            speed_cmd[4] = (right_speed>>8)|0xff;
-            speed_cmd[5] = right_speed|0xff;
-            xqserial_server::CRC16CheckSum((unsigned char *)speed_cmd, 6, crc_hl);
-            speed_cmd[6] = crc_hl[0];
-            speed_cmd[7] = crc_hl[1];
-            serial_car.write(speed_cmd,8);
-            usleep(1000);//延时1MS，等待数据上传
-          }
-          if(i%1==0)
-          {
-            //下发查询指令
-            xq_status.set_register(0x000000d1);
-            serial_car.write(left_query1,8);
-            usleep(1000);//延时1MS，等待数据上传
-            xq_status.set_register(0x000000d2);
-            serial_car.write(left_query2,8);
-            usleep(1000);//延时1MS，等待数据上传
-            xq_status.set_register(0x000000d1);
-            serial_car.write(right_query1,8);
-            usleep(1000);//延时1MS，等待数据上传
-            xq_status.set_register(0x000000d2);
-            serial_car.write(right_query2,8);
-            usleep(1000);//延时1MS，等待数据上传
-
-            xq_status.set_register(0x000000d4);
-            serial_car.write(left_query3,8);
-            usleep(1000);//延时1MS，等待数据上传
-            xq_status.set_register(0x000000d4);
-            serial_car.write(right_query3,8);
-            usleep(1000);//延时1MS，等待数据上传
-
-            xq_status.Refresh();//定时发布状态
-          }
+          xq_status.Refresh();//定时发布状态
+          r.sleep();
       }
       quit:
       serial_car.close();

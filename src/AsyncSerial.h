@@ -100,7 +100,7 @@ public:
      * \param size array size
      */
     void write(const char *data, size_t size);
-
+    void write2(const char *data, size_t size);
      /**
      * Write data asynchronously. Returns immediately.
      * \param data to be sent through the serial device

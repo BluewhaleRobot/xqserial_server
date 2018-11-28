@@ -35,25 +35,22 @@ StatusPublisher::StatusPublisher()
     int i=0;
     int * status;
     status=(int *)&car_status;
-    for(i=0;i<40;i++)
+    for(i=0;i<35;i++)
     {
         status[i]=0;
     }
     car_status.encoder_ppr=4096;
-    for(i=0;i<4;i++)
-    {
-      car_status.distance[i]=-0.2;
-    }
+    // for(i=0;i<4;i++)
+    // {
+    //   car_status.distance[i]=-0.2;
+    // }
    mPose2DPub = mNH.advertise<geometry_msgs::Pose2D>("xqserial_server/Pose2D",1,true);
    mStatusFlagPub = mNH.advertise<std_msgs::Int32>("xqserial_server/StatusFlag",1,true);
    mTwistPub = mNH.advertise<geometry_msgs::Twist>("xqserial_server/Twist",1,true);
    mPowerPub = mNH.advertise<std_msgs::Float64>("xqserial_server/Power", 1, true);
    mOdomPub = mNH.advertise<nav_msgs::Odometry>("xqserial_server/Odom", 1, true);
-   pub_barpoint_cloud_ = mNH.advertise<PointCloud>("kinect/barpoints", 1, true);
-   pub_clearpoint_cloud_ = mNH.advertise<PointCloud>("kinect/clearpoints", 1, true);
    mIMUPub = mNH.advertise<sensor_msgs::Imu>("xqserial_server/IMU", 1, true);
 
-   mBatteryPub = mNH.advertise<std_msgs::Int32>("xqserial_server/Battery",1,true);
   /* static tf::TransformBroadcaster br;
    tf::Quaternion q;
    tf::Transform transform;
@@ -74,6 +71,7 @@ StatusPublisher::StatusPublisher()
    car_status.current_register = 0x00000000;
    car_status.left_driver_status = 0;
    car_status.right_driver_status = 0;
+   base_time_ = ros::Time::now().toSec();
 }
 
 StatusPublisher::StatusPublisher(double separation,double radius,bool debugFlag)
@@ -82,8 +80,6 @@ StatusPublisher::StatusPublisher(double separation,double radius,bool debugFlag)
     wheel_separation=separation;
     wheel_radius=radius;
     debug_flag=debugFlag;
-
-    battery=0;
 }
 
 void StatusPublisher::Update_car(const char data[], unsigned int len)
@@ -99,7 +95,7 @@ void StatusPublisher::Update_car(const char data[], unsigned int len)
         cmd_string_buf.pop_front();
         cmd_string_buf.push_back(current_str);
         //std::cout<< std::hex  << (int)current_str <<std::endl;
-        ROS_ERROR("current %d %d",data[i],i);
+        //ROS_ERROR("current %d %d",data[i],i);
         if((cmd_string_buf[0]!=0x01 && cmd_string_buf[0]!=0x02)) //校验地址
         {
           continue;
@@ -112,12 +108,12 @@ void StatusPublisher::Update_car(const char data[], unsigned int len)
         uint8_t crc_hl[2];
         unsigned char cmd_string_buf_copy[7] = {cmd_string_buf[0],cmd_string_buf[1],cmd_string_buf[2],cmd_string_buf[3],cmd_string_buf[4],cmd_string_buf[5],cmd_string_buf[6]};
         xqserial_server::CRC16CheckSum(cmd_string_buf_copy, 7, crc_hl);
-        ROS_ERROR("crc %x %x , in %x %x",crc_hl[0],crc_hl[1],cmd_string_buf[7],cmd_string_buf[8]);
+        //ROS_ERROR("crc %x %x , in %x %x",crc_hl[0],crc_hl[1],cmd_string_buf[7],cmd_string_buf[8]);
         if(cmd_string_buf[7]!=crc_hl[0] || cmd_string_buf[8]!=crc_hl[1] )
         {
           continue;
         }
-        ROS_ERROR("get one");
+        ROS_ERROR("receive one package!");
         //有效包，开始提取数据
         {
           boost::mutex::scoped_lock lock(mMutex_car);
@@ -228,9 +224,9 @@ void StatusPublisher::Update_imu(const char data[], unsigned int len)
                     //std::cout<<"runup4 "<<std::endl;
                     boost::mutex::scoped_lock lock(mMutex_imu);
                     //当前包已经处理完成，开始处理
-                    if(new_packed_ok_len==100)
+                    if(new_packed_ok_len==115)
                     {
-                      for(j=0;j<20;j++)
+                      for(j=0;j<23;j++)
                       {
                           memcpy(&receive_byte[j],&cmd_string_buf[5*j],4);
                       }
@@ -240,14 +236,19 @@ void StatusPublisher::Update_imu(const char data[], unsigned int len)
 
                     if(mbUpdated_imu)
                     {
-                      for(j=0;j<19;j++)
+                      for(j=0;j<7;j++)
                       {
                           if(cmd_string_buf[5*j+4]!=32)
                           {
                             mbUpdated_imu=false;
+                            car_status.encoder_ppr = 4096;
                             break;
                           }
                       }
+                    }
+                    if (mbUpdated_imu)
+                    {
+                      base_time_ = ros::Time::now().toSec();
                     }
                     new_packed_ok_len=0;
                     new_packed_len=0;
@@ -261,306 +262,148 @@ void StatusPublisher::Update_imu(const char data[], unsigned int len)
     return;
 }
 
-
 void StatusPublisher::Refresh()
 {
-  static bool update_theta=false;
-  static bool first_update_car=true;
-  //先处理imu
+  boost::mutex::scoped_lock lock(mMutex_imu);
+  static double theta_last = 0.0;
+  static unsigned int ii = 0;
+  static bool theta_updateflag = false;
+  ii++;
+  //std::cout<<"runR"<< mbUpdated<<std::endl;
+  if (mbUpdated_imu)
   {
-    static float yaw_last=0.0;
-    static int update_nums=0;
-    boost::mutex::scoped_lock lock(mMutex_imu);
-    float angle;
-    if(car_status.status_imu==1 && yaw_ready )
+    // Time
+    ros::Time current_time;
+
+    if (car_status.status == 0)
     {
-      update_theta=true;
+      theta_updateflag = false;
     }
     else
     {
-      update_theta=false;
+      theta_updateflag = true;
     }
+    //pose
+    double delta_car, delta_x, delta_y, delta_theta, var_len, var_angle;
 
-    if(mbUpdated_imu && car_status.status_imu==1)
+    var_len = (50.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius) * (50.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius);
+    var_angle = (0.01f / 180.0f * PI) * (0.01f / 180.0f * PI);
+
+    delta_car = (car_status.encoder_delta_r + car_status.encoder_delta_l) / 2.0f * 1.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius;
+    if (delta_car > 0.08 || delta_car < -0.08)
     {
-      //4元数转角度
-      float pitch,roll,yaw;
-      float q0,q1,q2,q3;
-      q0 = car_status.quat[0];
-      q1 = car_status.quat[1];
-      q2 = car_status.quat[2];
-      q3 = car_status.quat[3];
-      pitch = asin(2*q1*q3 - 2*q0*q2)*57.3;
-      roll = atan2(2*q2*q3 + 2*q0*q1, -2*q1*q1 - 2*q2*q2 + 1)* 57.3;
-      yaw = atan2(2*(q1*q2 + q0*q3), q0*q0+q1*q1-q2*q2-q3*q3) * 57.3;
-      if(!yaw_ready)
-      {
-        //先计算飘逸平均值初始值
-        if(yaw_index==0) yaw_last = yaw;
-        if(std::fabs(yaw - yaw_last)<0.01)
-        {
-          yaw_sum -= yaw_deltas[yaw_index];
-          yaw_deltas[yaw_index] = yaw - yaw_last;
-          yaw_sum += yaw_deltas[yaw_index];
-
-          yaw_index++;
-          if(yaw_index>99)
-          {
-            yaw_index = 0;
-          }
-          update_nums++;
-          if(update_nums>300)
-          {
-            yaw_ready = true;
-            update_theta=true;
-            yaw_omega = yaw_sum/100.0;
-            update_nums=25;
-          }
-        }
-
-      }
-     else
-     {
-       //更新飘逸速率
-      // std::cout<<"oups4: "<<std::endl;
-       if(car_status.encoder_delta_r == 0 && car_status.encoder_delta_l == 0)
-       {
-         //
-         if(update_nums<25)
-         {
-           update_nums++;
-         }
-         else
-         {
-           if(std::fabs(yaw - yaw_last)<0.01)
-           {
-             yaw_sum -= yaw_deltas[yaw_index];
-             yaw_deltas[yaw_index] = yaw - yaw_last;
-             yaw_sum += yaw_deltas[yaw_index];
-
-             yaw_index++;
-             if(yaw_index>99)
-             {
-               yaw_index = 0;
-             }
-             yaw_omega = yaw_sum/100.0;
-           }
-         }
-         if(debug_flag)
-         {
-           if((yaw - yaw_last)<-179.999)
-           {
-             car_status.theta += 360 + (yaw - yaw_last) - yaw_omega;
-           }
-           else if((yaw - yaw_last)>179.999)
-           {
-             car_status.theta += -360 + (yaw - yaw_last) - yaw_omega;
-           }
-           else
-           {
-             car_status.theta += yaw - yaw_last - yaw_omega;
-           }
-         }
-       }
-       else
-       {
-         if(update_nums > 0) update_nums--;
-         //将yaw转换成360度
-         if((yaw - yaw_last)<-179.9999)
-         {
-           car_status.theta += 360 + (yaw - yaw_last) - yaw_omega;
-         }
-         else if((yaw - yaw_last)>179.999)
-         {
-           car_status.theta += -360 + (yaw - yaw_last) - yaw_omega;
-         }
-         else
-         {
-           car_status.theta += yaw - yaw_last - yaw_omega;
-         }
-       }
-     }
-
-      if( car_status.theta > 360) car_status.theta -= 360;
-      if( car_status.theta < 0 ) car_status.theta += 360;
-      yaw_last=yaw;
-
-      //发布IMU topic
-      ros::Time current_time = ros::Time::now();
-      tf::Quaternion q;
-      q.setRPY(roll/180.0*PI, -pitch/180.0*PI, CarPos2D.theta/180.0*PI);
-      CarIMU.header.stamp = current_time;
-      CarIMU.header.frame_id = "imu";
-      CarIMU.orientation.x=q.x();
-      CarIMU.orientation.y=q.y();
-      CarIMU.orientation.z=q.z();
-      CarIMU.orientation.w=q.w();
-
-      CarIMU.angular_velocity.x=car_status.IMU[3]* PI /180.0f;
-      CarIMU.angular_velocity.y=car_status.IMU[4]* PI /180.0f;
-      CarIMU.angular_velocity.z=car_status.IMU[5]* PI /180.0f;
-
-      CarIMU.linear_acceleration.x=car_status.IMU[0];
-      CarIMU.linear_acceleration.y=car_status.IMU[1];
-      CarIMU.linear_acceleration.z=car_status.IMU[2];
-
-      mIMUPub.publish(CarIMU);
-      mbUpdated_imu = false;
-
-      static unsigned int ii=0;
-      ii++;
+      // std::cout<<"get you!"<<std::endl;
+      delta_car = 0;
     }
-  }
-  //再处理car
-  {
-   if(mbUpdated_car && car_status.status_imu==1)
-   {
-     boost::mutex::scoped_lock lock(mMutex_car);
-     static double theta_last=0.0;
-     static unsigned int ii=0;
-     ii++;
-     // Time
-     ros::Time current_time = ros::Time::now();
+    // if(ii%50==0||car_status.encoder_delta_car>3000||car_status.encoder_delta_car<-3000)
+    // {
+    //   std::cout<<"delta_encoder_car:"<< car_status.encoder_delta_car <<std::endl;
+    //   std::cout<<"delta_encoder_r:"<< car_status.encoder_delta_r <<std::endl;
+    //   std::cout<<"delta_encoder_l:"<< car_status.encoder_delta_l <<std::endl;
+    //   std::cout<<"ppr:"<< car_status.encoder_ppr <<std::endl;
+    //   std::cout<<"delta_car:"<< delta_car <<std::endl;
+    // }
+    delta_x = delta_car * cos(CarPos2D.theta * PI / 180.0f);
+    delta_y = delta_car * sin(CarPos2D.theta * PI / 180.0f);
 
-     //pose
-     double delta_car,delta_x,delta_y,delta_theta,var_len,var_angle;
+    delta_theta = car_status.theta - theta_last;
+    theta_last = car_status.theta;
+    if (delta_theta > 270)
+      delta_theta -= 360;
+    if (delta_theta < -270)
+      delta_theta += 360;
 
-       if(first_update_car)
-       {
-         //第一次更新
-         car_status.encoder_r_last = car_status.encoder_r_current;
-         car_status.encoder_l_last = car_status.encoder_l_current;
-         car_status.encoder_delta_r = 0;
-         car_status.encoder_delta_l = 0;
-         first_update_car=false;
-       }
-       else
-       {
-         car_status.encoder_delta_r = car_status.encoder_r_current - car_status.encoder_r_last;
-         car_status.encoder_delta_l = car_status.encoder_l_current - car_status.encoder_l_last;
-         if(car_status.encoder_delta_r > 8000) car_status.encoder_delta_r -= 2147483648;
-         if(car_status.encoder_delta_r < -8000) car_status.encoder_delta_r += 2147483647;
-         if(car_status.encoder_delta_l > 8000) car_status.encoder_delta_l -= 2147483648;
-         if(car_status.encoder_delta_l < -8000) car_status.encoder_delta_l += 2147483647;
-         car_status.encoder_delta_r = -car_status.encoder_delta_r;//方向相反
-         car_status.encoder_r_last = car_status.encoder_r_current;
-         car_status.encoder_l_last = car_status.encoder_l_current;
-       }
-       var_len=(50.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius)*(50.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius);
-       var_angle=(0.01f/180.0f*PI)*(0.01f/180.0f*PI);
+    if ((!theta_updateflag) || delta_theta > 20 || delta_theta < -20)
+    {
+      delta_theta = 0;
+    }
+    CarPos2D.x += delta_x;
+    CarPos2D.y += delta_y;
+    CarPos2D.theta += delta_theta;
 
-       delta_car=(car_status.encoder_delta_r+car_status.encoder_delta_l)/2.0f*1.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius;
-       if(delta_car>0.08||delta_car<-0.08)
-       {
-         // std::cout<<"get you!"<<std::endl;
-         delta_car = 0;
-       }
-       // if(ii%50==0||car_status.encoder_delta_car>3000||car_status.encoder_delta_car<-3000)
-       // {
-       //   std::cout<<"delta_encoder_car:"<< car_status.encoder_delta_car <<std::endl;
-       //   std::cout<<"delta_encoder_r:"<< car_status.encoder_delta_r <<std::endl;
-       //   std::cout<<"delta_encoder_l:"<< car_status.encoder_delta_l <<std::endl;
-       //   std::cout<<"ppr:"<< car_status.encoder_ppr <<std::endl;
-       //   std::cout<<"delta_car:"<< delta_car <<std::endl;
-       // }
-       delta_x=delta_car*cos(CarPos2D.theta* PI / 180.0f);
-       delta_y=delta_car*sin(CarPos2D.theta* PI / 180.0f);
+    if (CarPos2D.theta > 360.0)
+      CarPos2D.theta -= 360;
+    if (CarPos2D.theta < 0.0)
+      CarPos2D.theta += 360;
 
-       delta_theta=car_status.theta-theta_last;
-       theta_last=car_status.theta;
+    mPose2DPub.publish(CarPos2D);
 
-       if(delta_theta > 270 ) delta_theta -= 360;
-       if(delta_theta < -270 ) delta_theta += 360;
+    //flag
+    std_msgs::Int32 flag;
+    if(car_status.status_imu==1 && car_status.left_driver_status==1 && car_status.right_driver_status==1 )
+    {
+      car_status.status=1;
+    }
+    else
+    {
+      car_status.status=0;
+    }
+    flag.data = car_status.status;
+    //底层障碍物信息
+    if ((car_status.distance1 + car_status.distance2 + car_status.distance3 + car_status.distance4) > 0.1 && (car_status.distance1 + car_status.distance2 + car_status.distance3 + car_status.distance4) < 5.0)
+    {
+      //有障碍物
+      flag.data = 2;
+    }
+    mStatusFlagPub.publish(flag);
 
-       if((!update_theta)||delta_theta>30||delta_theta<-30)
-       {
-         delta_theta = 0;
-       }
-       CarPos2D.x+=delta_x;
-       CarPos2D.y+=delta_y;
-       CarPos2D.theta+=delta_theta;
+    //Twist
+    double angle_speed;
+    CarTwist.linear.x = delta_car * 50.0f;
+    angle_speed = car_status.IMU[5];
+    CarTwist.angular.z = angle_speed * PI / 180.0f;
+    mTwistPub.publish(CarTwist);
 
-       if(CarPos2D.theta>360.0) CarPos2D.theta-=360;
-       if(CarPos2D.theta<0.0) CarPos2D.theta+=360;
+    CarPower.data = car_status.power_imu;
+    mPowerPub.publish(CarPower);
 
-       mPose2DPub.publish(CarPos2D);
+    CarOdom.header.stamp = current_time.fromSec(base_time_);
+    CarOdom.header.frame_id = "odom";
+    CarOdom.pose.pose.position.x = CarPos2D.x;
+    CarOdom.pose.pose.position.y = CarPos2D.y;
+    CarOdom.pose.pose.position.z = 0.0f;
+    geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(CarPos2D.theta / 180.0f * PI);
+    CarOdom.pose.pose.orientation = odom_quat;
+    CarOdom.pose.covariance = boost::assign::list_of(var_len)(0)(0)(0)(0)(0)(0)(var_len)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(var_angle);
+    CarOdom.child_frame_id = "base_footprint";
+    CarOdom.twist.twist.linear.x = CarTwist.linear.x; // * cos(CarPos2D.theta* PI / 180.0f);
+    CarOdom.twist.twist.linear.y = CarTwist.linear.y; // * sin(CarPos2D.theta* PI / 180.0f);
+    CarOdom.twist.twist.angular.z = CarTwist.angular.z;
+    CarOdom.twist.covariance = boost::assign::list_of(var_len)(0)(0)(0)(0)(0)(0)(var_len)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(var_angle);
+    mOdomPub.publish(CarOdom);
 
-       //flag
-       std_msgs::Int32 flag;
-       if(car_status.status_imu==1 && car_status.left_driver_status==1 && car_status.right_driver_status==1 && yaw_ready)
-       {
-         car_status.status=1;
-       }
-       else
-       {
-         car_status.status=0;
-       }
-       flag.data=car_status.status;
-       //底层障碍物信息
-       if((car_status.distance[0]+car_status.distance[1]+car_status.distance[2]+car_status.distance[3])>-0.8&&(car_status.distance[0]+car_status.distance[0]+car_status.distance[0]+car_status.distance[0])<1.2)
-       {
-         //有障碍物
-         flag.data=2;
-       }
-       mStatusFlagPub.publish(flag);
+    //publish IMU
+    tf::Quaternion q_imu;
+    q_imu.setRPY(0, 0, car_status.theta / 180.0 * PI);
+    CarIMU.header.stamp = current_time;
+    CarIMU.header.frame_id = "imu";
+    CarIMU.orientation.x = q_imu.x();
+    CarIMU.orientation.y = q_imu.y();
+    CarIMU.orientation.z = q_imu.z();
+    CarIMU.orientation.w = q_imu.w();
 
-       //Twist
-       double angle_speed;
-       CarTwist.linear.x = CarTwist.linear.x*0.5f + 0.5f*delta_car*50.0f;
-       angle_speed=car_status.IMU[5];
-       CarTwist.angular.z = CarTwist.angular.z*0.5f + 0.5f*angle_speed * PI /180.0f;
-       mTwistPub.publish(CarTwist);
+    CarIMU.angular_velocity.x = car_status.IMU[3] * PI / 180.0f;
+    CarIMU.angular_velocity.y = car_status.IMU[4] * PI / 180.0f;
+    CarIMU.angular_velocity.z = car_status.IMU[5] * PI / 180.0f;
+    CarIMU.linear_acceleration.x = car_status.IMU[0];
+    CarIMU.linear_acceleration.y = car_status.IMU[1];
+    CarIMU.linear_acceleration.z = car_status.IMU[2];
 
-       CarPower.data = (car_status.power_left + car_status.power_right)/2.0;
-       mPowerPub.publish(CarPower);
+    mIMUPub.publish(CarIMU);
 
-      //电量
-      battery = (int)((CarPower.data-21.0f)/6.0f*100.f);
-      std_msgs::Int32 battery_pub;
-      if(battery<0) battery = 0;
-      if(battery>100) battery = 100;
-      battery_pub.data = battery;
-      mBatteryPub.publish(battery_pub);
+    // pub transform
 
-       CarOdom.header.stamp = current_time;
-       CarOdom.header.frame_id = "odom";
-       CarOdom.pose.pose.position.x = CarPos2D.x;
-       CarOdom.pose.pose.position.y = CarPos2D.y;
-       CarOdom.pose.pose.position.z = 0.0f;
-       geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(CarPos2D.theta/180.0f*PI);
-       CarOdom.pose.pose.orientation = odom_quat;
-       CarOdom.pose.covariance =  boost::assign::list_of(var_len) (0) (0)  (0)  (0)  (0)
-                                                             (0) (var_len)  (0)  (0)  (0)  (0)
-                                                             (0)   (0)  (999) (0)  (0)  (0)
-                                                             (0)   (0)   (0) (999) (0)  (0)
-                                                             (0)   (0)   (0)  (0) (999) (0)
-                                                             (0)   (0)   (0)  (0)  (0)  (var_angle) ;
-       CarOdom.child_frame_id = "base_footprint";
-       CarOdom.twist.twist.linear.x = CarTwist.linear.x;// * cos(CarPos2D.theta* PI / 180.0f);
-       CarOdom.twist.twist.linear.y = CarTwist.linear.y;// * sin(CarPos2D.theta* PI / 180.0f);
-       CarOdom.twist.twist.angular.z = CarTwist.angular.z;
-       CarOdom.twist.covariance =  boost::assign::list_of(var_len) (0) (0)  (0)  (0)  (0)
-                                                             (0) (var_len)  (0)  (0)  (0)  (0)
-                                                             (0)   (0)  (999) (0)  (0)  (0)
-                                                             (0)   (0)   (0) (999) (0)  (0)
-                                                             (0)   (0)   (0)  (0) (999) (0)
-                                                             (0)   (0)   (0)  (0)  (0)  (var_angle) ;
-       mOdomPub.publish(CarOdom);
+    static tf::TransformBroadcaster br;
+    tf::Quaternion q;
+    tf::Transform transform;
+    transform.setOrigin(tf::Vector3(CarPos2D.x, CarPos2D.y, 0.0));
+    q.setRPY(0, 0, CarPos2D.theta / 180 * PI);
+    transform.setRotation(q);
+    br.sendTransform(tf::StampedTransform(transform, current_time.fromSec(base_time_), "odom", "base_footprint"));
 
-       // pub transform
+    ros::spinOnce();
 
-       static tf::TransformBroadcaster br;
-       tf::Quaternion q;
-       tf::Transform transform;
-       transform.setOrigin( tf::Vector3(CarPos2D.x, CarPos2D.y, 0.0) );
-       q.setRPY(0, 0, CarPos2D.theta/180*PI);
-       transform.setRotation(q);
-       br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "odom", "base_footprint"));
-
-       ros::spinOnce();
-
-       mbUpdated_car = false;
-   }
+    mbUpdated_imu = false;
   }
 }
 

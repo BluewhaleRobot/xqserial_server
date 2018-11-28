@@ -150,6 +150,12 @@ void AsyncSerial::write(const char *data, size_t size)
     pimpl->io.post(boost::bind(&AsyncSerial::doWrite, this));
 }
 
+void AsyncSerial::write2(const char *data, size_t size)
+{
+    if(asio::write(pimpl->port,asio::buffer(data,size))!=size) setErrorStatus(true);
+}
+
+
 void AsyncSerial::write(const std::vector<char>& data)
 {
     {
