@@ -36,7 +36,23 @@ void DiffDriverController::run()
     ros::Subscriber sub2 = nodeHandler.subscribe("/imu_cal", 1, &DiffDriverController::imuCalibration,this);
     ros::Subscriber sub3 = nodeHandler.subscribe("/global_move_flag", 1, &DiffDriverController::updateMoveFlag,this);
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag,this);
-    ros::spin();
+    ros::Rate r(100);//发布周期为50hz
+    int i=0;
+    while (ros::ok())
+    {
+      i++;
+      int16_t left_speed,right_speed;
+      if(get_speed(left_speed ,right_speed))
+      {
+        keep_speed();
+      }
+      else if(i%50==0)
+      {
+        keep_speed();
+      }
+      ros::spinOnce();
+      r.sleep();
+    }
 }
 void DiffDriverController::updateMoveFlag(const std_msgs::Bool& moveFlag)
 {
@@ -126,6 +142,12 @@ void DiffDriverController::dealCmd_vel(const geometry_msgs::Twist &command)
   left_speed_ = -(int16_t)(speed_temp[1]*max_wheelspeed*60.0f*8192/3000.0f/100.0f);
   right_speed_ = (int16_t)(speed_temp[0]*max_wheelspeed*60.0f*8192/3000.0f/100.0f);
   send_flag_ = true;
+  //this->send_speed();
+}
+
+void DiffDriverController::send_speed()
+{
+  //boost::mutex::scoped_lock lock(mMutex);
   //下发速度指令
    char speed_cmd[8] = {(char)0x01,(char)0x06,(char)0x00,(char)0x11,(char)0x00,(char)0x00,(char)0x94,(char)0x32};//电压电流
   uint8_t crc_hl[2];
@@ -147,6 +169,13 @@ void DiffDriverController::dealCmd_vel(const geometry_msgs::Twist &command)
   speed_cmd[7] = crc_hl[1];
   cmd_serial_car->write(speed_cmd,8);
   usleep(15000);//延时1MS，等待数据上传
+}
+
+void DiffDriverController::keep_speed()
+{
+  boost::mutex::scoped_lock lock(mMutex);
+  if (xq_status->get_status() == 0) return;
+  this->send_speed();
 }
 
 bool DiffDriverController::get_speed(int16_t & left_speed ,int16_t & right_speed)

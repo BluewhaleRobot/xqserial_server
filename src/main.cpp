@@ -77,14 +77,14 @@ int main(int argc, char **argv)
       ros::Rate r(100);//发布周期为50hz
       int i=0;
       const char left_speed_mode_cmd1[8] = {(char)0x01,(char)0x06,(char)0x00,(char)0x19,(char)0x00,(char)0x2f,(char)0x19,(char)0xd1}; //模式
-      const char left_speed_mode_cmd2[8] = {(char)0x01,(char)0x06,(char)0x00,(char)0x13,(char)0x0a,(char)0x0a,(char)0xfe,(char)0xa8};//加减速度
+      const char left_speed_mode_cmd2[8] = {(char)0x01,(char)0x06,(char)0x00,(char)0x13,(char)0x64,(char)0x64,(char)0x53,(char)0x24};//加减速度
       const char left_speed_mode_cmd3[8] = {(char)0x01,(char)0x06,(char)0x00,(char)0x11,(char)0x00,(char)0x00,(char)0xd9,(char)0xcf};//目标速度
       const char left_speed_mode_cmd4[8] = {(char)0x01,(char)0x06,(char)0x00,(char)0x10,(char)0x00,(char)0x1f,(char)0xc9,(char)0xc7};//使能电机 锁轴
       const char left_speed_mode_cmd5[8] = {(char)0x01,(char)0x06,(char)0x00,(char)0x10,(char)0x00,(char)0x0f,(char)0xc8,(char)0x0b};//松轴
       const char left_speed_mode_cmd6[8] = {(char)0x01,(char)0x06,(char)0x00,(char)0x15,(char)0x00,(char)0x7f,(char)0xd9,(char)0xee};//清除故障
 
       const char right_speed_mode_cmd1[8] = {(char)0x02,(char)0x06,(char)0x00,(char)0x19,(char)0x00,(char)0x2f,(char)0x19,(char)0xe2}; //模式
-      const char right_speed_mode_cmd2[8] = {(char)0x02,(char)0x06,(char)0x00,(char)0x13,(char)0x0a,(char)0x0a,(char)0xfe,(char)0x9b};//加减速度
+      const char right_speed_mode_cmd2[8] = {(char)0x02,(char)0x06,(char)0x00,(char)0x13,(char)0x64,(char)0x64,(char)0x53,(char)0x17};//加减速度
       const char right_speed_mode_cmd3[8] = {(char)0x02,(char)0x06,(char)0x00,(char)0x11,(char)0x00,(char)0x00,(char)0xd9,(char)0xfc};//目标速度
       const char right_speed_mode_cmd4[8] = {(char)0x02,(char)0x06,(char)0x00,(char)0x10,(char)0x00,(char)0x1f,(char)0xc9,(char)0xf4};//使能电机 锁轴
       const char right_speed_mode_cmd5[8] = {(char)0x02,(char)0x06,(char)0x00,(char)0x10,(char)0x00,(char)0x0f,(char)0xc8,(char)0x38};//松轴
@@ -161,6 +161,10 @@ int main(int argc, char **argv)
             continue;
           }
           i++;
+          // if(i%50==0)
+          // {
+          //   boost::thread keep_speed_Thread(&xqserial_server::DiffDriverController::keep_speed,&xq_diffdriver);
+          // }
           xq_status.Refresh();//定时发布状态
           r.sleep();
       }
