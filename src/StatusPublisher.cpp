@@ -614,21 +614,14 @@ void StatusPublisher::Refresh()
 
           //distances_[0] = distance1_sum/2.0f;
           //distances_[1] = distance2_sum/2.0f;
-          distances_[0] = 2.0;//distances_[0]*0.5 + car_status.distance1*0.5;
-          distances_[1] = 2.0;//distances_[1]*0.5 + car_status.distance2*0.5;
-          // if(distances_[0]<0.3&&distances_[0]>0.2&& distances_[1]>0.2 )
-          // {
-          //   if(distances_[1]>0.8) distances_[0] = 0.6;
-          // }
-          if(distances_[1]<0.5&&distances_[1]>0.2&& distances_[0]>0.2 )
-          {
-            if(distances_[0]>0.6) distances_[1] = 0.6;
-          }
+          distances_[0] = car_status.distance1;
+          distances_[1] = car_status.distance2;
+
          //std::cout<<" " << car_status.distance1 << " " << car_status.distance2<<std::endl;
            //发布超声波topic
            if(distances_[0]>0.1)
            {
-             if(distances_[0]>2.0||distances_[0]<0.201) distances_[0]=2.0;
+             if(distances_[0]>4.0||distances_[0]<0.19) distances_[0]=4.0;
              CarSonar1.header.stamp = current_time.fromSec(base_time_);
              CarSonar1.range = distances_[0];
              mSonar1Pub.publish(CarSonar1);
@@ -636,15 +629,15 @@ void StatusPublisher::Refresh()
 
            if(distances_[1]>0.1)
            {
-             if(distances_[1]>2.0||distances_[1]<0.201) distances_[1]=2.0;
+             if(distances_[1]>4.0||distances_[1]<0.19) distances_[1]=4.0;
              CarSonar2.header.stamp = current_time.fromSec(base_time_);
              CarSonar2.range = distances_[1];
              mSonar2Pub.publish(CarSonar2);
            }
-           if(distances_[0]<0.22&&distances_[1]<0.22)
-           {
-             move_forward_flag = false;
-           }
+          //  if(distances_[0]<0.22&&distances_[1]<0.22)
+          //  {
+          //    move_forward_flag = false;
+          //  }
 
         }
         distance_sum_i++;
@@ -695,8 +688,8 @@ int StatusPublisher::get_status(){
 
 void StatusPublisher::get_distances(double distances[2])
 {
-  distances[0]=distances_[0];
-  distances[1]=distances_[1];
+  distances[0]=2.0;
+  distances[1]=2.0;
 }
 
 bool StatusPublisher::can_movefoward()

@@ -77,7 +77,7 @@ void DiffDriverController::updateBarDetectFlag(const std_msgs::Bool& DetectFlag)
     char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x01};
     if(NULL!=cmd_serial)
     {
-        //cmd_serial->write(cmd_str,6);
+        cmd_serial->write(cmd_str,6);
     }
     DetectFlag_=true;
   }
