@@ -28,6 +28,9 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
     last_ordertime=ros::WallTime::now();
     DetectFlag_=true;
     stopFlag_ = false;
+    mgalileoCmdsPub_ = mNH_.advertise<galileo_serial_server::GalileoNativeCmds>("/galileo/cmds", 0, true);
+    back_touch_falg_ = false;
+    last_touchtime_ = ros::WallTime::now();
 }
 
 void DiffDriverController::run()
@@ -37,14 +40,22 @@ void DiffDriverController::run()
     ros::Subscriber sub2 = nodeHandler.subscribe("/imu_cal", 1, &DiffDriverController::imuCalibration,this);
     ros::Subscriber sub3 = nodeHandler.subscribe("/globalMoveFlag", 1, &DiffDriverController::updateMoveFlag,this);
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag,this);
-    ros::Subscriber sub5 = nodeHandler.subscribe("/stopFlag", 1, &DiffDriverController::updateStopFlag,this);
+    ros::Subscriber sub5 = nodeHandler.subscribe("/move_base/StatusFlag", 1, &DiffDriverController::updateStopFlag,this);
+    ros::Subscriber sub6 = nodeHandler.subscribe("/galileo/status", 1, &DiffDriverController::UpdateNavStatus, this);
     ros::spin();
 }
 
-void DiffDriverController::updateStopFlag(const std_msgs::Bool& stopFlag)
+void DiffDriverController::updateStopFlag(const std_msgs::Int32& fastStopmsg)
 {
   boost::mutex::scoped_lock lock(mMutex);
-  stopFlag_=stopFlag.data;
+  if(fastStopmsg.data == 2)
+  {
+    stopFlag_ = true;
+  }
+  else
+  {
+    stopFlag_ = false;
+  }
 }
 
 void DiffDriverController::updateMoveFlag(const std_msgs::Bool& moveFlag)
@@ -53,6 +64,7 @@ void DiffDriverController::updateMoveFlag(const std_msgs::Bool& moveFlag)
   MoveFlag=moveFlag.data;
   last_ordertime=ros::WallTime::now();
 }
+
 void DiffDriverController::imuCalibration(const std_msgs::Bool& calFlag)
 {
   if(calFlag.data)
@@ -65,6 +77,7 @@ void DiffDriverController::imuCalibration(const std_msgs::Bool& calFlag)
     }
   }
 }
+
 void DiffDriverController::updateBarDetectFlag(const std_msgs::Bool& DetectFlag)
 {
   if(DetectFlag.data)
@@ -279,7 +292,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
    // command.linear.x
 }
 
-void DiffDriverController::checkStop()
+bool DiffDriverController::checkStop()
 {
 
     static time_t t1=time(NULL),t2;
@@ -288,7 +301,7 @@ void DiffDriverController::checkStop()
     char speed[2]={0,0};//右一左二
     char cmd_str[13]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x09,(char)0x74,(char)0x53,(char)0x53,(char)0x53,(char)0x53,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
 
-    if(xq_status->get_status()==0) return;//底层还在初始化
+    if(xq_status->get_status()==0) return false;//底层还在初始化
 
     if(stopFlag_)
     {
@@ -297,7 +310,8 @@ void DiffDriverController::checkStop()
     }
     else
     {
-      return;
+      if((xq_status->car_status.hbz1+xq_status->car_status.hbz2+xq_status->car_status.hbz4)>0.1&&(xq_status->car_status.hbz1+xq_status->car_status.hbz2+xq_status->car_status.hbz4)<4.0) return true;
+      return false;
     }
     float scale=1.0;
 
@@ -379,9 +393,69 @@ void DiffDriverController::checkStop()
         cmd_serial->write(cmd_str,13);
     }
     last_ordertime=ros::WallTime::now();
+    return true;
    // command.linear.x
 }
 
+void DiffDriverController::UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status)
+{
+    boost::mutex::scoped_lock lock(mStausMutex_);
+    galileoStatus_.nav_status = current_receive_status.navStatus;
+    galileoStatus_.visual_status = current_receive_status.visualStatus;
+    galileoStatus_.charge_status = current_receive_status.chargeStatus;
+    galileoStatus_.power = current_receive_status.power;
+    galileoStatus_.target_numID = current_receive_status.targetNumID;
+    galileoStatus_.target_status = current_receive_status.targetStatus;
+    galileoStatus_.target_distance = current_receive_status.targetDistance;
+    galileoStatus_.angle_goal_status = current_receive_status.angleGoalStatus;
+    galileoStatus_.control_speed_x = current_receive_status.controlSpeedX;
+    galileoStatus_.control_speed_theta = current_receive_status.controlSpeedTheta;
+    galileoStatus_.current_speed_x = current_receive_status.currentSpeedX;
+    galileoStatus_.current_speed_theta = current_receive_status.currentSpeedTheta;
+}
+bool DiffDriverController::dealBackSwitch()
+{
+  boost::mutex::scoped_lock lock(mStausMutex_);
+  if(galileoStatus_.nav_status ==1 )
+  {
+    if(galileoStatus_.visual_status != 0)
+    {
+      if(galileoStatus_.target_numID != 0)
+      {
+        if(galileoStatus_.target_status == 0)
+        {
+          //判断开关是否按下
+          if(xq_status->car_status.hbz3==1)
+          {
+            back_touch_falg_ = true;
+            last_touchtime_ = ros::WallTime::now();
+          }
+          else
+          {
+            //消除按键抖动
+            ros::WallDuration t_diff = ros::WallTime::now() - last_touchtime_;
+            if(back_touch_falg_ && t_diff.toSec()>=0.1)
+            {
+              //开关松开
+              back_touch_falg_ = false;
+              //发布会厨房命令
+              galileo_serial_server::GalileoNativeCmds currentCmds;
+              currentCmds.header.stamp = ros::Time::now();
+              currentCmds.header.frame_id = "xq_serial_server";
+              currentCmds.length = 2;
+              currentCmds.data.resize(2);
+              currentCmds.data[0] = (char)0x67;
+              currentCmds.data[1] = (char)0x00;
+              mgalileoCmdsPub_.publish(currentCmds);
+              return true;
+            }
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
 
 
 

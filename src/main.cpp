@@ -3,13 +3,22 @@
 
 #include <iostream>
 #include <boost/thread.hpp>
+#include <json/json.h>
 
 #include <ros/ros.h>
 #include <ros/package.h>
+#include <std_msgs/String.h>
 #include "DiffDriverController.h"
 #include "StatusPublisher.h"
+#include "xiaoqiang_log/LogRecord.h"
 
 using namespace std;
+
+inline bool exists(const std::string &name)
+{
+    struct stat buffer;
+    return (stat(name.c_str(), &buffer) == 0);
+}
 
 int main(int argc, char **argv)
 {
@@ -38,6 +47,11 @@ int main(int argc, char **argv)
     ros::param::param<double>("~max_speed", max_speed, 5.0);
     ros::param::param<std::string>("~cmd_topic", cmd_topic, "cmd_vel");
 
+    // 初始化log发布者和语音发布者
+    ros::NodeHandle mNH;
+    ros::Publisher log_pub = mNH.advertise<xiaoqiang_log::LogRecord>("/xiaoqiang_log", 1, true);
+    ros::Publisher audio_pub = mNH.advertise<std_msgs::String>("/xiaoqiang_tts/text", 1, true);
+
     try {
         CallbackAsyncSerial serial(port,baud);
         serial.setCallback(boost::bind(&xqserial_server::StatusPublisher::Update,&xq_status,_1,_2));
@@ -58,24 +72,19 @@ int main(int argc, char **argv)
         serial.write(cmd_str,6);
 
         ros::Rate r(50);//发布周期为50hz
+        ros::WallTime last_movetime=ros::WallTime::now();
+        static int i=0;
+        int  speak_flag =0;
+        bool speak_triger = false;
         while (ros::ok())
         {
-            static int i=0;
             if(serial.errorStatus() || serial.isOpen()==false)
             {
                 cerr<<"Error: serial port closed unexpectedly"<<endl;
                 break;
             }
             xq_status.Refresh();//定时发布状态
-            ros::WallDuration t_diff = ros::WallTime::now() - xq_diffdriver.last_ordertime;
-            if(t_diff.toSec()>1.5 && t_diff.toSec()<1.7)
-            {
-              //safety security
-              // char cmd_str[13]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x09,(char)0x74,(char)0x53,(char)0x53,(char)0x53,(char)0x53,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
-              // serial.write(cmd_str, 13);
-              // std::cout << "oups!" << std::endl;
-              //xq_diffdriver.last_ordertime=ros::WallTime::now();
-            }
+
             if(i%50==0 && xq_diffdriver.DetectFlag_)
             {
               //下发底层红外开启命令
@@ -84,8 +93,50 @@ int main(int argc, char **argv)
             }
             if(i%5==0)
             {
-              xq_diffdriver.checkStop();
+              if(!xq_diffdriver.checkStop())
+              {
+                last_movetime=ros::WallTime::now();
+                if(speak_triger)
+                {
+                  //感谢合作
+                  speak_triger = false;
+                  std_msgs::String audio_msg;
+                  audio_msg.data = "谢谢！";
+                  audio_pub.publish(audio_msg);
+                }
+              }
+              else
+              {
+                ros::WallDuration t_diff = ros::WallTime::now() - last_movetime;
+                if(t_diff.toSec()>2 && t_diff.toSec()<7 )
+                {
+                  //提示障碍物
+                  speak_flag ++;
+                  if(speak_flag>20)
+                  {
+                    std_msgs::String audio_msg;
+                    audio_msg.data = "请让开一下，谢谢！";
+                    audio_pub.publish(audio_msg);
+                    speak_flag = 0;
+                    speak_triger = true;
+                  }
+                }
+                else if(t_diff.toSec()>7)
+                {
+                  last_movetime=ros::WallTime::now();
+                }
+              }
             }
+
+            //更新按钮
+            if(xq_diffdriver.dealBackSwitch())
+            {
+              //告诉用户回去了
+              std_msgs::String audio_msg;
+              audio_msg.data = "好的，我回去了，您慢用！";
+              audio_pub.publish(audio_msg);
+            }
+
             i++;
             r.sleep();
             //cout<<"run"<<endl;
@@ -95,7 +146,28 @@ int main(int argc, char **argv)
         serial.close();
 
     } catch (std::exception& e) {
-        cerr<<"Exception: "<<e.what()<<endl;
+      ROS_ERROR_STREAM("Open " << port << " failed.");
+      ROS_ERROR_STREAM("Exception: " << e.what());
+      // 检查串口设备是否存在
+      if (!exists(port))
+      {
+          // 发送语音提示消息
+          std_msgs::String audio_msg;
+          audio_msg.data = "未发现底盘串口，请检查串口连接";
+          audio_pub.publish(audio_msg);
+          xiaoqiang_log::LogRecord log_record;
+          log_record.collection_name = "exception";
+          log_record.stamp = ros::Time::now();
+          Json::Value record;
+          record["type"] = "HARDWARE_ERROR";
+          record["info"] = "底盘串口设备未找到: " + port;
+          Json::FastWriter fastWriter;
+          log_record.record = fastWriter.write(record);
+          // 发送日志消息
+          log_pub.publish(log_record);
+      }
+      ros::shutdown();
+      return 1;
     }
 
     ros::shutdown();
