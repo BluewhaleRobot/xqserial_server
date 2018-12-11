@@ -303,6 +303,11 @@ bool DiffDriverController::checkStop()
 
     if(xq_status->get_status()==0) return false;//底层还在初始化
 
+    if(galileoStatus_.target_status != 1)
+    {
+      return false;
+    }
+
     if(stopFlag_)
     {
       speed_lin=0.0;
@@ -412,12 +417,10 @@ void DiffDriverController::UpdateNavStatus(const galileo_serial_server::GalileoS
     galileoStatus_.control_speed_theta = current_receive_status.controlSpeedTheta;
     galileoStatus_.current_speed_x = current_receive_status.currentSpeedX;
     galileoStatus_.current_speed_theta = current_receive_status.currentSpeedTheta;
-    if(galileoStatus_.nav_status ==0)
+
+    if(galileoStatus_.target_status != 1)
     {
-        if(galileoStatus_.target_status != 1)
-        {
-          stopFlag_ = false;
-        }
+      stopFlag_ = false;
     }
 }
 bool DiffDriverController::dealBackSwitch()
