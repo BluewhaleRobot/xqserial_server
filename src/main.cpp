@@ -74,7 +74,7 @@ int main(int argc, char **argv)
         ros::Rate r(50);//发布周期为50hz
         ros::WallTime last_movetime=ros::WallTime::now();
         static int i=0;
-        int  speak_flag =0;
+        int  speak_flag =42;
         bool speak_triger = false;
         while (ros::ok())
         {
@@ -102,24 +102,26 @@ int main(int argc, char **argv)
                   speak_triger = false;
                   std_msgs::String audio_msg;
                   audio_msg.data = "谢谢！";
-                  audio_pub.publish(audio_msg);
+                  //audio_pub.publish(audio_msg);
                 }
+                speak_flag = 42;
               }
               else
               {
                 ros::WallDuration t_diff = ros::WallTime::now() - last_movetime;
-                if(t_diff.toSec()>2 && t_diff.toSec()<7 )
+                if(t_diff.toSec()>0.1 && t_diff.toSec()<7 )
                 {
                   //提示障碍物
-                  speak_flag ++;
-                  if(speak_flag>20)
+                  speak_flag --;
+                  if(speak_flag==41)
                   {
                     std_msgs::String audio_msg;
                     audio_msg.data = "请让开一下，谢谢！";
                     audio_pub.publish(audio_msg);
-                    speak_flag = 0;
+
                     speak_triger = true;
                   }
+                  if(speak_flag<1) speak_flag = 42;
                 }
                 else if(t_diff.toSec()>7)
                 {
