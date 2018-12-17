@@ -25,12 +25,13 @@ int main(int argc, char **argv)
     ros::param::param<int>("~baud", baud, 115200);
     cout<<"port:"<<port<<" baud:"<<baud<<endl;
     //获取小车机械参数
-    double separation=0,radius=0;
+    double separation=0,radius=0,crash_distance;
     bool DebugFlag = false;
     ros::param::param<double>("~wheel_separation", separation, 0.36);
     ros::param::param<double>("~wheel_radius", radius, 0.0825);
     ros::param::param<bool>("~debug_flag", DebugFlag, false);
-    xqserial_server::StatusPublisher xq_status(separation,radius);
+    ros::param::param<double>("~crash_distance", crash_distance, 0.2);
+    xqserial_server::StatusPublisher xq_status(separation,radius,crash_distance);
 
     //获取小车控制参数
     double max_speed;
@@ -54,9 +55,6 @@ int main(int argc, char **argv)
         serial.write(resetCmd, 5);
 
         ros::Duration(0.5).sleep();
-        //下发底层红外开启命令
-        char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x01};
-        //serial.write(cmd_str,6);
 
         ros::Rate r(100);//发布周期为50hz
         while (ros::ok())
@@ -72,8 +70,8 @@ int main(int argc, char **argv)
             if(t_diff.toSec()>1.5 && t_diff.toSec()<1.7)
             {
               //safety security
-              // char cmd_str[13]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x09,(char)0x74,(char)0x53,(char)0x53,(char)0x53,(char)0x53,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
-              // serial.write(cmd_str, 13);
+              char cmd_str[13]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x09,(char)0x74,(char)0x53,(char)0x53,(char)0x53,(char)0x53,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
+              serial.write(cmd_str, 13);
               // std::cout << "oups!" << std::endl;
               //xq_diffdriver.last_ordertime=ros::WallTime::now();
             }
