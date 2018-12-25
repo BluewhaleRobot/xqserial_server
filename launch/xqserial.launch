@@ -5,6 +5,7 @@
     <param name="wheel_radius" value="0.0825"/>
     <param name="max_speed" value="5.0"/>
     <param name="port" value="/dev/ttyUSB001"/>
+    <param name="crash_distance" value="0.4"/>
   </node>
   <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0.15 0 0 0 1 base_footprint base_link 20">
   </node>

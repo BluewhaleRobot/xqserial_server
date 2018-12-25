@@ -46,7 +46,7 @@ class StatusPublisher
 
 public:
     StatusPublisher();
-    StatusPublisher(double separation,double radius);
+    StatusPublisher(double separation,double radius,double crash_distance);
     void Refresh();
     void Update(const char *data, unsigned int len);
     double get_wheel_separation();
@@ -99,6 +99,7 @@ private:
     bool move_forward_flag;
     bool move_backward_flag;
     double base_time_;
+    double crash_distance_;
 };
 
 } //namespace xqserial_server

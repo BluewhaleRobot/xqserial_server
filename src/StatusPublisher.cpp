@@ -75,13 +75,15 @@ StatusPublisher::StatusPublisher()
    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "base_footprint", "base_link"));
    */
    base_time_ = ros::Time::now().toSec();
+   crash_distance_= 0.2;
 }
 
-StatusPublisher::StatusPublisher(double separation,double radius)
+StatusPublisher::StatusPublisher(double separation,double radius,double crash_distance)
 {
     new (this)StatusPublisher();
     wheel_separation=separation;
     wheel_radius=radius;
+    crash_distance_ = crash_distance;
 }
 
 void StatusPublisher::Update(const char data[], unsigned int len)
@@ -308,24 +310,6 @@ void StatusPublisher::Refresh()
         {
           //有障碍物
           flag.data=2;
-        }
-
-        if((car_status.hbz1+car_status.hbz2+car_status.hbz4)>0.1&&(car_status.hbz1+car_status.hbz2+car_status.hbz4)<4.0)
-        {
-          move_forward_flag = false;
-        }
-        else{
-          if(!move_forward_flag)
-          {
-            if((delta_car*50.0f)>=0) move_forward_flag = true;
-          }
-        }
-        if(car_status.hbz3>0.1&&car_status.hbz3<2.0)
-        {
-          move_backward_flag = false;
-        }
-        else{
-          move_backward_flag = true;
         }
         mStatusFlagPub.publish(flag);
 
@@ -600,6 +584,23 @@ void StatusPublisher::Refresh()
 
         if(distance_sum_i%5==0)
         {
+          if((car_status.hbz1+car_status.hbz2+car_status.hbz4)>0.1&&(car_status.hbz1+car_status.hbz2+car_status.hbz4)<4.0)
+          {
+            move_forward_flag = false;
+          }
+          else{
+            if(!move_forward_flag)
+            {
+              if((delta_car*50.0f)>=0) move_forward_flag = true;
+            }
+          }
+          if(car_status.hbz3>0.1&&car_status.hbz3<2.0)
+          {
+            move_backward_flag = false;
+          }
+          else{
+            move_backward_flag = true;
+          }
           //平滑
           distance1_sum -=distance1_sums[distance_sum_index];
           distance1_sums[distance_sum_index] = car_status.distance1;
@@ -612,32 +613,38 @@ void StatusPublisher::Refresh()
           distance_sum_index++;
           if(distance_sum_index>1) distance_sum_index = 0;
 
-          //distances_[0] = distance1_sum/2.0f;
-          //distances_[1] = distance2_sum/2.0f;
           distances_[0] = car_status.distance1;
           distances_[1] = car_status.distance2;
 
-         //std::cout<<" " << car_status.distance1 << " " << car_status.distance2<<std::endl;
-           //发布超声波topic
-           if(distances_[0]>0.1)
-           {
-             if(distances_[0]>4.0||distances_[0]<0.19) distances_[0]=4.0;
-             CarSonar1.header.stamp = current_time.fromSec(base_time_);
-             CarSonar1.range = distances_[0];
-             mSonar1Pub.publish(CarSonar1);
-           }
+        //std::cout<<" " << car_status.distance1 << " " << car_status.distance2<<std::endl;
+        //发布超声波topic
+        if(distances_[0]>0.1)
+        {
+          if(distances_[0]>4.0||distances_[0]<0.19) distances_[0]=4.0;
+          CarSonar1.header.stamp = current_time.fromSec(base_time_);
+          CarSonar1.range = distances_[0];
+          mSonar1Pub.publish(CarSonar1);
+        }
+        else
+        {
+          distances_[0] = 4.2;
+        }
 
-           if(distances_[1]>0.1)
-           {
-             if(distances_[1]>4.0||distances_[1]<0.19) distances_[1]=4.0;
-             CarSonar2.header.stamp = current_time.fromSec(base_time_);
-             CarSonar2.range = distances_[1];
-             mSonar2Pub.publish(CarSonar2);
-           }
-          //  if(distances_[0]<0.22&&distances_[1]<0.22)
-          //  {
-          //    move_forward_flag = false;
-          //  }
+        if(distances_[1]>0.1)
+        {
+          if(distances_[1]>4.0||distances_[1]<0.19) distances_[1]=4.0;
+          CarSonar2.header.stamp = current_time.fromSec(base_time_);
+          CarSonar2.range = distances_[1];
+          mSonar2Pub.publish(CarSonar2);
+        }
+        else
+        {
+          distances_[1] = 4.2;
+        }
+        if(distances_[0]<crash_distance_||distances_[1]<crash_distance_)
+        {
+          move_forward_flag = false;
+        }
 
         }
         distance_sum_i++;
@@ -688,8 +695,8 @@ int StatusPublisher::get_status(){
 
 void StatusPublisher::get_distances(double distances[2])
 {
-  distances[0]=2.0;
-  distances[1]=2.0;
+  distances[0]=distances_[0];
+  distances[1]=distances_[1];
 }
 
 bool StatusPublisher::can_movefoward()
@@ -699,7 +706,7 @@ bool StatusPublisher::can_movefoward()
 
 float StatusPublisher::get_ultrasonic_min_distance()
 {
-  return 2.0;
+  return std::min(distances_[0],distances_[1]);
 }
 
 float StatusPublisher::get_wheel_v_theta()
