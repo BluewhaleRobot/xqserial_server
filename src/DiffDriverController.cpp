@@ -6,7 +6,7 @@ namespace xqserial_server
 
 DiffDriverController::DiffDriverController()
 {
-    max_wheelspeed = 2.0;
+    max_wheelspeed = 4.0;
     cmd_topic = "cmd_vel";
     xq_status = new StatusPublisher();
     cmd_serial = NULL;

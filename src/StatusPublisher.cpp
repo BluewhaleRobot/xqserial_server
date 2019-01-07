@@ -37,7 +37,7 @@ StatusPublisher::StatusPublisher()
   {
     status[i] = 0;
   }
-  car_status.encoder_ppr = 4 * 12 * 64;
+  car_status.encoder_ppr = 4 * 500*27;
 
   mPose2DPub = mNH.advertise<geometry_msgs::Pose2D>("xqserial_server/Pose2D", 1, true);
   mStatusFlagPub = mNH.advertise<std_msgs::Int32>("xqserial_server/StatusFlag", 1, true);
@@ -46,7 +46,7 @@ StatusPublisher::StatusPublisher()
   mOdomPub = mNH.advertise<nav_msgs::Odometry>("xqserial_server/Odom", 1, true);
   pub_barpoint_cloud_ = mNH.advertise<PointCloud>("kinect/barpoints", 1, true);
   pub_clearpoint_cloud_ = mNH.advertise<PointCloud>("kinect/clearpoints", 1, true);
-  mIMUPub = mNH.advertise<sensor_msgs::Imu>("xqserial_server/IMU", 1, true);
+  //mIMUPub = mNH.advertise<sensor_msgs::Imu>("xqserial_server/IMU", 1, true);
   /* static tf::TransformBroadcaster br;
    tf::Quaternion q;
    tf::Transform transform;
@@ -137,13 +137,14 @@ void StatusPublisher::Update(const char data[], unsigned int len)
         {
           // std::cout<<"runup4 "<<std::endl;
           //当前包已经处理完成，开始处理
-          if (new_packed_ok_len == 115)
+          if (new_packed_ok_len == 65)
           {
-            for (j = 0; j < 23; j++)
+            for (j = 0; j < 13; j++)
             {
               memcpy(&receive_byte[j], &cmd_string_buf[5 * j], 4);
             }
             mbUpdated = true;
+            car_status.encoder_ppr=54000;
           }
           else if (new_packed_ok_len == 95)
           {
@@ -152,6 +153,7 @@ void StatusPublisher::Update(const char data[], unsigned int len)
               memcpy(&receive_byte[j], &cmd_string_buf[5 * j], 4);
             }
             mbUpdated = true;
+            car_status.encoder_ppr=54000;
           }
           if (mbUpdated)
           {
@@ -167,7 +169,7 @@ void StatusPublisher::Update(const char data[], unsigned int len)
                 //     std::cout<<(unsigned int)current_str<<std::endl;
                 //   }
                 mbUpdated = false;
-                car_status.encoder_ppr = 4 * 12 * 64;
+                car_status.encoder_ppr = 4 * 500 * 27;
                 break;
               }
             }
@@ -223,6 +225,7 @@ void StatusPublisher::Refresh()
   static double theta_last = 0.0;
   static unsigned int ii = 0;
   static bool theta_updateflag = false;
+  static int encoder_delta_car_temp_last = 0;
   ii++;
   //std::cout<<"runR"<< mbUpdated<<std::endl;
   if (mbUpdated)
@@ -244,7 +247,17 @@ void StatusPublisher::Refresh()
     var_len = (50.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius) * (50.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius);
     var_angle = (0.01f / 180.0f * PI) * (0.01f / 180.0f * PI);
 
-    delta_car = (car_status.encoder_delta_r + car_status.encoder_delta_l) / 2.0f * 1.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius;
+    int encoder_delta_car_temp = (car_status.encoder_delta_r + car_status.encoder_delta_l)/2;
+    if(std::isnan(encoder_delta_car_temp)||std::abs(encoder_delta_car_temp-car_status.encoder_delta_car)>5)
+    {
+      encoder_delta_car_temp = encoder_delta_car_temp_last;
+    }
+    encoder_delta_car_temp_last = encoder_delta_car_temp;
+
+    //ROS_ERROR("%d %d %d %d ,%f %f %f %f ",car_status.encoder_delta_r,car_status.encoder_delta_l,car_status.encoder_delta_car,encoder_delta_car_temp,car_status.distance1,car_status.distance2,car_status.distance3,car_status.distance4);
+    car_status.encoder_delta_car = encoder_delta_car_temp;
+    //ROS_ERROR("%d %d %d ",car_status.encoder_delta_r,car_status.encoder_delta_l,car_status.encoder_delta_car);
+    delta_car = car_status.encoder_delta_car * 1.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius;
     if (delta_car > 0.05 || delta_car < -0.05)
     {
       // std::cout<<"get you!"<<std::endl;
@@ -260,7 +273,11 @@ void StatusPublisher::Refresh()
     // }
     delta_x = delta_car * cos(CarPos2D.theta * PI / 180.0f);
     delta_y = delta_car * sin(CarPos2D.theta * PI / 180.0f);
-
+    if(std::isnan(car_status.theta)||car_status.theta>360||car_status.theta<0)
+    {
+      //ROS_ERROR("%f",car_status.theta);
+      car_status.theta = theta_last;
+    }
     delta_theta = car_status.theta - theta_last;
     theta_last = car_status.theta;
     if (delta_theta > 270)
@@ -287,6 +304,22 @@ void StatusPublisher::Refresh()
     std_msgs::Int32 flag;
     flag.data = car_status.status;
     //底层障碍物信息
+    if (car_status.distance1 > 1.1)
+    {
+      car_status.distance1 = 0;
+    }
+    if (car_status.distance2 > 1.1)
+    {
+      car_status.distance2 = 0;
+    }
+    if (car_status.distance3 > 1.1)
+    {
+      car_status.distance3 = 0;
+    }
+    if (car_status.distance4 > 1.1)
+    {
+      car_status.distance4 = 0;
+    }
     if ((car_status.distance1 + car_status.distance2 + car_status.distance3 + car_status.distance4) > 0.1 && (car_status.distance1 + car_status.distance2 + car_status.distance3 + car_status.distance4) < 5.0)
     {
       //有障碍物
@@ -437,11 +470,25 @@ void StatusPublisher::Refresh()
     //Twist
     double angle_speed;
     CarTwist.linear.x = delta_car * 50.0f;
-    angle_speed = -car_status.IMU[5];
+    angle_speed = car_status.IMU;
+    static float angle_speed_last=0;
+    if(std::isnan(angle_speed)|| std::fabs(angle_speed)>500)
+    {
+      angle_speed = angle_speed_last;
+    }
+    else
+    {
+      angle_speed_last = angle_speed;
+    }
     CarTwist.angular.z = angle_speed * PI / 180.0f;
     mTwistPub.publish(CarTwist);
-
+    static float last_power =0.0;
+    if(car_status.power<0||car_status.power>35)
+    {
+      car_status.power = last_power;
+    }
     CarPower.data = car_status.power;
+    last_power = car_status.power;
     mPowerPub.publish(CarPower);
 
     CarOdom.header.stamp = current_time.fromSec(base_time_);
@@ -460,23 +507,23 @@ void StatusPublisher::Refresh()
     mOdomPub.publish(CarOdom);
 
     //publish IMU
-    tf::Quaternion q_imu;
-    q_imu.setRPY(0, 0, car_status.theta / 180.0 * PI);
-    CarIMU.header.stamp = current_time;
-    CarIMU.header.frame_id = "imu";
-    CarIMU.orientation.x = q_imu.x();
-    CarIMU.orientation.y = q_imu.y();
-    CarIMU.orientation.z = q_imu.z();
-    CarIMU.orientation.w = q_imu.w();
-
-    CarIMU.angular_velocity.x = -car_status.IMU[3] * PI / 180.0f;
-    CarIMU.angular_velocity.y = car_status.IMU[4] * PI / 180.0f;
-    CarIMU.angular_velocity.z = -car_status.IMU[5] * PI / 180.0f;
-    CarIMU.linear_acceleration.x = -car_status.IMU[0];
-    CarIMU.linear_acceleration.y = car_status.IMU[1];
-    CarIMU.linear_acceleration.z = -car_status.IMU[2];
-
-    mIMUPub.publish(CarIMU);
+    // tf::Quaternion q_imu;
+    // q_imu.setRPY(0, 0, car_status.theta / 180.0 * PI);
+    // CarIMU.header.stamp = current_time;
+    // CarIMU.header.frame_id = "imu";
+    // CarIMU.orientation.x = q_imu.x();
+    // CarIMU.orientation.y = q_imu.y();
+    // CarIMU.orientation.z = q_imu.z();
+    // CarIMU.orientation.w = q_imu.w();
+    //
+    // CarIMU.angular_velocity.x = -car_status.IMU[3] * PI / 180.0f;
+    // CarIMU.angular_velocity.y = -car_status.IMU[4] * PI / 180.0f;
+    // CarIMU.angular_velocity.z = car_status.IMU[5] * PI / 180.0f;
+    // CarIMU.linear_acceleration.x = -car_status.IMU[0];
+    // CarIMU.linear_acceleration.y = -car_status.IMU[1];
+    // CarIMU.linear_acceleration.z = car_status.IMU[2];
+    //
+    // mIMUPub.publish(CarIMU);
 
     // pub transform
 
@@ -506,15 +553,15 @@ double StatusPublisher::get_wheel_radius()
 
 int StatusPublisher::get_wheel_ppr()
 {
-  return car_status.encoder_ppr;
+  return 54000;//car_status.encoder_ppr;
 }
 
-void StatusPublisher::get_wheel_speed(double speed[2])
-{
-  //右一左二
-  speed[0] = car_status.omga_r / car_status.encoder_ppr * 2.0 * PI * wheel_radius;
-  speed[1] = car_status.omga_l / car_status.encoder_ppr * 2.0 * PI * wheel_radius;
-}
+// void StatusPublisher::get_wheel_speed(double speed[2])
+// {
+//   //右一左二
+//   speed[0] = car_status.omga_r / car_status.encoder_ppr * 2.0 * PI * wheel_radius;
+//   speed[1] = car_status.omga_l / car_status.encoder_ppr * 2.0 * PI * wheel_radius;
+// }
 
 geometry_msgs::Pose2D StatusPublisher::get_CarPos2D()
 {

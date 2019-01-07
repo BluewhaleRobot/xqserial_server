@@ -31,12 +31,12 @@ int main(int argc, char **argv)
     std::string port;
     ros::param::param<std::string>("~port", port, "/dev/ttyUSB0");
     int baud;
-    ros::param::param<int>("~baud", baud, 115200);
+    ros::param::param<int>("~baud", baud, 115200);//115200);
     cout << "port:" << port << " baud:" << baud << endl;
     //获取小车机械参数
     double separation = 0, radius = 0;
     bool DebugFlag = false;
-    ros::param::param<double>("~wheel_separation", separation, 0.37);
+    ros::param::param<double>("~wheel_separation", separation, 0.44);
     ros::param::param<double>("~wheel_radius", radius, 0.0625);
     ros::param::param<bool>("~debug_flag", DebugFlag, false);
     xqserial_server::StatusPublisher xq_status(separation, radius);
@@ -44,7 +44,7 @@ int main(int argc, char **argv)
     //获取小车控制参数
     double max_speed;
     string cmd_topic;
-    ros::param::param<double>("~max_speed", max_speed, 2.0);
+    ros::param::param<double>("~max_speed", max_speed, 4.0);
     ros::param::param<std::string>("~cmd_topic", cmd_topic, "cmd_vel");
 
     // 初始化log发布者和语音发布者
