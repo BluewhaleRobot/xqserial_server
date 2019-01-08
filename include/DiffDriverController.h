@@ -19,6 +19,7 @@ class DiffDriverController
     void setStatusPtr(StatusPublisher &status);
     void updateMoveFlag(const std_msgs::Bool &moveFlag);
     void updateBarDetectFlag(const std_msgs::Bool &DetectFlag);
+    void updateSpeedFlag(const std_msgs::Bool &Flag);
 
   private:
     double max_wheelspeed; //单位为转每秒,只能为正数
@@ -27,6 +28,7 @@ class DiffDriverController
     CallbackAsyncSerial *cmd_serial;
     boost::mutex mMutex;
     bool MoveFlag;
+    bool SpeedFlag;
 };
 
 } // namespace xqserial_server

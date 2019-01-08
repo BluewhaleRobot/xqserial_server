@@ -252,6 +252,7 @@ void StatusPublisher::Refresh()
     {
       encoder_delta_car_temp = encoder_delta_car_temp_last;
     }
+    if(encoder_delta_car_temp>4320||encoder_delta_car_temp<-4320) encoder_delta_car_temp = 0;
     encoder_delta_car_temp_last = encoder_delta_car_temp;
 
     //ROS_ERROR("%d %d %d %d ,%f %f %f %f ",car_status.encoder_delta_r,car_status.encoder_delta_l,car_status.encoder_delta_car,encoder_delta_car_temp,car_status.distance1,car_status.distance2,car_status.distance3,car_status.distance4);

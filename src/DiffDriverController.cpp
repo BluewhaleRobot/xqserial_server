@@ -20,6 +20,7 @@ DiffDriverController::DiffDriverController(double max_speed_, std::string cmd_to
     cmd_topic = cmd_topic_;
     xq_status = xq_status_;
     cmd_serial = cmd_serial_;
+    SpeedFlag = true;
 }
 
 void DiffDriverController::run()
@@ -29,12 +30,18 @@ void DiffDriverController::run()
     ros::Subscriber sub2 = nodeHandler.subscribe("/imu_cal", 1, &DiffDriverController::imuCalibration, this);
     ros::Subscriber sub3 = nodeHandler.subscribe("/globalMoveFlag", 1, &DiffDriverController::updateMoveFlag, this);
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag, this);
+    ros::Subscriber sub5 = nodeHandler.subscribe("/limitSpeedFlag", 1, &DiffDriverController::updateSpeedFlag, this);
     ros::spin();
 }
 void DiffDriverController::updateMoveFlag(const std_msgs::Bool &moveFlag)
 {
     boost::mutex::scoped_lock lock(mMutex);
     MoveFlag = moveFlag.data;
+}
+void DiffDriverController::updateSpeedFlag(const std_msgs::Bool &Flag)
+{
+    boost::mutex::scoped_lock lock(mMutex);
+    SpeedFlag = Flag.data;
 }
 void DiffDriverController::imuCalibration(const std_msgs::Bool &calFlag)
 {
@@ -113,11 +120,13 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
         speed[i] = (int8_t)speed_temp[i];
         if (speed[i] < 0)
         {
+            if(speed[i]>-7 && SpeedFlag) speed[i]=-7;
             cmd_str[5 + i] = (char)0x42; //B
             cmd_str[9 + i] = -speed[i];
         }
         else if (speed[i] > 0)
         {
+            if(speed[i]<7 && SpeedFlag) speed[i]=7;
             cmd_str[5 + i] = (char)0x46; //F
             cmd_str[9 + i] = speed[i];
         }
