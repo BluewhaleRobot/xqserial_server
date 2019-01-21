@@ -139,8 +139,8 @@ void DiffDriverController::dealCmd_vel(const geometry_msgs::Twist &command)
     speed_temp[0] = 0;
     speed_temp[1] = 0;
   }
-  left_speed_ = -(int16_t)(speed_temp[1]*max_wheelspeed*60.0f*8192/3000.0f/100.0f);
-  right_speed_ = (int16_t)(speed_temp[0]*max_wheelspeed*60.0f*8192/3000.0f/100.0f);
+  left_speed_ = (int16_t)(speed_temp[1]*max_wheelspeed*60.0f*8192/3000.0f/100.0f);
+  right_speed_ = -(int16_t)(speed_temp[0]*max_wheelspeed*60.0f*8192/3000.0f/100.0f);
   send_flag_ = true;
   //this->send_speed();
 }
