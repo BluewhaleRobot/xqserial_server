@@ -295,6 +295,11 @@ void StatusPublisher::Refresh()
       // std::cout<<"get you!"<<std::endl;
       delta_car = 0;
     }
+    static int encoder_r_sum=0,encoder_l_sum=0;
+    encoder_r_sum += car_status.encoder_delta_r;
+    encoder_l_sum += car_status.encoder_delta_l;
+
+    ROS_DEBUG("%d %d %d %d",encoder_r_sum,encoder_l_sum,car_status.encoder_ppr,car_status.time_stamp_imu);
     // if(ii%50==0||car_status.encoder_delta_car>3000||car_status.encoder_delta_car<-3000)
     // {
     //   std::cout<<"delta_encoder_car:"<< car_status.encoder_delta_car <<std::endl;
@@ -401,7 +406,7 @@ void StatusPublisher::Refresh()
     transform.setRotation(q);
     br.sendTransform(tf::StampedTransform(transform, current_time.fromSec(base_time_), "odom", "base_footprint"));
 
-    ros::spinOnce();
+    //ros::spinOnce();
 
     mbUpdated_imu = false;
   }

@@ -143,6 +143,7 @@ void DiffDriverController::dealCmd_vel(const geometry_msgs::Twist &command)
   right_speed_ = -(int16_t)(speed_temp[0]*max_wheelspeed*60.0f*8192/3000.0f/100.0f);
   send_flag_ = true;
   //this->send_speed();
+  ROS_DEBUG("%d %d ",left_speed_,right_speed_);
 }
 
 void DiffDriverController::send_speed()
