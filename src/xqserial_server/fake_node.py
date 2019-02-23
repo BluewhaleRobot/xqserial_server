@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#encoding=utf-8
+# encoding=utf-8
 
 """
 这是一个小强驱动包的假节点。这个节点发布以下几个topic
@@ -12,19 +12,19 @@
 """
 
 import rospy
-from std_msgs.msg import Int32, Float64
-from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Pose2D
-
+from nav_msgs.msg import Odometry
+from std_msgs.msg import Float64, Int32
 
 if __name__ == "__main__":
     rospy.init_node("fake_xqserial_server", anonymous=True)
     rate = rospy.Rate(50)
     odom_pub = rospy.Publisher("/xqserial_server/Odom", Odometry, queue_size=0)
     status_flag_pub = rospy.Publisher("/xqserial_server/StatusFlag", Int32,
-        queue_size=0)
+                                      queue_size=0)
     pose_pub = rospy.Publisher("/xqserial_server/Pose2D", Pose2D, queue_size=0)
-    power_pub = rospy.Publisher("/xqserial_server/Power", Float64, queue_size=0)
+    power_pub = rospy.Publisher(
+        "/xqserial_server/Power", Float64, queue_size=0)
     while not rospy.is_shutdown():
         now = rospy.Time.now()
         mOdom = Odometry()
