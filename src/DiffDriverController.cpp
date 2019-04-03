@@ -14,6 +14,7 @@ DiffDriverController::DiffDriverController()
     MoveFlag=true;
     last_ordertime=ros::WallTime::now();
     DetectFlag_=true;
+    theta_temp_last_ = 0.0;
 }
 
 DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_)
@@ -27,6 +28,7 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
     speed_debug[1]=0.0;
     last_ordertime=ros::WallTime::now();
     DetectFlag_=true;
+    theta_temp_last_ = 0.0;
 }
 
 void DiffDriverController::run()
@@ -189,12 +191,12 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
       if(command.linear.x>0)
       {
         vx_temp=-2.3;
-        vtheta_temp=0;
+        //vtheta_temp=0;
       }
       if(command.linear.x==0)
       {
         vx_temp=0.0;
-        vtheta_temp=0;
+        //vtheta_temp=0;
       }
     }
 
@@ -209,7 +211,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     speed_lin=vx_temp/(2.0*PI*radius);
     //speed_ang=command.angular.z*separation/(2.0*PI*radius);
     speed_ang=vtheta_temp;
-
+    theta_temp_last_ = vtheta_temp;
     //转出最大速度百分比,并进行限幅
     speed_temp[0]=speed_lin/max_wheelspeed*100.0;
     speed_temp[0]=std::min(speed_temp[0],100.0);
@@ -264,6 +266,7 @@ void DiffDriverController::check_faster_stop()
   int i =0;
   geometry_msgs::Twist car_twist = xq_status->get_CarTwist();
   float vx_temp=0,vtheta_temp=0;
+  vtheta_temp = theta_temp_last_;
   if(std::fabs(xq_status->get_wheel_v_theta()-car_twist.angular.z)>1.0)
   {
     vtheta_temp=0;
@@ -340,7 +343,7 @@ void DiffDriverController::check_faster_stop()
   {
       cmd_serial->write(cmd_str,13);
   }
-  last_ordertime=ros::WallTime::now();
+  //last_ordertime=ros::WallTime::now();
 }
 
 

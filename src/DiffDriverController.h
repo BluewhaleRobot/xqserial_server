@@ -35,6 +35,7 @@ private:
     boost::mutex mMutex;
     bool MoveFlag;
     geometry_msgs::Twist  cmdTwist_;//小车自身坐标系
+    double theta_temp_last_;
 };
 
 }
