@@ -9,8 +9,18 @@
 #include "DiffDriverController.h"
 #include "StatusPublisher.h"
 #include <ros/console.h>
+#include "xiaoqiang_log/LogRecord.h"
+#include <json/json.h>
+#include <std_msgs/String.h>
 
 using namespace std;
+
+inline bool exists(const std::string &name)
+{
+    struct stat buffer;
+    return (stat(name.c_str(), &buffer) == 0);
+}
+
 
 int main(int argc, char **argv)
 {
@@ -23,7 +33,7 @@ int main(int argc, char **argv)
     std::string port_car;
     ros::param::param<std::string>("~port_car", port_car, "/dev/stm32Car");
     int baud_car;
-    ros::param::param<int>("~baud_car", baud_car, 57600);
+    ros::param::param<int>("~baud_car", baud_car, 115200);
     cout<<"port_car:"<<port_car<<" baud_car:"<<baud_car<<endl;
 
     std::string port_imu;
@@ -51,6 +61,11 @@ int main(int argc, char **argv)
     string cmd_topic;
     ros::param::param<double>("~max_speed", max_speed, 5.0);
     ros::param::param<std::string>("~cmd_topic", cmd_topic, "cmd_vel");
+
+    // 初始化log发布者和语音发布者
+    ros::NodeHandle mNH;
+    ros::Publisher log_pub = mNH.advertise<xiaoqiang_log::LogRecord>("/xiaoqiang_log", 1, true);
+    ros::Publisher audio_pub = mNH.advertise<std_msgs::String>("/xiaoqiang_tts/text", 1, true);
 
     try {
       CallbackAsyncSerial serial_car(port_car,baud_car);
@@ -108,7 +123,45 @@ int main(int argc, char **argv)
       serial_imu.close();
 
     } catch (std::exception& e) {
-        cerr<<"Exception: "<<e.what()<<endl;
+      ROS_ERROR_STREAM("Open " << port_car << " or "<< port_imu << " failed.");
+      ROS_ERROR_STREAM("Exception: " << e.what());
+      // 检查串口设备是否存在
+      if (!exists(port_car))
+      {
+          // 发送语音提示消息
+          std_msgs::String audio_msg;
+          audio_msg.data = "未发现电机串口，请检查串口连接";
+          audio_pub.publish(audio_msg);
+          xiaoqiang_log::LogRecord log_record;
+          log_record.collection_name = "exception";
+          log_record.stamp = ros::Time::now();
+          Json::Value record;
+          record["type"] = "HARDWARE_ERROR";
+          record["info"] = "电机串口设备未找到: " + port_car;
+          Json::FastWriter fastWriter;
+          log_record.record = fastWriter.write(record);
+          // 发送日志消息
+          log_pub.publish(log_record);
+      }
+      if (!exists(port_imu))
+      {
+          // 发送语音提示消息
+          std_msgs::String audio_msg;
+          audio_msg.data = "未发现传感器串口，请检查串口连接";
+          audio_pub.publish(audio_msg);
+          xiaoqiang_log::LogRecord log_record;
+          log_record.collection_name = "exception";
+          log_record.stamp = ros::Time::now();
+          Json::Value record;
+          record["type"] = "HARDWARE_ERROR";
+          record["info"] = "传感器串口设备未找到: " + port_imu;
+          Json::FastWriter fastWriter;
+          log_record.record = fastWriter.write(record);
+          // 发送日志消息
+          log_pub.publish(log_record);
+      }
+      ros::shutdown();
+      return 1;
     }
 
     ros::shutdown();

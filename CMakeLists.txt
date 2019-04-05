@@ -12,12 +12,16 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   tf
+  xiaoqiang_log
 )
 
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
+find_package(PkgConfig REQUIRED)
+
+pkg_check_modules(JSONCPP REQUIRED jsoncpp)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -107,7 +111,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES xqserial_server
-  CATKIN_DEPENDS nav_msgs roscpp rospy sensor_msgs std_msgs geometry_msgs
+  CATKIN_DEPENDS nav_msgs roscpp rospy sensor_msgs std_msgs geometry_msgs xiaoqiang_log
 #  DEPENDS system_lib
 )
 
@@ -122,6 +126,7 @@ include_directories(
   include
   ${Boost_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
+  ${JSONCPP_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -154,7 +159,7 @@ find_package(Threads REQUIRED)
 
 set(SRCS src/main.cpp src/AsyncSerial.cpp src/DiffDriverController.cpp src/StatusPublisher.cpp src/crc16.cpp)
 add_executable(${PROJECT_NAME} ${SRCS})
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME} PREFIX "")
 
 
