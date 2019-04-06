@@ -103,9 +103,9 @@ int main(int argc, char **argv)
               break;
           }
           //先配置速度模式
-          if(xq_status.car_status.driver_status != 0)
+          if(xq_status.car_status.driver_status != 0 && i%20==0)
           {
-            ROS_ERROR("clear motor driver error!");
+            ROS_ERROR("clear motor driver error! %d ",xq_status.car_status.driver_status);
             serial_car.write(driver_clear_cmd,12);
             usleep(15000);//延时1MS，等待数据上传
             serial_car.write(driver_clear_cmd,12);

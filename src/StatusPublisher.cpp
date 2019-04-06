@@ -142,14 +142,15 @@ void StatusPublisher::Update_car(const char data[], unsigned int len)
 
         if(sum_low8 != cmd_string_buf[11]) continue;
 
-        ROS_ERROR("receive one package!");
+        ROS_DEBUG("receive one package!");
         //有效包，开始提取数据
         {
           boost::mutex::scoped_lock lock(mMutex_car);
           car_status.driver_status = cmd_string_buf[2];
           car_status.encoder_r_current = cmd_string_buf[6]<<24|cmd_string_buf[5]<<16|cmd_string_buf[4]<<8|cmd_string_buf[3];
           car_status.encoder_l_current = cmd_string_buf[10]<<24|cmd_string_buf[9]<<16|cmd_string_buf[8]<<8|cmd_string_buf[7];
-          ROS_ERROR("current %d %d %d",car_status.driver_status,car_status.encoder_r_current,car_status.encoder_l_current);
+          car_status.encoder_r_current = -car_status.encoder_r_current;
+          ROS_DEBUG("current %d %d %d",car_status.driver_status,car_status.encoder_r_current,car_status.encoder_l_current);
         }
     }
     return;
@@ -355,9 +356,12 @@ void StatusPublisher::Refresh()
   	static int theta_sum_index = 0;
   	{
   		//平滑
-  		v_sum -= v_sums[v_sum_index];
   		v_sums[v_sum_index] = delta_car*50.0f;
-  		v_sum += v_sums[v_sum_index];
+      v_sum = 0;
+      for(int j =0; j<8;j++)
+      {
+        v_sum += v_sums[j];
+      }
 
   		CarTwist.linear.x = v_sum / 8.0f;
   		v_sum_index++;
@@ -381,11 +385,13 @@ void StatusPublisher::Refresh()
   		{
   			angle_speed_last = angle_speed;
   		}
-
-  		theta_sum -= theta_sums[theta_sum_index];
   		theta_sums[theta_sum_index] = angle_speed * PI / 180.0f;
-  		theta_sum += theta_sums[theta_sum_index];
-  		CarTwist.angular.z = theta_sum / 8.0f;
+      theta_sum = 0;
+      for(int j =0; j<8;j++)
+      {
+        theta_sum += theta_sums[j];
+      }
+  		CarTwist.angular.z = theta_sum / 8.0f;//angle_speed*PI / 180.0f;
   		theta_sum_index++;
   		if (theta_sum_index>7) theta_sum_index = 0;
   		//std::cout<<" " << angle_speed * PI /180.0f<<std::endl;

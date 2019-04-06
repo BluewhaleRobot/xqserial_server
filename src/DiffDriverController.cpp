@@ -94,11 +94,11 @@ void DiffDriverController::run()
         send_flag_ = false;
         if(t_diff.toSec()<30.0)
         {
-          send_stop();
+          if(i%20==0) send_stop();
           continue;
         }
         //30秒后开始释放电机
-        send_release();
+        if(i%20==0) send_release();
       }//速度指令结束
 
     }
