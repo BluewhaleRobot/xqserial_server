@@ -1,5 +1,5 @@
 <launch>
-  <node pkg="xqserial_server" type="xqserial_server" name="motor_driver">
+  <node pkg="xqserial_server" type="xqserial_server" name="motor_driver" respawn="true" respawn_delay="10">
     <param name="debug_flag" value="false"/>
     <param name="wheel_separation" value="0.33"/>
     <param name="wheel_radius" value="0.085"/>
