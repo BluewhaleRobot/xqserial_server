@@ -9,17 +9,19 @@ DiffDriverController::DiffDriverController()
     max_wheelspeed = 2.0;
     cmd_topic = "cmd_vel";
     xq_status = new StatusPublisher();
-    cmd_serial = NULL;
+    cmd_serial_left=NULL;
+    cmd_serial_right=NULL;
     MoveFlag = true;
 }
 
-DiffDriverController::DiffDriverController(double max_speed_, std::string cmd_topic_, StatusPublisher *xq_status_, CallbackAsyncSerial *cmd_serial_)
+DiffDriverController::DiffDriverController(double max_speed_, std::string cmd_topic_, StatusPublisher *xq_status_,CallbackAsyncSerial* cmd_serial_left_,CallbackAsyncSerial* cmd_serial_right_)
 {
     MoveFlag = true;
     max_wheelspeed = max_speed_;
     cmd_topic = cmd_topic_;
     xq_status = xq_status_;
-    cmd_serial = cmd_serial_;
+    cmd_serial_left = cmd_serial_left_;
+    cmd_serial_right = cmd_serial_right_;
 }
 
 void DiffDriverController::run()
@@ -42,9 +44,9 @@ void DiffDriverController::imuCalibration(const std_msgs::Bool &calFlag)
     {
         //下发底层ｉｍｕ标定命令
         char cmd_str[5] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x01, (char)0x43};
-        if (NULL != cmd_serial)
+        if (NULL != cmd_serial_right)
         {
-            cmd_serial->write(cmd_str, 5);
+            cmd_serial_right->write(cmd_str, 5);
         }
     }
 }
@@ -54,18 +56,18 @@ void DiffDriverController::updateBarDetectFlag(const std_msgs::Bool &DetectFlag)
     {
         //下发底层红外开启命令
         char cmd_str[6] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x02, (char)0x44, (char)0x01};
-        if (NULL != cmd_serial)
+        if (NULL != cmd_serial_right)
         {
-            cmd_serial->write(cmd_str, 6);
+            cmd_serial_right->write(cmd_str, 6);
         }
     }
     else
     {
         //下发底层红外禁用命令
         char cmd_str[6] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x02, (char)0x44, (char)0x00};
-        if (NULL != cmd_serial)
+        if (NULL != cmd_serial_right)
         {
-            cmd_serial->write(cmd_str, 6);
+            cmd_serial_right->write(cmd_str, 6);
         }
     }
 }
@@ -96,7 +98,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
         scale = 1.0;
     }
     //转出最大速度百分比,并进行限幅
-    speed_temp[0] = scale * (speed_lin + speed_ang / 2) / max_wheelspeed * 100.0;
+    speed_temp[0] = -scale * (speed_lin + speed_ang / 2) / max_wheelspeed * 100.0; //右侧反转
     speed_temp[0] = std::min(speed_temp[0], 100.0);
     speed_temp[0] = std::max(-100.0, speed_temp[0]);
 
@@ -108,6 +110,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     //std::cout<<"ppr "<<wheel_ppr<<std::endl;
     //std::cout<<"pwm "<<speed_temp[0]<<std::endl;
     //  command.linear.x/
+
     for (i = 0; i < 2; i++)
     {
         speed[i] = (int8_t)speed_temp[i];
@@ -160,16 +163,36 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     // }
 
     boost::mutex::scoped_lock lock(mMutex);
-    if (!MoveFlag)
+    char cmd_str_left[13]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x09,(char)0x74,(char)0x53,(char)0x53,(char)0x53,(char)0x53,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
+    char cmd_str_right[13]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x09,(char)0x74,(char)0x53,(char)0x53,(char)0x53,(char)0x53,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
+
+    if(!MoveFlag)
     {
-        cmd_str[5] = (char)0x53;
-        cmd_str[6] = (char)0x53;
-    }
-    if (NULL != cmd_serial)
-    {
-        cmd_serial->write(cmd_str, 13);
+      cmd_str[5]=(char)0x53;
+      cmd_str[6]=(char)0x53;
     }
 
+    for(i=0;i<13;i++)
+    {
+      cmd_str_right[i] = cmd_str[i];
+      cmd_str_left[i] = cmd_str[i];
+    }
+
+    cmd_str_left[5+0] = cmd_str_left[5+1]; //一变二
+    cmd_str_left[9+0] = cmd_str_left[9+1]; //一变二
+
+    cmd_str_right[5+1] = cmd_str_right[5+0]; //一变二
+    cmd_str_right[9+1] = cmd_str_right[9+0]; //一变二
+
+    if(NULL!=cmd_serial_right)
+    {
+        cmd_serial_right->write(cmd_str_right,13);
+    }
+
+    if(NULL!=cmd_serial_left)
+    {
+        cmd_serial_left->write(cmd_str_left,13);
+    }
     // command.linear.x
 }
 
