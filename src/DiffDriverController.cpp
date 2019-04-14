@@ -44,6 +44,10 @@ void DiffDriverController::imuCalibration(const std_msgs::Bool &calFlag)
     {
         //下发底层ｉｍｕ标定命令
         char cmd_str[5] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x01, (char)0x43};
+        if (NULL != cmd_serial_left)
+        {
+            cmd_serial_left->write(cmd_str, 5);
+        }
         if (NULL != cmd_serial_right)
         {
             cmd_serial_right->write(cmd_str, 5);

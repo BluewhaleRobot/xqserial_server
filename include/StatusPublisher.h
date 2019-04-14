@@ -23,8 +23,8 @@ namespace xqserial_server
 typedef struct
 {
     int status_left;              //小车状态，0表示未初始化，1表示正常，-1表示error
-    float power_left;             //电源电压【9 13】v
-    float theta_left;             //方位角，【0 360）°
+    float power;             //电源电压【9 13】v
+    float theta;             //方位角，【0 360）°
     int encoder_ppr_left;         //车轮1转对应的编码器个数
     int encoder_delta_r_left;     //右轮编码器增量， 个为单位
     int encoder_delta_l_left;     //左轮编码器增量， 个为单位
@@ -35,12 +35,12 @@ typedef struct
     float distance2_left;         //第二个超声模块距离值 单位cm
     float distance3_left;         //第三个超声模块距离值 单位cm
     float distance4_left;         //第四个超声模块距离值 单位cm
-    float IMU_left[9];            //mpu9250 9轴数据
+    float IMU[9];            //mpu9250 9轴数据
     unsigned int time_stamp_left; //时间戳
 
     int status_right;              //小车状态，0表示未初始化，1表示正常，-1表示error
-    float power;             //电源电压【9 13】v
-    float theta;             //方位角，【0 360）°
+    float power_right;             //电源电压【9 13】v
+    float theta_right;             //方位角，【0 360）°
     int encoder_ppr;         //车轮1转对应的编码器个数
     int encoder_delta_r_right;     //右轮编码器增量， 个为单位
     int encoder_delta_l_right;     //左轮编码器增量， 个为单位
@@ -51,7 +51,7 @@ typedef struct
     float distance2;         //第二个超声模块距离值 单位cm
     float distance3;         //第三个超声模块距离值 单位cm
     float distance4;         //第四个超声模块距离值 单位cm
-    float IMU[9];            //mpu9250 9轴数据
+    float IMU_right[9];            //mpu9250 9轴数据
     unsigned int time_stamp; //时间戳
 
 
