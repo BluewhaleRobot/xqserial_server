@@ -108,8 +108,8 @@ void DiffDriverController::updateMoveFlag(const std_msgs::Bool& moveFlag)
 {
   boost::mutex::scoped_lock lock(mMutex);
   MoveFlag=moveFlag.data;
-  updateOrderflag_ = true;
-  last_ordertime=ros::WallTime::now();
+  //updateOrderflag_ = true;
+  //last_ordertime=ros::WallTime::now();
 }
 
 void DiffDriverController::imuCalibration(const std_msgs::Bool& calFlag)
@@ -140,13 +140,13 @@ void DiffDriverController::updateFastStopFlag(const std_msgs::Int32& fastStopmsg
   if(fastStopmsg.data == 2)
   {
     fastStopFlag_ = true;
+    updateOrderflag_ = true;
+    last_ordertime=ros::WallTime::now();
   }
   else
   {
     fastStopFlag_ = false;
   }
-  updateOrderflag_ = true;
-  last_ordertime=ros::WallTime::now();
 }
 
 void DiffDriverController::dealCmd_vel(const geometry_msgs::Twist &command)
@@ -167,13 +167,13 @@ void DiffDriverController::filterSpeed()
   vtheta_temp = theta_z_;
 
   //超声波减速
-  float bar_distance = xq_status->get_ultrasonic_min_distance();
-  if(!BarFlag) bar_distance = 4.2;
-
-  if(bar_distance<=1.2)
-  {
-    vx_temp = std::min(vx_temp,0.5*(bar_distance-0.2));
-  }
+  // float bar_distance = xq_status->get_ultrasonic_min_distance();
+  // if(!BarFlag) bar_distance = 4.2;
+  //
+  // if(bar_distance<=1.2)
+  // {
+  //   vx_temp = std::min(vx_temp,0.5*(bar_distance-0.2));
+  // }
   if (!MoveFlag)
   {
     vx_temp = 0.;
@@ -185,7 +185,7 @@ void DiffDriverController::filterSpeed()
   {
     bool forward_flag,rot_flag;
     xq_status->get_canmove_flag(forward_flag,rot_flag);
-    if(!forward_flag)
+    if(!forward_flag && vx_temp>0.01)
     {
       vx_temp = 0.;
     }
@@ -235,7 +235,7 @@ void DiffDriverController::send_speed()
 
   //下发速度指令
   //                           0           1           2          3          4          5          6          7          8          9          10         11
-   char speed_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x00,(char)0x00,(char)0x00,(char)0x30,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60};
+   char speed_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x00,(char)0x00,(char)0x00,(char)0x90,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60};
 
   speed_cmd[7] = right_speed_&0xff;
   speed_cmd[8] = (right_speed_>>8)&0xff;
