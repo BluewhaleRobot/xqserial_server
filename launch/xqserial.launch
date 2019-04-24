@@ -8,6 +8,7 @@
     <param name="tran_dist" value="0.3"/>
     <param name="port_car" value="/dev/stm32Car"/>
     <param name="port_imu" value="/dev/stm32Imu"/>
+    <param name="power_scale" value="1.0"/>
   </node>
   <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster1" args="-0.1 -0.22 0.15 4.7123889 0 0  base_link sonar1 20"/>
   <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster2" args="0.25 0.150 0.10 0 0 0  base_link sonar2 20"/>

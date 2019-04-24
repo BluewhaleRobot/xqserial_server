@@ -49,18 +49,21 @@ int main(int argc, char **argv)
     ros::param::param<double>("~wheel_separation", separation, 0.33);
     ros::param::param<double>("~wheel_radius", radius, 0.0825);
     ros::param::param<bool>("~debug_flag", DebugFlag, false);
-    xqserial_server::StatusPublisher xq_status(separation,radius,DebugFlag);
 
     double rot_dist,tran_dist;
     ros::param::param<double>("~rot_dist", rot_dist, -0.21);
     ros::param::param<double>("~tran_dist", tran_dist, -0.3);
 
-    xq_status.setBarParams(rot_dist,tran_dist);
     //获取小车控制参数
     double max_speed;
     string cmd_topic;
     ros::param::param<double>("~max_speed", max_speed, 5.0);
     ros::param::param<std::string>("~cmd_topic", cmd_topic, "cmd_vel");
+
+    double power_scale;
+    ros::param::param<double>("~power_scale", power_scale, 1.0);
+    xqserial_server::StatusPublisher xq_status(separation,radius,DebugFlag,power_scale);
+    xq_status.setBarParams(rot_dist,tran_dist);
 
     // 初始化log发布者和语音发布者
     ros::NodeHandle mNH;

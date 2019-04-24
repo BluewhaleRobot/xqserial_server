@@ -51,7 +51,7 @@ class StatusPublisher
 
 public:
     StatusPublisher();
-    StatusPublisher(double separation,double radius,bool debugFlag);
+    StatusPublisher(double separation,double radius,bool debugFlag,double power_scale);
     void Refresh();
     void Update_car(const char *data, unsigned int len);
     void Update_imu(const char *data, unsigned int len);
@@ -116,7 +116,8 @@ private:
     bool forward_flag_;
     bool rot_flag_;
 
-    double  distances_[2];
+    double distances_[2];
+    double power_scale_;
 };
 
 } //namespace xqserial_server

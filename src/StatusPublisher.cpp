@@ -18,6 +18,7 @@ StatusPublisher::StatusPublisher()
     mbUpdated_imu=false;
     wheel_separation=0.33;
     wheel_radius=0.07;
+    power_scale_ =1.0;
 
     CarPos2D.x=0.0;
     CarPos2D.y=0.0;
@@ -105,12 +106,13 @@ StatusPublisher::StatusPublisher()
    base_time_ = ros::Time::now().toSec();
 }
 
-StatusPublisher::StatusPublisher(double separation,double radius,bool debugFlag)
+StatusPublisher::StatusPublisher(double separation,double radius,bool debugFlag,double power_scale)
 {
     new (this)StatusPublisher();
     wheel_separation=separation;
     wheel_radius=radius;
     debug_flag=debugFlag;
+    power_scale_ = power_scale;
 }
 
 void StatusPublisher::Update_car(const char data[], unsigned int len)
@@ -401,7 +403,7 @@ void StatusPublisher::Refresh()
   	}
   	mTwistPub.publish(CarTwist);
 
-    CarPower.data = car_status.power_imu;
+    CarPower.data = car_status.power_imu*power_scale_;
     mPowerPub.publish(CarPower);
 
     CarOdom.header.stamp = current_time.fromSec(base_time_);
