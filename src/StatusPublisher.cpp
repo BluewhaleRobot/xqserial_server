@@ -64,6 +64,12 @@ StatusPublisher::StatusPublisher()
    CarSonar2.min_range = 0.19;
    CarSonar2.max_range = 4.2;
 
+   power_scale_ = 1.0;
+   forward_flag_ = true;
+   rot_flag_ = true;
+
+   rot_dist_ = -0.21;
+   tran_dist_ = -0.3;
   /* static tf::TransformBroadcaster br;
    tf::Quaternion q;
    tf::Transform transform;
@@ -75,11 +81,12 @@ StatusPublisher::StatusPublisher()
 
 }
 
-StatusPublisher::StatusPublisher(double separation,double radius)
+StatusPublisher::StatusPublisher(double separation,double radius,double power_scale)
 {
     new (this)StatusPublisher();
     wheel_separation=separation;
     wheel_radius=radius;
+    power_scale_ = power_scale;
 }
 
 void StatusPublisher::Update(const char data[], unsigned int len)
@@ -159,8 +166,8 @@ void StatusPublisher::Update(const char data[], unsigned int len)
                         {
                             memcpy(&receive_byte[j],&cmd_string_buf[5*j],4);
                         }
-                        car_status.encoder_delta_r = -car_status.encoder_delta_r;
-                        car_status.encoder_delta_l = -car_status.encoder_delta_l;
+                        //car_status.encoder_delta_r = -car_status.encoder_delta_r;
+                        //car_status.encoder_delta_l = -car_status.encoder_delta_l;
                         mbUpdated=true;
                     }
                     if(mbUpdated)
@@ -232,6 +239,7 @@ void StatusPublisher::Refresh()
      static double theta_last=0.0;
      static unsigned int ii=0;
      static bool theta_updateflag = false;
+     static bool theta_update_first = true;
      ii++;
     //std::cout<<"runR"<< mbUpdated<<std::endl;
     if(mbUpdated)
@@ -271,6 +279,12 @@ void StatusPublisher::Refresh()
         delta_x=delta_car*cos(CarPos2D.theta* PI / 180.0f);
         delta_y=delta_car*sin(CarPos2D.theta* PI / 180.0f);
 
+        if(theta_update_first && theta_updateflag)
+        {
+          theta_last=car_status.theta;
+          theta_update_first=false;
+        }
+
         delta_theta=car_status.theta-theta_last;
         theta_last=car_status.theta;
         if(delta_theta > 270 ) delta_theta -= 360;
@@ -300,140 +314,6 @@ void StatusPublisher::Refresh()
         }
         mStatusFlagPub.publish(flag);
 
-        int barArea_nums=0;
-        int clearArea_nums=0;
-        if(car_status.hbz1>0.1)
-        {
-          barArea_nums+=3;
-        }else{
-          clearArea_nums+=6;
-        }
-        if(car_status.hbz2>0.1)
-        {
-          barArea_nums+=3;
-        }else{
-          clearArea_nums+=6;
-        }
-        if(car_status.hbz4>0.1)
-        {
-          barArea_nums+=3;
-        }else{
-          clearArea_nums+=6;
-        }
-
-        if(barArea_nums>0)
-        {
-          //发布雷区
-          PointCloud::Ptr barcloud_msg(new PointCloud);
-          barcloud_msg->header.stamp = current_time;
-          barcloud_msg->height = 1;
-          barcloud_msg->width  = barArea_nums;
-          barcloud_msg->is_dense = true;
-          barcloud_msg->is_bigendian = false;
-          barcloud_msg->header.frame_id="kinect_link_new";
-          sensor_msgs::PointCloud2Modifier pcd_modifier1(*barcloud_msg);
-          pcd_modifier1.setPointCloud2FieldsByString(1,"xyz");
-          sensor_msgs::PointCloud2Iterator<float> bariter_x(*barcloud_msg, "x");
-          sensor_msgs::PointCloud2Iterator<float> bariter_y(*barcloud_msg, "y");
-          sensor_msgs::PointCloud2Iterator<float> bariter_z(*barcloud_msg, "z");
-          if(car_status.hbz2>0.1)
-          {
-            for(int k=0;k<3;k++,++bariter_x, ++bariter_y,++bariter_z)
-            {
-              *bariter_x=0.2+0.2;
-              *bariter_y=-0.10-k*0.05;
-              *bariter_z=0.15;
-            }
-          }
-          if(car_status.hbz4>0.1)
-          {
-            for(int k=0;k<3;k++,++bariter_x, ++bariter_y,++bariter_z)
-            {
-              *bariter_x=0.2+0.2;
-              *bariter_y=-0.1+k*0.05;
-              *bariter_z=0.15;
-            }
-          }
-          if(car_status.hbz1>0.1)
-          {
-            for(int k=0;k<3;k++,++bariter_x, ++bariter_y,++bariter_z)
-            {
-              *bariter_x=0.2+0.2;
-              *bariter_y=0.05+k*0.05;
-              *bariter_z=0.15;
-            }
-          }
-          if(ii%5==0)
-          {
-            pub_barpoint_cloud_.publish(barcloud_msg);
-          }
-        }
-        if(clearArea_nums>0)
-        {
-          //发布雷区
-          PointCloud::Ptr clearcloud_msg(new PointCloud);
-          clearcloud_msg->header.stamp = current_time;
-          clearcloud_msg->height = 1;
-          clearcloud_msg->width  = clearArea_nums;
-          clearcloud_msg->is_dense = true;
-          clearcloud_msg->is_bigendian = false;
-          clearcloud_msg->header.frame_id="kinect_link_new";
-          sensor_msgs::PointCloud2Modifier pcd_modifier1(*clearcloud_msg);
-          pcd_modifier1.setPointCloud2FieldsByString(1,"xyz");
-          sensor_msgs::PointCloud2Iterator<float> cleariter_x(*clearcloud_msg, "x");
-          sensor_msgs::PointCloud2Iterator<float> cleariter_y(*clearcloud_msg, "y");
-          sensor_msgs::PointCloud2Iterator<float> cleariter_z(*clearcloud_msg, "z");
-          if(car_status.hbz2<0.1)
-          {
-            for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
-            {
-              *cleariter_x=0.2+0.2;
-              *cleariter_y=-0.1-k*0.05;
-              *cleariter_z=0.0;
-            }
-            for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
-            {
-              *cleariter_x=0.15+0.2;
-              *cleariter_y=-0.1-k*0.05;
-              *cleariter_z=0.0;
-            }
-          }
-          if(car_status.hbz4<0.1)
-          {
-            for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
-            {
-              *cleariter_x=0.2+0.2;
-              *cleariter_y=-0.1+k*0.05;
-              *cleariter_z=0.0;
-            }
-            for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
-            {
-              *cleariter_x=0.15+0.2;
-              *cleariter_y=-0.1+k*0.05;
-              *cleariter_z=0.0;
-            }
-          }
-          if(car_status.hbz1<0.1)
-          {
-            for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
-            {
-              *cleariter_x=0.2+0.2;
-              *cleariter_y=0.05+k*0.05;
-              *cleariter_z=0.0;
-            }
-            for(int k=0;k<3;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
-            {
-              *cleariter_x=0.15+0.2;
-              *cleariter_y=0.05+k*0.05;
-              *cleariter_z=0.0;
-            }
-          }
-          if(ii%5==0)
-          {
-            pub_clearpoint_cloud_.publish(clearcloud_msg);
-          }
-        }
-
         //Twist
         static float v_sums[8]={0,0,0,0,0,0,0,0},v_sum=0,v_set=0;
         static float theta_sums[8]={0,0,0,0,0,0,0,0},theta_sum=0,theta_set=0;
@@ -441,40 +321,49 @@ void StatusPublisher::Refresh()
         static int theta_sum_index=0;
         {
           //平滑
-          v_sum -=v_sums[v_sum_index];
           v_sums[v_sum_index] = delta_car*50.0f;
-          v_sum +=v_sums[v_sum_index];
+          v_sum = 0;
+          for(int j =0; j<8;j++)
+          {
+            v_sum += v_sums[j];
+          }
 
-          CarTwist.linear.x=v_sum/8.0f;
+          CarTwist.linear.x = v_sum / 8.0f;
           v_sum_index++;
-          if(v_sum_index>7) v_sum_index=0;
+          if (v_sum_index>7) v_sum_index = 0;
 
           double angle_speed;
-          if(car_status.upwoard == 0)
+          if (car_status.upwoard == 0)
           {
-            angle_speed=-car_status.IMU[5];
+            angle_speed = -car_status.IMU[5];
           }
           else
           {
-            angle_speed=car_status.IMU[5];
+            angle_speed = car_status.IMU[5];
           }
-
-          theta_sum -=theta_sums[theta_sum_index];
-          theta_sums[theta_sum_index] = angle_speed * PI /180.0f;
-          theta_sum +=theta_sums[theta_sum_index];
-          CarTwist.angular.z=theta_sum/8.0f;
+          static float angle_speed_last = 0;
+          if (std::isnan(angle_speed) || std::fabs(angle_speed)>500)
+          {
+            angle_speed = angle_speed_last;
+          }
+          else
+          {
+            angle_speed_last = angle_speed;
+          }
+          theta_sums[theta_sum_index] = angle_speed * PI / 180.0f;
+          theta_sum = 0;
+          for(int j =0; j<8;j++)
+          {
+            theta_sum += theta_sums[j];
+          }
+          CarTwist.angular.z = theta_sum / 8.0f;//angle_speed*PI / 180.0f;
           theta_sum_index++;
-          if(theta_sum_index>7) theta_sum_index=0;
-          //std::cout<<" " << angle_speed * PI /180.0f<<std::endl;
-
-          // CarTwist.linear.x=delta_car*50.0f;
-          // CarTwist.angular.z=angle_speed * PI /180.0f;
-
+          if (theta_sum_index>7) theta_sum_index = 0;
         }
 
         mTwistPub.publish(CarTwist);
 
-        CarPower.data = car_status.power;
+        CarPower.data = car_status.power*power_scale_;
         mPowerPub.publish(CarPower);
 
         CarOdom.header.stamp = current_time;
@@ -554,6 +443,7 @@ void StatusPublisher::Refresh()
         if(distance_sum_i%5==0)
         {
           //平滑
+          forward_flag_ = true;
           distance1_sum -=distance1_sums[distance_sum_index];
           distance1_sums[distance_sum_index] = car_status.distance1;
           distance1_sum +=distance1_sums[distance_sum_index];
@@ -574,6 +464,7 @@ void StatusPublisher::Refresh()
              CarSonar1.header.stamp = current_time;
              CarSonar1.range = distances_[0];
              mSonar1Pub.publish(CarSonar1);
+             if(distances_[0]<tran_dist_ && forward_flag_) forward_flag_ = false;
            }
 
            if(distances_[1]>0.1)
@@ -581,11 +472,10 @@ void StatusPublisher::Refresh()
              CarSonar2.header.stamp = current_time;
              CarSonar2.range = distances_[1];
              mSonar2Pub.publish(CarSonar2);
+             if(distances_[1]<tran_dist_ && forward_flag_) forward_flag_ = false;
            }
         }
         distance_sum_i++;
-
-        ros::spinOnce();
 
         mbUpdated = false;
     }
@@ -633,6 +523,17 @@ void StatusPublisher::get_distances(double distances[2])
 {
   distances[0]=distances_[0];
   distances[1]=distances_[1];
+}
+
+void StatusPublisher::get_canmove_flag(bool &forward_flag,bool &rot_flag)
+{
+  forward_flag = forward_flag_;
+  rot_flag = rot_flag_;
+}
+
+float StatusPublisher::get_ultrasonic_min_distance()
+{
+  return std::min(distances_[0],distances_[1]);
 }
 
 } //namespace xqserial_server

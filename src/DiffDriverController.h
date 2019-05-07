@@ -41,12 +41,12 @@ public:
     void setStatusPtr(StatusPublisher& status);
     void updateMoveFlag(const std_msgs::Bool& moveFlag);
     void updateBarDetectFlag(const std_msgs::Bool& DetectFlag);
-    geometry_msgs::Twist get_cmdTwist(void);
-    void sendcmd2(const geometry_msgs::Twist &command);
     void updateStopFlag(const std_msgs::Int32& fastStopmsg);
     bool checkStop();
     void UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status);
     bool dealBackSwitch();
+    void send_speed();
+    void filterSpeed();
 
     int speed_debug[2];
     ros::WallTime last_ordertime;
@@ -67,6 +67,8 @@ private:
     ros::Publisher mgalileoCmdsPub_;
     boost::mutex mStausMutex_;
     bool back_touch_falg_;
+    float linear_x_;
+    float theta_z_;
 };
 
 }

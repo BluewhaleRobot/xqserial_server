@@ -46,7 +46,7 @@ class StatusPublisher
 
 public:
     StatusPublisher();
-    StatusPublisher(double separation,double radius);
+    StatusPublisher(double separation,double radius,double power_scale);
     void Refresh();
     void Update(const char *data, unsigned int len);
     double get_wheel_separation();
@@ -60,6 +60,13 @@ public:
     nav_msgs::Odometry get_odom();
     UPLOAD_STATUS car_status;
     void get_distances(double distances[2]);
+    void setBarParams(double rot_dist,double tran_dist)
+    {
+      rot_dist_ = rot_dist;
+      tran_dist_ = tran_dist;
+    }
+    void get_canmove_flag(bool &forward_flag,bool &rot_flag);
+    float get_ultrasonic_min_distance();
 private:
 
 
@@ -93,6 +100,14 @@ private:
     bool mbUpdated;
     double  distances_[2];
     boost::mutex mMutex;
+
+    double power_scale_;
+
+    double rot_dist_;
+    double tran_dist_;
+
+    bool forward_flag_;
+    bool rot_flag_;
 };
 
 } //namespace xqserial_server
