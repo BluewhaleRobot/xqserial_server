@@ -238,7 +238,7 @@ void DiffDriverController::filterSpeed()
   if (!MoveFlag || stopFlag_)
   {
     vx_temp = 0.;
-    vtheta_temp = 0.;
+    //vtheta_temp = 0.;
   }
 
   //超声波避障
