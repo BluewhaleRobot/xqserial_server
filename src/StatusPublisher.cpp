@@ -387,13 +387,13 @@ void StatusPublisher::Refresh()
       {
         for (int k = 0; k < 3; k++, ++cleariter_x, ++cleariter_y, ++cleariter_z)
         {
-          *cleariter_x = 0.2;
+          *cleariter_x = 0.3;
           *cleariter_y = -0.1 - k * 0.05;
           *cleariter_z = 0.0;
         }
         for (int k = 0; k < 3; k++, ++cleariter_x, ++cleariter_y, ++cleariter_z)
         {
-          *cleariter_x = 0.15;
+          *cleariter_x = 0.25;
           *cleariter_y = -0.1 - k * 0.05;
           *cleariter_z = 0.0;
         }
@@ -402,13 +402,13 @@ void StatusPublisher::Refresh()
       {
         for (int k = 0; k < 3; k++, ++cleariter_x, ++cleariter_y, ++cleariter_z)
         {
-          *cleariter_x = 0.2;
+          *cleariter_x = 0.3;
           *cleariter_y = -0.1 + k * 0.05;
           *cleariter_z = 0.0;
         }
         for (int k = 0; k < 3; k++, ++cleariter_x, ++cleariter_y, ++cleariter_z)
         {
-          *cleariter_x = 0.15;
+          *cleariter_x = 0.25;
           *cleariter_y = -0.1 + k * 0.05;
           *cleariter_z = 0.0;
         }
@@ -417,13 +417,13 @@ void StatusPublisher::Refresh()
       {
         for (int k = 0; k < 3; k++, ++cleariter_x, ++cleariter_y, ++cleariter_z)
         {
-          *cleariter_x = 0.2;
+          *cleariter_x = 0.3;
           *cleariter_y = 0.05 + k * 0.05;
           *cleariter_z = 0.0;
         }
         for (int k = 0; k < 3; k++, ++cleariter_x, ++cleariter_y, ++cleariter_z)
         {
-          *cleariter_x = 0.15;
+          *cleariter_x = 0.25;
           *cleariter_y = 0.05 + k * 0.05;
           *cleariter_z = 0.0;
         }
