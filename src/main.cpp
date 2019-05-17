@@ -3,13 +3,22 @@
 
 #include <iostream>
 #include <boost/thread.hpp>
+#include <json/json.h>
 
 #include <ros/ros.h>
 #include <ros/package.h>
+#include <std_msgs/String.h>
 #include "DiffDriverController.h"
 #include "StatusPublisher.h"
+#include "xiaoqiang_log/LogRecord.h"
 
 using namespace std;
+
+inline bool exists(const std::string &name)
+{
+    struct stat buffer;
+    return (stat(name.c_str(), &buffer) == 0);
+}
 
 int main(int argc, char **argv)
 {
@@ -31,13 +40,21 @@ int main(int argc, char **argv)
     ros::param::param<double>("~wheel_radius", radius, 0.0825);
     ros::param::param<bool>("~debug_flag", DebugFlag, false);
     ros::param::param<double>("~crash_distance", crash_distance, 0.2);
-    xqserial_server::StatusPublisher xq_status(separation,radius,crash_distance);
+    double power_scale;
+    ros::param::param<double>("~power_scale", power_scale, 1.0);
+    xqserial_server::StatusPublisher xq_status(separation,radius,crash_distance,power_scale);
 
     //获取小车控制参数
     double max_speed;
     string cmd_topic;
     ros::param::param<double>("~max_speed", max_speed, 5.0);
     ros::param::param<std::string>("~cmd_topic", cmd_topic, "cmd_vel");
+
+    // 初始化log发布者和语音发布者
+    ros::NodeHandle mNH;
+    ros::Publisher log_pub = mNH.advertise<xiaoqiang_log::LogRecord>("/xiaoqiang_log", 1, true);
+    ros::Publisher audio_pub = mNH.advertise<std_msgs::String>("/xiaoqiang_tts/text", 1, true);
+
 
     try {
         CallbackAsyncSerial serial(port,baud);
@@ -84,9 +101,9 @@ int main(int argc, char **argv)
               char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x01};
               serial.write(cmd_str,6);
             }
-            if(i%1 == 0)
+            if(i%10 == 0)
             {
-              xq_diffdriver.check_faster_stop();
+              xq_diffdriver.checkStop();
             }
             i++;
             r.sleep();
@@ -96,8 +113,29 @@ int main(int argc, char **argv)
         quit:
         serial.close();
 
-    } catch (std::exception& e) {
-        cerr<<"Exception: "<<e.what()<<endl;
+    }catch (std::exception& e) {
+      ROS_ERROR_STREAM("Open " << port << " failed.");
+      ROS_ERROR_STREAM("Exception: " << e.what());
+      // 检查串口设备是否存在
+      if (!exists(port))
+      {
+          // 发送语音提示消息
+          std_msgs::String audio_msg;
+          audio_msg.data = "未发现底盘串口，请检查串口连接";
+          audio_pub.publish(audio_msg);
+          xiaoqiang_log::LogRecord log_record;
+          log_record.collection_name = "exception";
+          log_record.stamp = ros::Time::now();
+          Json::Value record;
+          record["type"] = "HARDWARE_ERROR";
+          record["info"] = "底盘串口设备未找到: " + port;
+          Json::FastWriter fastWriter;
+          log_record.record = fastWriter.write(record);
+          // 发送日志消息
+          log_pub.publish(log_record);
+      }
+      ros::shutdown();
+      return 1;
     }
 
     ros::shutdown();
