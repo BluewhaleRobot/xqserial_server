@@ -563,16 +563,16 @@ void StatusPublisher::Refresh()
 
         if(distance_sum_i%5==0)
         {
-          // if((car_status.hbz1+car_status.hbz2)>0.1&&(car_status.hbz1+car_status.hbz2)<3.0)
-          // {
-          //   move_forward_flag = false;
-          // }
-          // else{
-          //   if(!move_forward_flag)
-          //   {
-          //     if((delta_car*50.0f)>=0) move_forward_flag = true;
-          //   }
-          // }
+          if((car_status.hbz1+car_status.hbz2)>0.1&&(car_status.hbz1+car_status.hbz2)<3.0)
+          {
+            move_forward_flag = false;
+          }
+          else{
+            if(!move_forward_flag)
+            {
+              if((delta_car*50.0f)>=0) move_forward_flag = true;
+            }
+          }
           //平滑
           distance1_sum -= distance1_sums[distance_sum_index];
           distance1_sums[distance_sum_index] = car_status.distance1;
@@ -615,6 +615,7 @@ void StatusPublisher::Refresh()
           }
           if(distances_[0]<=crash_distance_||distances_[1]<=crash_distance_)
           {
+            //ROS_ERROR("distances_ %f %f %f",distances_[0],distances_[1],crash_distance_);
             move_forward_flag = false;
           }
        }

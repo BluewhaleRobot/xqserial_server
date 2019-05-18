@@ -56,7 +56,7 @@ void DiffDriverController::updateElevator(const std_msgs::Int32& elevatormsg)
 {
   boost::mutex::scoped_lock lock(mMutex);
   //下发底层ｉｍｕ标定命令
-  char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x45,(char)0x00};
+  char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x4b,(char)0x00};
   switch (elevatormsg.data) {
     case 0:
       cmd_str[5] = (char)0x00;
@@ -240,7 +240,7 @@ void DiffDriverController::filterSpeed()
   //超声波减速
   float bar_distance = xq_status->get_ultrasonic_min_distance();
   if(!DetectFlag_) bar_distance = 4.2;
-
+  //ROS_ERROR("bar_distance: %f",bar_distance);
   if(bar_distance<=1.2)
   {
     vx_temp = std::min(vx_temp,0.5*(bar_distance-0.2));
@@ -255,6 +255,7 @@ void DiffDriverController::filterSpeed()
   if(DetectFlag_)
   {
     bool forward_flag = xq_status->can_movefoward();
+    //ROS_ERROR("moveFlag: %d",forward_flag);
     if(!forward_flag && vx_temp>0.01)
     {
       vx_temp = 0.;
