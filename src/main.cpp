@@ -126,7 +126,7 @@ int main(int argc, char **argv)
                   {
                     std_msgs::String audio_msg;
                     audio_msg.data = "请让开一下，谢谢！";
-                    audio_pub.publish(audio_msg);
+                    //audio_pub.publish(audio_msg);
 
                     speak_triger = true;
                   }
@@ -145,7 +145,7 @@ int main(int argc, char **argv)
               //告诉用户回去了
               std_msgs::String audio_msg;
               audio_msg.data = "好的，我回去了，您慢用！";
-              audio_pub.publish(audio_msg);
+              //audio_pub.publish(audio_msg);
             }
 
             i++;
