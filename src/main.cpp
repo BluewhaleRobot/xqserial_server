@@ -46,7 +46,7 @@ int main(int argc, char **argv)
     double rot_dist,tran_dist;
     ros::param::param<double>("~rot_dist", rot_dist, -0.21);
     ros::param::param<double>("~tran_dist", tran_dist, -0.3);
-    
+
     xqserial_server::StatusPublisher xq_status(separation,radius,power_scale);
     xq_status.setBarParams(rot_dist,tran_dist);
     //获取小车控制参数
@@ -125,7 +125,7 @@ int main(int argc, char **argv)
                   if(speak_flag==41)
                   {
                     std_msgs::String audio_msg;
-                    audio_msg.data = "请让开一下，谢谢！";
+                    //audio_msg.data = "请让开一下，谢谢！";
                     //audio_pub.publish(audio_msg);
 
                     speak_triger = true;
@@ -145,7 +145,7 @@ int main(int argc, char **argv)
               //告诉用户回去了
               std_msgs::String audio_msg;
               audio_msg.data = "好的，我回去了，您慢用！";
-              //audio_pub.publish(audio_msg);
+              audio_pub.publish(audio_msg);
             }
 
             i++;

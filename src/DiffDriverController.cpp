@@ -244,7 +244,7 @@ void DiffDriverController::filterSpeed()
   //超声波避障
   if(DetectFlag_)
   {
-    bool forward_flag,rot_flag;
+    bool forward_flag=true,rot_flag=true;
     xq_status->get_canmove_flag(forward_flag,rot_flag);
     if(!forward_flag && vx_temp>0.01)
     {
