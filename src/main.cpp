@@ -46,8 +46,8 @@ int main(int argc, char **argv)
     double separation=0,radius=0;
     bool DebugFlag = false;
 
-    ros::param::param<double>("~wheel_separation", separation, 0.33);
-    ros::param::param<double>("~wheel_radius", radius, 0.0825);
+    ros::param::param<double>("~wheel_separation", separation, 0.39);
+    ros::param::param<double>("~wheel_radius", radius, 0.02);
     ros::param::param<bool>("~debug_flag", DebugFlag, false);
 
     double rot_dist,tran_dist;
@@ -57,7 +57,7 @@ int main(int argc, char **argv)
     //获取小车控制参数
     double max_speed;
     string cmd_topic;
-    ros::param::param<double>("~max_speed", max_speed, 5.0);
+    ros::param::param<double>("~max_speed", max_speed, 10.0);
     ros::param::param<std::string>("~cmd_topic", cmd_topic, "cmd_vel");
 
     double power_scale;
@@ -104,14 +104,6 @@ int main(int argc, char **argv)
           {
               cerr<<"Error: serial port closed unexpectedly"<<endl;
               break;
-          }
-          //先配置速度模式
-          if(xq_status.car_status.driver_status != 0 && i%20==0)
-          {
-            ROS_ERROR("clear motor driver error! %d ",xq_status.car_status.driver_status);
-            serial_car.write(driver_clear_cmd,12);
-            usleep(15000);//延时1MS，等待数据上传
-            serial_car.write(driver_clear_cmd,12);
           }
           i++;
           // if(i%50==0)

@@ -7,7 +7,7 @@ namespace xqserial_server
 
 DiffDriverController::DiffDriverController()
 {
-    max_wheelspeed=4.4;
+    max_wheelspeed=10;
     cmd_topic="/cmd_vel";
     xq_status=new StatusPublisher();
     cmd_serial_car=NULL;
@@ -62,29 +62,22 @@ void DiffDriverController::run()
 
       {
         boost::mutex::scoped_lock lock(mMutex);
-        //3秒速度or急停保持功能，
+        //3秒速度保持功能，
         if(t_diff.toSec()<3.0)
         {
           if(i%10==0 || updateOrderflag_)
           {
             updateOrderflag_ = false;
-            if(fastStopFlag_)
+
+            //有速度指令则发速度，没有则停止
+            if(send_flag_)
             {
-              //优先急停
-              send_fasterstop();
+              filterSpeed();
+              send_speed();
             }
             else
             {
-              //有速度指令则发速度，没有则停止
-              if(send_flag_)
-              {
-                filterSpeed();
-                send_speed();
-              }
-              else
-              {
-                send_stop();
-              }
+              send_stop();
             }
           }
           continue;
@@ -92,13 +85,6 @@ void DiffDriverController::run()
         //3秒后开始锁轴
         fastStopFlag_ = false;
         send_flag_ = false;
-        if(t_diff.toSec()<30.0)
-        {
-          if(i%20==0) send_stop();
-          continue;
-        }
-        //30秒后开始释放电机
-        if(i%20==0) send_release();
       }//速度指令结束
 
     }
@@ -166,21 +152,12 @@ void DiffDriverController::filterSpeed()
   vx_temp = linear_x_;
   vtheta_temp = theta_z_;
 
-  //超声波减速
-  // float bar_distance = xq_status->get_ultrasonic_min_distance();
-  // if(!BarFlag) bar_distance = 4.2;
-  //
-  // if(bar_distance<=1.2)
-  // {
-  //   vx_temp = std::min(vx_temp,0.5*(bar_distance-0.2));
-  // }
   if (!MoveFlag)
   {
     vx_temp = 0.;
     vtheta_temp = 0.;
   }
 
-  //超声波避障
   if(BarFlag)
   {
     bool forward_flag,rot_flag;
@@ -201,12 +178,11 @@ void DiffDriverController::filterSpeed()
 
 void DiffDriverController::send_speed()
 {
-  int i = 0, wheel_ppr = 1;
+  int i = 0;
   double separation = 0, radius = 0, speed_lin = 0, speed_ang = 0, speed_temp[2];
 
   separation = xq_status->get_wheel_separation();
   radius = xq_status->get_wheel_radius();
-  wheel_ppr = xq_status->get_wheel_ppr();
   //转换速度单位，由米转换成转
   speed_lin = linear_x_ / (2.0 * PI * radius);
   speed_ang = theta_z_ * separation / (2.0 * PI * radius);
@@ -222,62 +198,60 @@ void DiffDriverController::send_speed()
   }
 
   //转出最大速度百分比,并进行限幅
-  speed_temp[0] = scale * (speed_lin + speed_ang / 2) / max_wheelspeed * 100.0;
-  speed_temp[0] = std::min(speed_temp[0], 100.0);
-  speed_temp[0] = std::max(-100.0, speed_temp[0]);
+  speed_temp[0] = scale * (speed_lin + speed_ang / 2) / max_wheelspeed * 1000.0;
+  speed_temp[0] = std::min(speed_temp[0], 1000.0);
+  speed_temp[0] = std::max(-1000.0, speed_temp[0]);
 
-  speed_temp[1] = scale * (speed_lin - speed_ang / 2) / max_wheelspeed * 100.0;
-  speed_temp[1] = std::min(speed_temp[1], 100.0);
-  speed_temp[1] = std::max(-100.0, speed_temp[1]);
+  speed_temp[1] = scale * (speed_lin - speed_ang / 2) / max_wheelspeed * 1000.0;
+  speed_temp[1] = std::min(speed_temp[1], 1000.0);
+  speed_temp[1] = std::max(-1000.0, speed_temp[1]);
 
-  left_speed_ = (int16_t)(speed_temp[1]*max_wheelspeed*wheel_ppr/100.0f);
-  right_speed_ = -(int16_t)(speed_temp[0]*max_wheelspeed*wheel_ppr/100.0f);
+  left_speed_ = (int16_t)(speed_temp[1]);
+  right_speed_ = -(int16_t)(speed_temp[0]);
 
   //下发速度指令
-  //                           0           1           2          3          4          5          6          7          8          9          10         11
-   char speed_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x00,(char)0x00,(char)0x00,(char)0x90,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60};
-
-  speed_cmd[7] = right_speed_&0xff;
-  speed_cmd[8] = (right_speed_>>8)&0xff;
-
-  speed_cmd[9] = left_speed_&0xff;
-  speed_cmd[10] = (left_speed_>>8)&0xff;
+  char buffer [30];
+  int len;
+  len = std::sprintf(buffer, "!M %d  %d ", left_speed_,right_speed_);
   if(NULL!=cmd_serial_car)
   {
-      cmd_serial_car->write(speed_cmd,12);
+      cmd_serial_car->write(buffer,len);
   }
 }
 
 void DiffDriverController::send_stop()
 {
   //下发速度指令
-  //                           0           1           2          3          4          5          6          7          8          9          10         11
-   char speed_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x00,(char)0x00,(char)0x00,(char)0x90,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60};
+  char buffer [30];
+  int len;
+  len = std::sprintf(buffer, "!M %d  %d", 0,0);
   if(NULL!=cmd_serial_car)
   {
-      cmd_serial_car->write(speed_cmd,12);
+      cmd_serial_car->write(buffer,len);
   }
 }
 
 void DiffDriverController::send_fasterstop()
 {
-  //下发速度指令
-  //                           0           1           2          3          4          5          6          7          8          9          10         11
-  char speed_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x00,(char)0x00,(char)0x00,(char)0xf0,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60};
+  //下发急停指令
+  char buffer [30];
+  int len;
+  len = std::sprintf(buffer, "!EX");
   if(NULL!=cmd_serial_car)
   {
-      cmd_serial_car->write(speed_cmd,12);
+      cmd_serial_car->write(buffer,len);
   }
 }
 
 void DiffDriverController::send_release()
 {
-  //下发速度指令
-  //                           0           1           2          3          4          5          6          7          8          9          10         11
-   char speed_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x02,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60};
+  //下发急停释放指令
+  char buffer [30];
+  int len;
+  len = std::sprintf(buffer, "!MG");
   if(NULL!=cmd_serial_car)
   {
-      cmd_serial_car->write(speed_cmd,12);
+      cmd_serial_car->write(buffer,len);
   }
 }
 

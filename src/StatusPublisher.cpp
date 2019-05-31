@@ -41,7 +41,7 @@ StatusPublisher::StatusPublisher()
         status[i]=0;
     }
 
-    car_status.encoder_ppr=4000;
+    car_status.encoder_ppr=50000;
     car_status.status_imu = -1;
     car_status.driver_status = 5;
     car_status.status = -1;
@@ -117,44 +117,7 @@ StatusPublisher::StatusPublisher(double separation,double radius,bool debugFlag,
 
 void StatusPublisher::Update_car(const char data[], unsigned int len)
 {
-    int i=0,j=0;
-    int * receive_byte;
-    static std::deque<unsigned char>  cmd_string_buf={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
-    unsigned char current_str=0x00;
-
-    for(i=0;i<len;i++)
-    {
-        current_str=data[i];
-        cmd_string_buf.pop_front();
-        cmd_string_buf.push_back(current_str);
-        //std::cout<< std::hex  << (int)current_str <<std::endl;
-        //ROS_ERROR("current %d %d",data[i],i);
-        if((cmd_string_buf[0]!=0xC2 && cmd_string_buf[1]!=0x9B)) //校验地址
-        {
-          continue;
-        }
-        //校验头部信息
-        int check_sum;
-        check_sum = 0;
-        for(int k=0;k<11;k++)
-        {
-          check_sum += cmd_string_buf[k];
-        }
-        unsigned char sum_low8 = check_sum&0x000000ff;
-
-        if(sum_low8 != cmd_string_buf[11]) continue;
-
-        ROS_DEBUG("receive one package!");
-        //有效包，开始提取数据
-        {
-          boost::mutex::scoped_lock lock(mMutex_car);
-          car_status.driver_status = cmd_string_buf[2];
-          car_status.encoder_r_current = cmd_string_buf[6]<<24|cmd_string_buf[5]<<16|cmd_string_buf[4]<<8|cmd_string_buf[3];
-          car_status.encoder_l_current = cmd_string_buf[10]<<24|cmd_string_buf[9]<<16|cmd_string_buf[8]<<8|cmd_string_buf[7];
-          car_status.encoder_r_current = -car_status.encoder_r_current;
-          ROS_DEBUG("current %d %d %d",car_status.driver_status,car_status.encoder_r_current,car_status.encoder_l_current);
-        }
-    }
+    ROS_DEBUG("receive one package! %s , len %d",data,len);
     return;
 }
 
@@ -233,13 +196,15 @@ void StatusPublisher::Update_imu(const char data[], unsigned int len)
                           if(cmd_string_buf[5*j+4]!=32)
                           {
                             mbUpdated_imu=false;
-                            car_status.encoder_ppr = 4000;
+                            car_status.encoder_ppr = 50000;
                             break;
                           }
                       }
                     }
                     if (mbUpdated_imu)
                     {
+                      car_status.encoder_delta_r = -car_status.encoder_delta_r;
+                      car_status.encoder_delta_l = -car_status.encoder_delta_l;
                       base_time_ = ros::Time::now().toSec();
                     }
                     new_packed_ok_len=0;
