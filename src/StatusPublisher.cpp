@@ -43,7 +43,7 @@ StatusPublisher::StatusPublisher()
 
     car_status.encoder_ppr=50000;
     car_status.status_imu = -1;
-    car_status.driver_status = 5;
+    car_status.driver_status = 0;
     car_status.status = -1;
 
     for(i=0;i<4;i++)
@@ -203,8 +203,6 @@ void StatusPublisher::Update_imu(const char data[], unsigned int len)
                     }
                     if (mbUpdated_imu)
                     {
-                      car_status.encoder_delta_r = -car_status.encoder_delta_r;
-                      car_status.encoder_delta_l = -car_status.encoder_delta_l;
                       base_time_ = ros::Time::now().toSec();
                     }
                     new_packed_ok_len=0;
@@ -297,7 +295,7 @@ void StatusPublisher::Refresh()
     if(car_status.status_imu == 1 )
     {
       //反映红外状态
-      car_status.status = car_status.hbz_status;
+      car_status.status = 0;
     }
     else
     {

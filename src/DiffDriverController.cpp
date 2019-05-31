@@ -207,16 +207,19 @@ void DiffDriverController::send_speed()
   speed_temp[1] = std::max(-1000.0, speed_temp[1]);
 
   left_speed_ = (int16_t)(speed_temp[1]);
-  right_speed_ = -(int16_t)(speed_temp[0]);
+  right_speed_ = (int16_t)(speed_temp[0]);
 
   //下发速度指令
   char buffer [30];
   int len;
-  len = std::sprintf(buffer, "!M %d  %d ", left_speed_,right_speed_);
+  len = std::sprintf(buffer, "!M %d %d", left_speed_,right_speed_);
+  buffer[len] = (char)0x0d;
+  buffer[len+1] = (char)0x0a;
   if(NULL!=cmd_serial_car)
   {
-      cmd_serial_car->write(buffer,len);
+      cmd_serial_car->write(buffer,len+2);
   }
+  //ROS_ERROR("send speed %s %d",buffer,len);
 }
 
 void DiffDriverController::send_stop()
@@ -224,10 +227,12 @@ void DiffDriverController::send_stop()
   //下发速度指令
   char buffer [30];
   int len;
-  len = std::sprintf(buffer, "!M %d  %d", 0,0);
+  len = std::sprintf(buffer, "!M %d %d", 0,0);
+  buffer[len] = (char)0x0d;
+  buffer[len+1] = (char)0x0a;
   if(NULL!=cmd_serial_car)
   {
-      cmd_serial_car->write(buffer,len);
+      cmd_serial_car->write(buffer,len+2);
   }
 }
 
@@ -237,9 +242,11 @@ void DiffDriverController::send_fasterstop()
   char buffer [30];
   int len;
   len = std::sprintf(buffer, "!EX");
+  buffer[len] = (char)0x0d;
+  buffer[len+1] = (char)0x0a;
   if(NULL!=cmd_serial_car)
   {
-      cmd_serial_car->write(buffer,len);
+      cmd_serial_car->write(buffer,len+2);
   }
 }
 
@@ -249,9 +256,11 @@ void DiffDriverController::send_release()
   char buffer [30];
   int len;
   len = std::sprintf(buffer, "!MG");
+  buffer[len] = (char)0x0d;
+  buffer[len+1] = (char)0x0a;
   if(NULL!=cmd_serial_car)
   {
-      cmd_serial_car->write(buffer,len);
+      cmd_serial_car->write(buffer,len+2);
   }
 }
 
