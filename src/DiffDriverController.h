@@ -17,6 +17,7 @@ typedef struct
                         //都表示视觉系统已经初始化完成。
     int charge_status;  //充电状态，0 free 未充电状态, 1 charging 充电中, 2 charged 已充满，但仍在小电流充电, 3 finding
                         //寻找充电桩, 4 docking 停靠充电桩, 5 error 错误
+    int map_status;   //0表示不在建图状态，1表示处于建图状态
     float power;       //电源电压【9 46】v 。
     int target_numID;  //当前目标点编号,默认值为-1 表示无效值。
     int target_status;  //当前目标点状态,0 表示已经到达或者取消 free,1 表示正在前往目标点过程中 working,2
@@ -34,7 +35,7 @@ class DiffDriverController
 {
 public:
     DiffDriverController();
-    DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_);
+    DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_,double r_min);
     void run();
     void sendcmd(const geometry_msgs::Twist& command);
     void imuCalibration(const std_msgs::Bool& calFlag);
@@ -69,6 +70,7 @@ private:
     bool back_touch_falg_;
     float linear_x_;
     float theta_z_;
+    float R_min_;
 };
 
 }

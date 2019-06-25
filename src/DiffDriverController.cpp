@@ -16,9 +16,11 @@ DiffDriverController::DiffDriverController()
     DetectFlag_=true;
     linear_x_ = 0.;
     theta_z_ = 0.;
+    galileoStatus_.map_status = 0;
+    R_min_ = 0.5;
 }
 
-DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_)
+DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_,double r_min)
 {
     MoveFlag=true;
     max_wheelspeed=max_speed_;
@@ -35,6 +37,8 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
     last_touchtime_ = ros::WallTime::now();
     linear_x_ = 0.;
     theta_z_ = 0.;
+    galileoStatus_.map_status = 0;
+    R_min_ = r_min;
 }
 
 void DiffDriverController::run()
@@ -256,6 +260,29 @@ void DiffDriverController::filterSpeed()
     }
   }
 
+  {
+    //先过滤速度
+    boost::mutex::scoped_lock lock(mStausMutex_);
+    if(galileoStatus_.map_status == 1)
+    {
+      if(vtheta_temp <-0.001 || vtheta_temp>0.001 )
+      {
+        float R_now =  std::fabs(vx_temp / vtheta_temp);
+        if(R_now < R_min_)
+        {
+          if(vtheta_temp>0.001)
+          {
+            vtheta_temp = std::fabs(vx_temp/R_min_);
+          }
+          else
+          {
+            vtheta_temp = -std::fabs(vx_temp/R_min_);
+          }
+        }
+      }
+    }
+  }
+
   linear_x_ = vx_temp;
   theta_z_ = vtheta_temp;
 }
@@ -266,6 +293,7 @@ void DiffDriverController::UpdateNavStatus(const galileo_serial_server::GalileoS
     galileoStatus_.nav_status = current_receive_status.navStatus;
     galileoStatus_.visual_status = current_receive_status.visualStatus;
     galileoStatus_.charge_status = current_receive_status.chargeStatus;
+    galileoStatus_.map_status = current_receive_status.mapStatus;
     galileoStatus_.power = current_receive_status.power;
     galileoStatus_.target_numID = current_receive_status.targetNumID;
     galileoStatus_.target_status = current_receive_status.targetStatus;
