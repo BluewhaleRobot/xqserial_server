@@ -43,6 +43,7 @@ StatusPublisher::StatusPublisher()
   mStatusFlagPub = mNH.advertise<std_msgs::Int32>("xqserial_server/StatusFlag", 1, true);
   mTwistPub = mNH.advertise<geometry_msgs::Twist>("xqserial_server/Twist", 1, true);
   mPowerPub = mNH.advertise<std_msgs::Float64>("xqserial_server/Power", 1, true);
+  mRawOdomPub = mNH.advertise<xqserial_server::RawOdom>("xqserial_server/Raw_odom", 1, true);
   mOdomPub = mNH.advertise<nav_msgs::Odometry>("xqserial_server/Odom", 1, true);
   pub_barpoint_cloud_ = mNH.advertise<PointCloud>("kinect/barpoints", 1, true);
   pub_clearpoint_cloud_ = mNH.advertise<PointCloud>("kinect/clearpoints", 1, true);
@@ -56,6 +57,7 @@ StatusPublisher::StatusPublisher()
    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "base_footprint", "base_link"));
    */
   base_time_ = ros::Time::now().toSec();
+  raw_odom.data = 0.0;
 }
 
 StatusPublisher::StatusPublisher(double separation, double radius)
@@ -250,6 +252,12 @@ void StatusPublisher::Refresh()
       // std::cout<<"get you!"<<std::endl;
       delta_car = 0;
     }
+
+    raw_odom.data = raw_odom.data + delta_car;
+    raw_odom.header.stamp = current_time.fromSec(base_time_);
+    raw_odom.header.frame_id = "base_footprint";
+
+    mRawOdomPub.publish(raw_odom);
     // if(ii%50==0||car_status.encoder_delta_car>3000||car_status.encoder_delta_car<-3000)
     // {
     //   std::cout<<"delta_encoder_car:"<< car_status.encoder_delta_car <<std::endl;

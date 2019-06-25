@@ -15,6 +15,7 @@
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include <sensor_msgs/PointField.h>
 #include <sensor_msgs/Imu.h>
+#include "xqserial_server/RawOdom.h"
 
 #define PI 3.14159265
 
@@ -75,6 +76,7 @@ class StatusPublisher
     ros::Publisher mStatusFlagPub;
     ros::Publisher mPowerPub;
     ros::Publisher mOdomPub;
+    ros::Publisher mRawOdomPub;
     ros::Publisher pub_barpoint_cloud_;
     ros::Publisher pub_clearpoint_cloud_;
 
@@ -85,6 +87,8 @@ class StatusPublisher
 
     ros::Publisher mIMUPub;
     sensor_msgs::Imu CarIMU;
+
+    xqserial_server::RawOdom raw_odom;
 };
 
 } //namespace xqserial_server

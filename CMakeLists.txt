@@ -20,7 +20,22 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   tf
   xiaoqiang_log
+  message_generation
+  message_filters
+  galileo_serial_server
 )
+
+add_message_files(
+  FILES
+  RawOdom.msg
+)
+
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
+
 
 set(BOOST_LIBS thread date_time system)
 find_package(Boost COMPONENTS ${BOOST_LIBS} REQUIRED)
@@ -67,4 +82,12 @@ install(
 install(
   DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+)
+
+add_executable(new_imu_odom
+src/new_imu_odom.cpp
+)
+
+target_link_libraries(new_imu_odom
+${catkin_LIBRARIES}
 )

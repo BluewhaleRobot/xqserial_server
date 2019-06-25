@@ -1,0 +1,6 @@
+<launch>
+  <node pkg="xqserial_server" type="new_imu_odom" name="new_odom_driver" respawn="true" respawn_delay="10">
+  <remap from="/IMU" to="/xqserial_server/IMU" />
+  </node>
+  <node pkg="tf" type="static_transform_publisher" name="newimulink_broadcaster" args="0 0 0 0 0 0 1 odom odom_imu 50"/>
+</launch>
