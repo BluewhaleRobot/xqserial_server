@@ -11,15 +11,18 @@ DiffDriverController::DiffDriverController()
     xq_status = new StatusPublisher();
     cmd_serial = NULL;
     MoveFlag = true;
+    galileoStatus_.mapStatus = 0;
+    R_min_ = 0.25;
 }
 
-DiffDriverController::DiffDriverController(double max_speed_, std::string cmd_topic_, StatusPublisher *xq_status_, CallbackAsyncSerial *cmd_serial_)
+DiffDriverController::DiffDriverController(double max_speed_, std::string cmd_topic_, StatusPublisher *xq_status_, CallbackAsyncSerial *cmd_serial_,double r_min)
 {
     MoveFlag = true;
     max_wheelspeed = max_speed_;
     cmd_topic = cmd_topic_;
     xq_status = xq_status_;
     cmd_serial = cmd_serial_;
+    R_min_ = r_min;
 }
 
 void DiffDriverController::run()
@@ -27,8 +30,9 @@ void DiffDriverController::run()
     ros::NodeHandle nodeHandler;
     ros::Subscriber sub = nodeHandler.subscribe(cmd_topic, 1, &DiffDriverController::sendcmd, this);
     ros::Subscriber sub2 = nodeHandler.subscribe("/imu_cal", 1, &DiffDriverController::imuCalibration, this);
-    ros::Subscriber sub3 = nodeHandler.subscribe("/globalMoveFlag", 1, &DiffDriverController::updateMoveFlag, this);
+    ros::Subscriber sub3 = nodeHandler.subscribe("/global_move_flag", 1, &DiffDriverController::updateMoveFlag, this);
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag, this);
+    ros::Subscriber sub5 = nodeHandler.subscribe("/galileo/status", 1, &DiffDriverController::UpdateNavStatus, this);
     ros::spin();
 }
 void DiffDriverController::updateMoveFlag(const std_msgs::Bool &moveFlag)
@@ -82,9 +86,32 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     separation = xq_status->get_wheel_separation();
     radius = xq_status->get_wheel_radius();
     wheel_ppr = xq_status->get_wheel_ppr();
+    float x_filter = command.linear.x, z_filter = command.angular.z ;
+    {
+      //先过滤速度
+      boost::mutex::scoped_lock lock(mStausMutex_);
+      if(galileoStatus_.mapStatus == 1)
+      {
+        if(command.angular.z <-0.001 || command.angular.z>0.001 )
+        {
+          float R_now =  std::fabs(command.linear.x / command.angular.z);
+          if(R_now < R_min_)
+          {
+            if(command.angular.z>0.001)
+            {
+              z_filter = std::fabs(x_filter/R_min_);
+            }
+            else
+            {
+              z_filter = -std::fabs(x_filter/R_min_);
+            }
+          }
+        }
+      }
+    }
     //转换速度单位，由米转换成转
-    speed_lin = command.linear.x / (2.0 * PI * radius);
-    speed_ang = command.angular.z * separation / (2.0 * PI * radius);
+    speed_lin = x_filter / (2.0 * PI * radius);
+    speed_ang = z_filter * separation / (2.0 * PI * radius);
 
     float scale = std::max(std::abs(speed_lin + speed_ang / 2.0), std::abs(speed_lin - speed_ang / 2.0)) / max_wheelspeed;
     if (scale > 1.0)
@@ -171,6 +198,16 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     }
 
     // command.linear.x
+}
+
+void DiffDriverController::UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status)
+{
+    boost::mutex::scoped_lock lock(mStausMutex_);
+    galileoStatus_.navStatus = current_receive_status.navStatus;
+    galileoStatus_.visualStatus = current_receive_status.visualStatus;
+    galileoStatus_.chargeStatus = current_receive_status.chargeStatus;
+    galileoStatus_.mapStatus = current_receive_status.mapStatus;
+
 }
 
 } // namespace xqserial_server

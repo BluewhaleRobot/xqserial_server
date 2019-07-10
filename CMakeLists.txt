@@ -20,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   tf
   xiaoqiang_log
+  galileo_serial_server
 )
 
 set(BOOST_LIBS thread date_time system)

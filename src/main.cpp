@@ -42,9 +42,10 @@ int main(int argc, char **argv)
     xqserial_server::StatusPublisher xq_status(separation, radius);
 
     //获取小车控制参数
-    double max_speed;
+    double max_speed,r_min;
     string cmd_topic;
     ros::param::param<double>("~max_speed", max_speed, 2.0);
+    ros::param::param<double>("~r_min", r_min, 0.25);
     ros::param::param<std::string>("~cmd_topic", cmd_topic, "cmd_vel");
 
     // 初始化log发布者和语音发布者
@@ -56,7 +57,7 @@ int main(int argc, char **argv)
     {
         CallbackAsyncSerial serial(port, baud);
         serial.setCallback(boost::bind(&xqserial_server::StatusPublisher::Update, &xq_status, _1, _2));
-        xqserial_server::DiffDriverController xq_diffdriver(max_speed, cmd_topic, &xq_status, &serial);
+        xqserial_server::DiffDriverController xq_diffdriver(max_speed, cmd_topic, &xq_status, &serial,r_min);
         boost::thread cmd2serialThread(&xqserial_server::DiffDriverController::run, &xq_diffdriver);
         // send test flag
         char debugFlagCmd[] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x01, 'T'};
