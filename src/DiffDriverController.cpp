@@ -48,6 +48,7 @@ void DiffDriverController::run()
     ros::Subscriber sub3 = nodeHandler.subscribe("/global_move_flag", 1, &DiffDriverController::updateMoveFlag,this);
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag,this);
     ros::Subscriber sub5 = nodeHandler.subscribe("/move_base/StatusFlag", 1, &DiffDriverController::updateFastStopFlag,this);
+    ros::Subscriber sub6 = nodeHandler.subscribe("/galileo/status", 1, &DiffDriverController::UpdateNavStatus, this);
     ros::spin();
 }
 void DiffDriverController::updateMoveFlag(const std_msgs::Bool& moveFlag)
@@ -137,11 +138,11 @@ void DiffDriverController::send_speed()
   double vx_temp,vtheta_temp;
   vx_temp=linear_x_;
   vtheta_temp=theta_z_;
-  if(std::fabs(vx_temp)<0.11)
-  {
-    if(vtheta_temp>0.02&&vtheta_temp<0.3) vtheta_temp=0.3;
-    if(vtheta_temp<-0.02&&vtheta_temp>-0.3) vtheta_temp=-0.3;
-  }
+  // if(std::fabs(vx_temp)<0.11)
+  // {
+  //   if(vtheta_temp>0.02&&vtheta_temp<0.3) vtheta_temp=0.3;
+  //   if(vtheta_temp<-0.02&&vtheta_temp>-0.3) vtheta_temp=-0.3;
+  // }
   //转换速度单位，由米转换成转
   speed_lin=vx_temp/(2.0*PI*radius);
   //speed_ang=command.angular.z*separation/(2.0*PI*radius);
