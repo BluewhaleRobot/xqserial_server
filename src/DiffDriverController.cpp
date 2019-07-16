@@ -138,11 +138,11 @@ void DiffDriverController::send_speed()
   double vx_temp,vtheta_temp;
   vx_temp=linear_x_;
   vtheta_temp=theta_z_;
-  // if(std::fabs(vx_temp)<0.11)
-  // {
-  //   if(vtheta_temp>0.02&&vtheta_temp<0.3) vtheta_temp=0.3;
-  //   if(vtheta_temp<-0.02&&vtheta_temp>-0.3) vtheta_temp=-0.3;
-  // }
+  if(std::fabs(vx_temp)<0.11)
+  {
+    if(vtheta_temp>0.01&&vtheta_temp<0.2) vtheta_temp=0.2;
+    if(vtheta_temp<-0.01&&vtheta_temp>-0.2) vtheta_temp=-0.2;
+  }
   //转换速度单位，由米转换成转
   speed_lin=vx_temp/(2.0*PI*radius);
   //speed_ang=command.angular.z*separation/(2.0*PI*radius);
