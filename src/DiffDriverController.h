@@ -48,6 +48,7 @@ public:
     bool dealBackSwitch();
     void send_speed();
     void filterSpeed();
+    void UpdateC4Flag(const std_msgs::Bool& c4Flag);
 
     int speed_debug[2];
     ros::WallTime last_ordertime;

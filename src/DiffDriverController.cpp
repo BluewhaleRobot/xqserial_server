@@ -50,8 +50,23 @@ void DiffDriverController::run()
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag,this);
     ros::Subscriber sub5 = nodeHandler.subscribe("/move_base/StatusFlag", 1, &DiffDriverController::updateStopFlag,this);
     ros::Subscriber sub6 = nodeHandler.subscribe("/galileo/status", 1, &DiffDriverController::UpdateNavStatus, this);
+    ros::Subscriber sub7 = nodeHandler.subscribe("/xqserial_server/poweroff", 1, &DiffDriverController::UpdateC4Flag, this);
     ros::spin();
 }
+
+void DiffDriverController::UpdateC4Flag(const std_msgs::Bool& c4Flag)
+{
+  if(c4Flag.data)
+  {
+    //下发底层c4开关命令
+    char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x4b,(char)0x00};
+    if(NULL!=cmd_serial)
+    {
+        cmd_serial->write(cmd_str,6);
+    }
+  }
+}
+
 
 void DiffDriverController::updateStopFlag(const std_msgs::Int32& fastStopmsg)
 {
