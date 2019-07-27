@@ -41,7 +41,7 @@ StatusPublisher::StatusPublisher()
         status[i]=0;
     }
 
-    car_status.encoder_ppr=50000;
+    car_status.encoder_ppr=45720;
     car_status.status_imu = -1;
     car_status.driver_status = 0;
     car_status.status = -1;
@@ -196,7 +196,7 @@ void StatusPublisher::Update_imu(const char data[], unsigned int len)
                           if(cmd_string_buf[5*j+4]!=32)
                           {
                             mbUpdated_imu=false;
-                            car_status.encoder_ppr = 50000;
+                            car_status.encoder_ppr = 45720;
                             break;
                           }
                       }
