@@ -7,4 +7,6 @@ fi
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cp -pf $DIR/etc/* /etc/udev/rules.d/
 
-echo "dev config file recovered, you need to replugin your devices and restart startup service."
+udevadm control --reload-rules
+
+echo "dev config file recovered, you need to replugin your devices and restart "
