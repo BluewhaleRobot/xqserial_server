@@ -233,6 +233,17 @@ void DiffDriverController::send_speed()
   left_speed_ = (int16_t)(speed_temp[1]*max_wheelspeed*wheel_ppr/100.0f);
   right_speed_ = -(int16_t)(speed_temp[0]*max_wheelspeed*wheel_ppr/100.0f);
 
+  //最小值-100 or 100
+  if(left_speed_>-100 && left_speed_<100)
+  {
+    if(left_speed_>1) left_speed_ = 101;
+    if(left_speed_<-1) left_speed_ = -101;
+  }
+  if(right_speed_>-100 && right_speed_<100)
+  {
+    if(right_speed_>1) right_speed_ = 101;
+    if(right_speed_<-1) right_speed_ = -101;
+  }
   //下发速度指令
   //                           0           1           2          3          4          5          6          7          8          9          10         11
    char speed_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x00,(char)0x00,(char)0x00,(char)0x90,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60};
