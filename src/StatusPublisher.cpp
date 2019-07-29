@@ -224,6 +224,7 @@ void StatusPublisher::Refresh()
   static unsigned int ii = 0;
   static bool theta_updateflag = false;
   static bool theta_update_first = true;
+  static double delta_theta_last = 0;
   ii++;
   //std::cout<<"runR"<< mbUpdated<<std::endl;
   if (mbUpdated_imu)
@@ -267,18 +268,25 @@ void StatusPublisher::Refresh()
       theta_last=car_status.theta;
       theta_update_first=false;
     }
-
     delta_theta = car_status.theta - theta_last;
-    theta_last = car_status.theta;
     if (delta_theta > 270)
       delta_theta -= 360;
     if (delta_theta < -270)
       delta_theta += 360;
 
+    //ROS_ERROR("oups0 %f %f",car_status.theta, theta_last);
     if ((!theta_updateflag) || delta_theta > 20 || delta_theta < -20)
     {
+      //ROS_ERROR("oups1 %f",delta_theta);
       delta_theta = 0;
     }
+    else
+    {
+      theta_last = car_status.theta;
+    }
+
+    delta_theta_last = delta_theta;
+
     CarPos2D.x += delta_x;
     CarPos2D.y += delta_y;
     CarPos2D.theta += delta_theta;
