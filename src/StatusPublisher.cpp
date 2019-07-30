@@ -268,7 +268,7 @@ void StatusPublisher::Refresh()
     if (delta_theta < -270)
       delta_theta += 360;
 
-    if ((!theta_updateflag) || delta_theta > 20 || delta_theta < -20)
+    if ((!theta_updateflag) ||std::isnan(delta_theta)|| delta_theta > 20 || delta_theta < -20)
     {
       delta_theta = 0;
     }
