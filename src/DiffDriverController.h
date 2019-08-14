@@ -6,6 +6,7 @@
 #include <std_msgs/Bool.h>
 #include "galileo_serial_server/GalileoNativeCmds.h"
 #include "galileo_serial_server/GalileoStatus.h"
+#include "xqserial_server/Shutdown.h"
 
 namespace xqserial_server
 {
@@ -48,7 +49,7 @@ public:
     bool dealBackSwitch();
     void send_speed();
     void filterSpeed();
-    void UpdateC4Flag(const std_msgs::Bool& c4Flag);
+    bool UpdateC4Flag(ShutdownRequest &req, ShutdownResponse &res);
 
     int speed_debug[2];
     ros::WallTime last_ordertime;

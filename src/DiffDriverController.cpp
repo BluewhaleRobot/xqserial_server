@@ -43,20 +43,21 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
 
 void DiffDriverController::run()
 {
-    ros::NodeHandle nodeHandler;
+    ros::NodeHandle nodeHandler("~");
     ros::Subscriber sub = nodeHandler.subscribe(cmd_topic, 1, &DiffDriverController::sendcmd, this);
     ros::Subscriber sub2 = nodeHandler.subscribe("/imu_cal", 1, &DiffDriverController::imuCalibration,this);
     ros::Subscriber sub3 = nodeHandler.subscribe("/globalMoveFlag", 1, &DiffDriverController::updateMoveFlag,this);
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag,this);
     ros::Subscriber sub5 = nodeHandler.subscribe("/move_base/StatusFlag", 1, &DiffDriverController::updateStopFlag,this);
     ros::Subscriber sub6 = nodeHandler.subscribe("/galileo/status", 1, &DiffDriverController::UpdateNavStatus, this);
-    ros::Subscriber sub7 = nodeHandler.subscribe("/xqserial_server/poweroff", 1, &DiffDriverController::UpdateC4Flag, this);
+    ros::ServiceServer service = nodeHandler.advertiseService("shutdown", &DiffDriverController::UpdateC4Flag, this);
     ros::spin();
 }
 
-void DiffDriverController::UpdateC4Flag(const std_msgs::Bool& c4Flag)
+bool DiffDriverController::UpdateC4Flag(ShutdownRequest &req, ShutdownResponse &res)
 {
-  if(c4Flag.data)
+  ROS_WARN_STREAM("Start processing shutdown request");
+  if(req.flag)
   {
     //下发底层c4开关命令
     char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x4b,(char)0x00};
@@ -64,7 +65,14 @@ void DiffDriverController::UpdateC4Flag(const std_msgs::Bool& c4Flag)
     {
         cmd_serial->write(cmd_str,6);
     }
+    ROS_WARN_STREAM("Send shutdown command to driver");
+    res.result = true;
   }
+  else{
+    ROS_WARN_STREAM("Shutdown set to False");
+    res.result = false;
+  }
+  return true;
 }
 
 

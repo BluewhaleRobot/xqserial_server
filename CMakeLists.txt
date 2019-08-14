@@ -19,8 +19,19 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   tf
+  message_generation
   xiaoqiang_log
   galileo_serial_server
+)
+
+add_service_files(
+  FILES
+  Shutdown.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
 )
 
 set(BOOST_LIBS thread date_time system)
@@ -32,7 +43,7 @@ pkg_check_modules(JSONCPP REQUIRED jsoncpp)
 
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS nav_msgs roscpp rospy sensor_msgs std_msgs geometry_msgs xiaoqiang_log galileo_serial_server
+  CATKIN_DEPENDS nav_msgs roscpp rospy sensor_msgs std_msgs geometry_msgs xiaoqiang_log galileo_serial_server message_runtime
 )
 
 include_directories(
