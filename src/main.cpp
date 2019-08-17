@@ -83,7 +83,7 @@ int main(int argc, char **argv)
         ros::Duration(0.5).sleep();
 
         ros::Rate r(100); //发布周期为50hz
-
+        int i_num = 0;
         while (ros::ok())
         {
             if (serial_left.errorStatus() || serial_left.isOpen() == false)
@@ -97,6 +97,12 @@ int main(int argc, char **argv)
                 break;
             }
             xq_status.Refresh(); //定时发布状态
+            i_num ++;
+            if(i_num>10)
+            {
+              xq_diffdriver.checkStop();
+              i_num = 0;
+            }
             r.sleep();
             //cout<<"run"<<endl;
         }

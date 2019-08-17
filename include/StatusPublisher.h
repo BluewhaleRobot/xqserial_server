@@ -81,7 +81,7 @@ class StatusPublisher
     std_msgs::Float64 get_power();
     nav_msgs::Odometry get_odom();
     UPLOAD_STATUS car_status;
-
+    bool move_avalable_;
   private:
     //Wheel separation, wrt the midpoint of the wheel width: meters
     double wheel_separation;

@@ -58,6 +58,7 @@ StatusPublisher::StatusPublisher()
    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "base_footprint", "base_link"));
    */
   base_time_ = ros::Time::now().toSec();
+  move_avalable_ = true;
 }
 
 StatusPublisher::StatusPublisher(double separation, double radius)
@@ -423,6 +424,8 @@ void StatusPublisher::Refresh()
     delta_x = delta_car * cos(CarPos2D.theta * PI / 180.0f);
     delta_y = delta_car * sin(CarPos2D.theta * PI / 180.0f);
 
+    //ROS_ERROR("theta %f %f",car_status.theta , CarPos2D.theta);
+
     delta_theta = car_status.theta - theta_last;
     theta_last = car_status.theta;
     if (delta_theta > 270)
@@ -462,6 +465,16 @@ void StatusPublisher::Refresh()
       //有障碍物
       flag.data = 2;
     }
+    if ((car_status.distance1 + car_status.distance2  + car_status.distance4) > 0.1 && (car_status.distance1 + car_status.distance2 + car_status.distance4) < 4.0)
+    {
+      //有障碍物
+      move_avalable_ = false;
+    }
+    else
+    {
+      move_avalable_ = true;
+    }
+
     mStatusFlagPub.publish(flag);
 
     //Twist
