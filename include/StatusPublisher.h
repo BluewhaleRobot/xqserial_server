@@ -26,10 +26,10 @@ typedef struct
     float power;             //电源电压【9 13】v
     float theta;             //方位角，【0 360）°
     int encoder_ppr_left;         //车轮1转对应的编码器个数
-    int encoder_delta_r_left;     //右轮编码器增量， 个为单位
+    int encoder_delta_l_right;     //右轮编码器增量， 个为单位
     int encoder_delta_l_left;     //左轮编码器增量， 个为单位
     int encoder_delta_car_left;   //两车轮中心位移，个为单位
-    int omga_r_left;              //右轮转速 个每秒
+    int omga_l_right;              //右轮转速 个每秒
     int omga_l_left;              //左轮转速 个每秒
     float distance1_left;         //第一个超声模块距离值 单位cm
     float distance2_left;         //第二个超声模块距离值 单位cm
@@ -43,10 +43,10 @@ typedef struct
     float theta_right;             //方位角，【0 360）°
     int encoder_ppr;         //车轮1转对应的编码器个数
     int encoder_delta_r_right;     //右轮编码器增量， 个为单位
-    int encoder_delta_l_right;     //左轮编码器增量， 个为单位
+    int encoder_delta_r_left;     //左轮编码器增量， 个为单位
     int encoder_delta_car_right;   //两车轮中心位移，个为单位
     int omga_r_right;              //右轮转速 个每秒
-    int omga_l_right;              //左轮转速 个每秒
+    int omga_r_left;              //左轮转速 个每秒
     float distance1;         //第一个超声模块距离值 单位cm
     float distance2;         //第二个超声模块距离值 单位cm
     float distance3;         //第三个超声模块距离值 单位cm

@@ -416,6 +416,8 @@ void StatusPublisher::Refresh()
 
     delta_car_y = (-motor_w1 + motor_w2 + motor_w3 - motor_w4) / 4.0f * 1.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius;
 
+    //ROS_ERROR("x y %f %f, w1-4 %f %f %f %f",delta_car_x,delta_car_y, motor_w1, motor_w2 , motor_w3, motor_w4);
+
     if (delta_car_x > 0.05 || delta_car_x < -0.05)
     {
       delta_car_x = 0;

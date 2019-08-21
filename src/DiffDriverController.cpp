@@ -106,7 +106,7 @@ void DiffDriverController::sendcmd()
   speed_lin_x = cmd_x_ / (2.0 * PI * radius);
   speed_lin_y = cmd_y_ / (2.0 * PI * radius);
 
-  speed_ang = cmd_theta_ * separation / (2.0 * PI * radius);
+  speed_ang = cmd_theta_ * separation/2.0 / (2.0 * PI * radius);
 
   float motor_w1 = speed_lin_x - speed_lin_y - speed_ang;
   float motor_w2 = speed_lin_x + speed_lin_y + speed_ang;
