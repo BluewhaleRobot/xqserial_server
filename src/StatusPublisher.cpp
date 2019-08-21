@@ -390,6 +390,11 @@ void StatusPublisher::Refresh()
 
     car_status.encoder_delta_car = (car_status.encoder_delta_r+car_status.encoder_delta_l)/2.0f;
 
+    float motor_w1 = car_status.encoder_delta_r_left;
+    float motor_w2 = car_status.encoder_delta_l_right;
+    float motor_w3 = car_status.encoder_delta_l_left;
+    float motor_w4 = car_status.encoder_delta_r_right;
+
     // Time
     ros::Time current_time;
 
@@ -402,27 +407,27 @@ void StatusPublisher::Refresh()
       theta_updateflag = true;
     }
     //pose
-    double delta_car, delta_x, delta_y, delta_theta, var_len, var_angle;
+    double delta_car_x,delta_car_y, delta_x, delta_y, delta_theta, var_len, var_angle;
 
     var_len = (50.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius) * (50.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius);
     var_angle = (0.01f / 180.0f * PI) * (0.01f / 180.0f * PI);
 
-    delta_car = (car_status.encoder_delta_r + car_status.encoder_delta_l) / 2.0f * 1.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius;
-    if (delta_car > 0.05 || delta_car < -0.05)
+    delta_car_x = (motor_w1 + motor_w2 + motor_w3 + motor_w4) / 4.0f * 1.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius;
+
+    delta_car_y = (-motor_w1 + motor_w2 + motor_w3 - motor_w4) / 4.0f * 1.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius;
+
+    if (delta_car_x > 0.05 || delta_car_x < -0.05)
     {
-      // std::cout<<"get you!"<<std::endl;
-      delta_car = 0;
+      delta_car_x = 0;
     }
-    // if(ii%50==0||car_status.encoder_delta_car>3000||car_status.encoder_delta_car<-3000)
-    // {
-    //   std::cout<<"delta_encoder_car:"<< car_status.encoder_delta_car <<std::endl;
-    //   std::cout<<"delta_encoder_r:"<< car_status.encoder_delta_r <<std::endl;
-    //   std::cout<<"delta_encoder_l:"<< car_status.encoder_delta_l <<std::endl;
-    //   std::cout<<"ppr:"<< car_status.encoder_ppr <<std::endl;
-    //   std::cout<<"delta_car:"<< delta_car <<std::endl;
-    // }
-    delta_x = delta_car * cos(CarPos2D.theta * PI / 180.0f);
-    delta_y = delta_car * sin(CarPos2D.theta * PI / 180.0f);
+
+    if (delta_car_y > 0.05 || delta_car_y < -0.05)
+    {
+      delta_car_y = 0;
+    }
+
+    delta_x = delta_car_x * cos(CarPos2D.theta * PI / 180.0f) - delta_car_y * sin(CarPos2D.theta * PI / 180.0f);
+    delta_y = delta_car_x * sin(CarPos2D.theta * PI / 180.0f) + delta_car_y * cos(CarPos2D.theta * PI / 180.0f);
 
     //ROS_ERROR("theta %f %f",car_status.theta , CarPos2D.theta);
 
@@ -479,7 +484,8 @@ void StatusPublisher::Refresh()
 
     //Twist
     double angle_speed;
-    CarTwist.linear.x = delta_car * 50.0f;
+    CarTwist.linear.x = delta_car_x * 50.0f;
+    CarTwist.linear.y = delta_car_y * 50.0f;
     angle_speed = -car_status.IMU[5];
     CarTwist.angular.z = angle_speed * PI / 180.0f;
     mTwistPub.publish(CarTwist);

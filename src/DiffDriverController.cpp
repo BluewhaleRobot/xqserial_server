@@ -15,6 +15,7 @@ DiffDriverController::DiffDriverController()
     DetectFlag_ = true;
     barFlag_ = false;
     cmd_x_ = 0.0;
+    cmd_y_ = 0.0;
     cmd_theta_ = 0.0;
 }
 
@@ -27,6 +28,7 @@ DiffDriverController::DiffDriverController(double max_speed_, std::string cmd_to
     cmd_serial_left = cmd_serial_left_;
     cmd_serial_right = cmd_serial_right_;
     cmd_x_ = 0.0;
+    cmd_y_ = 0.0;
     cmd_theta_ = 0.0;
     DetectFlag_ = true;
     barFlag_ = false;
@@ -89,21 +91,29 @@ void DiffDriverController::sendcmd()
 {
   static time_t t1 = time(NULL), t2;
   int i = 0, wheel_ppr = 1;
-  double separation = 0, radius = 0, speed_lin = 0, speed_ang = 0, speed_temp[2];
-  char speed[2] = {0, 0}; //右一左二
+  double separation = 0, radius = 0, speed_lin_x = 0,speed_lin_y = 0, speed_ang = 0, speed_temp[4];
+  char speed[4] = {0, 0, 0, 0}; //右一左二
   char cmd_str[13] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x09, (char)0x74, (char)0x53, (char)0x53, (char)0x53, (char)0x53, (char)0x00, (char)0x00, (char)0x00, (char)0x00};
 
   if (xq_status->get_status() == 0)
       return; //底层还在初始化
+
   separation = xq_status->get_wheel_separation();
   radius = xq_status->get_wheel_radius();
   wheel_ppr = xq_status->get_wheel_ppr();
 
   //转换速度单位，由米转换成转
-  speed_lin = cmd_x_ / (2.0 * PI * radius);
+  speed_lin_x = cmd_x_ / (2.0 * PI * radius);
+  speed_lin_y = cmd_y_ / (2.0 * PI * radius);
+
   speed_ang = cmd_theta_ * separation / (2.0 * PI * radius);
 
-  float scale = std::max(std::abs(speed_lin + speed_ang / 2.0), std::abs(speed_lin - speed_ang / 2.0)) / max_wheelspeed;
+  float motor_w1 = speed_lin_x - speed_lin_y - speed_ang;
+  float motor_w2 = speed_lin_x + speed_lin_y + speed_ang;
+  float motor_w3 = speed_lin_x + speed_lin_y - speed_ang;
+  float motor_w4 = speed_lin_x - speed_lin_y + speed_ang;
+
+  float scale = std::max(std::max(std::abs(motor_w1), std::abs(motor_w2)),std::max(std::abs(motor_w3), std::abs(motor_w4))) / max_wheelspeed;
   if (scale > 1.0)
   {
       scale = 1.0 / scale;
@@ -113,20 +123,23 @@ void DiffDriverController::sendcmd()
       scale = 1.0;
   }
   //转出最大速度百分比,并进行限幅
-  speed_temp[0] = -scale * (speed_lin + speed_ang / 2) / max_wheelspeed * 100.0; //右侧反转
+  speed_temp[0] = scale * motor_w1 / max_wheelspeed * 100.0;
   speed_temp[0] = std::min(speed_temp[0], 100.0);
   speed_temp[0] = std::max(-100.0, speed_temp[0]);
 
-  speed_temp[1] = scale * (speed_lin - speed_ang / 2) / max_wheelspeed * 100.0;
+  speed_temp[1] = scale * motor_w2 / max_wheelspeed * 100.0;
   speed_temp[1] = std::min(speed_temp[1], 100.0);
   speed_temp[1] = std::max(-100.0, speed_temp[1]);
 
-  //std::cout<<"radius "<<radius<<std::endl;
-  //std::cout<<"ppr "<<wheel_ppr<<std::endl;
-  //std::cout<<"pwm "<<speed_temp[0]<<std::endl;
-  //  command.linear.x/
+  speed_temp[2] = scale * motor_w3 / max_wheelspeed * 100.0;
+  speed_temp[2] = std::min(speed_temp[2], 100.0);
+  speed_temp[2] = std::max(-100.0, speed_temp[2]);
 
-  for (i = 0; i < 2; i++)
+  speed_temp[3] = scale * motor_w4 / max_wheelspeed * 100.0;
+  speed_temp[3] = std::min(speed_temp[3], 100.0);
+  speed_temp[3] = std::max(-100.0, speed_temp[3]);
+
+  for (i = 0; i < 4; i++)
   {
       speed[i] = (int8_t)speed_temp[i];
       if (speed[i] < 0)
@@ -192,11 +205,18 @@ void DiffDriverController::sendcmd()
     cmd_str_left[i] = cmd_str[i];
   }
 
-  cmd_str_left[5+0] = cmd_str_left[5+1]; //一变二
-  cmd_str_left[9+0] = cmd_str_left[9+1]; //一变二
+  cmd_str_left[5+0] = cmd_str[5+1]; //2号电机
+  cmd_str_left[9+0] = cmd_str[9+1]; //2号电机
 
-  cmd_str_right[5+1] = cmd_str_right[5+0]; //一变二
-  cmd_str_right[9+1] = cmd_str_right[9+0]; //一变二
+  cmd_str_left[5+1] = cmd_str[5+2]; //3号电机
+  cmd_str_left[9+1] = cmd_str[9+2]; //3号电机
+
+
+  cmd_str_right[5+0] = cmd_str[5+3]; //4号电机
+  cmd_str_right[9+0] = cmd_str[9+3]; //4号电机
+
+  cmd_str_right[5+1] = cmd_str[5+0]; //1号电机
+  cmd_str_right[9+1] = cmd_str[9+0]; //1号电机
 
   if(NULL!=cmd_serial_right)
   {
@@ -213,6 +233,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
 {
   boost::mutex::scoped_lock lock(mMutex);
   cmd_x_ = command.linear.x;
+  cmd_y_ = command.linear.y;
   cmd_theta_ = command.angular.z;
   if(DetectFlag_ && barFlag_)
   {

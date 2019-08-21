@@ -32,6 +32,7 @@ class DiffDriverController
     bool DetectFlag_;
     bool barFlag_;
     float cmd_x_;
+    float cmd_y_;
     float cmd_theta_;
 };
 
