@@ -41,7 +41,7 @@ StatusPublisher::StatusPublisher()
         status[i]=0;
     }
 
-    car_status.encoder_ppr=45720;
+    car_status.encoder_ppr=40960;
     car_status.status_imu = -1;
     car_status.driver_status = 0;
     car_status.status = -1;
@@ -196,7 +196,7 @@ void StatusPublisher::Update_imu(const char data[], unsigned int len)
                           if(cmd_string_buf[5*j+4]!=32)
                           {
                             mbUpdated_imu=false;
-                            car_status.encoder_ppr = 45720;
+                            car_status.encoder_ppr = 40960;
                             break;
                           }
                       }
@@ -248,7 +248,7 @@ void StatusPublisher::Refresh()
 
     delta_car = (car_status.encoder_delta_r + car_status.encoder_delta_l) / 2.0f * 1.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius;
 
-    if (std::isnan(delta_car)||delta_car > 0.10|| delta_car < -0.10)
+    if (std::isnan(delta_car)||delta_car > 0.20|| delta_car < -0.20)
     {
       // std::cout<<"get you!"<<std::endl;
       delta_car = 0;

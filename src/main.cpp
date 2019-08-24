@@ -46,8 +46,8 @@ int main(int argc, char **argv)
     double separation=0,radius=0;
     bool DebugFlag = false;
 
-    ros::param::param<double>("~wheel_separation", separation, 0.39);
-    ros::param::param<double>("~wheel_radius", radius, 0.04);
+    ros::param::param<double>("~wheel_separation", separation, 0.6);
+    ros::param::param<double>("~wheel_radius", radius, 0.155);
     ros::param::param<bool>("~debug_flag", DebugFlag, false);
 
     double rot_dist,tran_dist;
@@ -60,10 +60,9 @@ int main(int argc, char **argv)
     ros::param::param<double>("~max_speed", max_speed, 5.0);
     ros::param::param<std::string>("~cmd_topic", cmd_topic, "cmd_vel");
 
-    //半径减小2倍，最大转速增大2倍
-    radius = radius/2.0;
-    max_speed = max_speed*2.0;
-    
+    radius = radius;
+    max_speed = max_speed;
+
     double power_scale;
     ros::param::param<double>("~power_scale", power_scale, 1.0);
     xqserial_server::StatusPublisher xq_status(separation,radius,DebugFlag,power_scale);
