@@ -213,7 +213,7 @@ void DiffDriverController::send_speed()
 
   {
     //混合模式
-    speed_temp[0] = scale * ( speed_ang / 2) / max_wheelspeed * 1000.0;
+    speed_temp[0] = scale * ( speed_ang ) / max_wheelspeed * 1000.0;
     speed_temp[0] = std::min(speed_temp[0], 1000.0);
     speed_temp[0] = std::max(-1000.0, speed_temp[0]);
 
