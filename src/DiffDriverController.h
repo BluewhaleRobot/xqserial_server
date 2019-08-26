@@ -4,6 +4,7 @@
 #include "StatusPublisher.h"
 #include "AsyncSerial.h"
 #include <std_msgs/Bool.h>
+#include "galileo_serial_server/GalileoStatus.h"
 
 namespace xqserial_server
 {
@@ -12,7 +13,7 @@ class DiffDriverController
 {
 public:
     DiffDriverController();
-    DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_car_,CallbackAsyncSerial* cmd_serial_imu_);
+    DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_car_,CallbackAsyncSerial* cmd_serial_imu_,double r_min);
 
     void run();
     void dealCmd_vel(const geometry_msgs::Twist& command);
@@ -26,6 +27,7 @@ public:
     void send_fasterstop();
     void send_release();
     ros::WallTime last_ordertime;
+    void UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status);
 
 private:
     double max_wheelspeed;//单位为转每秒,只能为正数
@@ -43,6 +45,9 @@ private:
     float linear_x_;
     float theta_z_;
     bool send_flag_;
+    boost::mutex mStausMutex_;
+    galileo_serial_server::GalileoStatus galileoStatus_;
+    float R_min_;
 };
 
 }

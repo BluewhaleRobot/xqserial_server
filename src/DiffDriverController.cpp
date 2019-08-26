@@ -21,9 +21,11 @@ DiffDriverController::DiffDriverController()
     updateOrderflag_ = false;
     fastStopFlag_ = false;
     last_ordertime=ros::WallTime::now();
+    galileoStatus_.mapStatus = 0;
+    R_min_ = 0.25;
 }
 
-DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_car_,CallbackAsyncSerial* cmd_serial_imu_)
+DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_car_,CallbackAsyncSerial* cmd_serial_imu_,double r_min)
 {
     MoveFlag=true;
     BarFlag=true;
@@ -40,6 +42,8 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
     updateOrderflag_ = false;
     fastStopFlag_ = false;
     last_ordertime=ros::WallTime::now();
+    R_min_ = r_min;
+    galileoStatus_.mapStatus = 0;
 }
 
 void DiffDriverController::run()
@@ -50,6 +54,7 @@ void DiffDriverController::run()
     ros::Subscriber sub3 = nodeHandler.subscribe("/global_move_flag", 1, &DiffDriverController::updateMoveFlag,this);
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag,this);
     ros::Subscriber sub5 = nodeHandler.subscribe("/move_base/StatusFlag", 1, &DiffDriverController::updateFastStopFlag,this);
+    ros::Subscriber sub6 = nodeHandler.subscribe("/galileo/status", 1, &DiffDriverController::UpdateNavStatus, this);
     ros::Rate r(100);//发布周期为50hz
     int i=0;
     while (ros::ok())
@@ -172,8 +177,32 @@ void DiffDriverController::filterSpeed()
     }
   }
 
-  linear_x_ = vx_temp;
-  theta_z_ = vtheta_temp;
+  float x_filter = vx_temp, z_filter = vtheta_temp ;
+   {
+     //先过滤速度
+     boost::mutex::scoped_lock lock(mStausMutex_);
+     if(galileoStatus_.mapStatus == 1)
+     {
+       if(vtheta_temp <-0.001 || vtheta_temp>0.001 )
+       {
+         float R_now =  std::fabs(vx_temp / vtheta_temp);
+         if(R_now < R_min_)
+         {
+           if(vtheta_temp>0.001)
+           {
+             z_filter = std::fabs(x_filter/R_min_);
+           }
+           else
+           {
+             z_filter = -std::fabs(x_filter/R_min_);
+           }
+         }
+       }
+     }
+   }
+
+  linear_x_ = x_filter;
+  theta_z_ = z_filter;
 }
 
 void DiffDriverController::send_speed()
@@ -282,6 +311,15 @@ void DiffDriverController::send_release()
 }
 
 
+void DiffDriverController::UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status)
+{
+    boost::mutex::scoped_lock lock(mStausMutex_);
+    galileoStatus_.navStatus = current_receive_status.navStatus;
+    galileoStatus_.visualStatus = current_receive_status.visualStatus;
+    galileoStatus_.chargeStatus = current_receive_status.chargeStatus;
+    galileoStatus_.mapStatus = current_receive_status.mapStatus;
+
+}
 
 
 

@@ -55,9 +55,10 @@ int main(int argc, char **argv)
     ros::param::param<double>("~tran_dist", tran_dist, -0.3);
 
     //获取小车控制参数
-    double max_speed;
+    double max_speed,r_min;
     string cmd_topic;
     ros::param::param<double>("~max_speed", max_speed, 5.0);
+    ros::param::param<double>("~r_min", r_min, 0.5);
     ros::param::param<std::string>("~cmd_topic", cmd_topic, "cmd_vel");
 
     radius = radius;
@@ -80,7 +81,7 @@ int main(int argc, char **argv)
       CallbackAsyncSerial serial_imu(port_imu,baud_imu);
       serial_imu.setCallback(boost::bind(&xqserial_server::StatusPublisher::Update_imu,&xq_status,_1,_2));
 
-      xqserial_server::DiffDriverController xq_diffdriver(max_speed,cmd_topic,&xq_status,&serial_car,&serial_imu);
+      xqserial_server::DiffDriverController xq_diffdriver(max_speed,cmd_topic,&xq_status,&serial_car,&serial_imu,r_min);
       boost::thread cmd2serialThread(& xqserial_server::DiffDriverController::run,&xq_diffdriver);
 
 

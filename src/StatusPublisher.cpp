@@ -397,20 +397,20 @@ void StatusPublisher::Refresh()
   	if (car_status.upwoard == 0)
   	{
   		CarIMU.angular_velocity.x = car_status.IMU[4] * PI / 180.0f;
-  		CarIMU.angular_velocity.y = car_status.IMU[3] * PI / 180.0f;
+  		CarIMU.angular_velocity.y = -car_status.IMU[3] * PI / 180.0f;
   		CarIMU.angular_velocity.z = -car_status.IMU[5] * PI / 180.0f;
 
   		CarIMU.linear_acceleration.x = car_status.IMU[1];
-  		CarIMU.linear_acceleration.y = car_status.IMU[0];
+  		CarIMU.linear_acceleration.y = -car_status.IMU[0];
   		CarIMU.linear_acceleration.z = -car_status.IMU[2];
   	}
   	else
   	{
-  		CarIMU.angular_velocity.x = car_status.IMU[4] * PI / 180.0f;
+  		CarIMU.angular_velocity.x = -car_status.IMU[4] * PI / 180.0f;
   		CarIMU.angular_velocity.y = -car_status.IMU[3] * PI / 180.0f;
   		CarIMU.angular_velocity.z = car_status.IMU[5] * PI / 180.0f;
 
-  		CarIMU.linear_acceleration.x = car_status.IMU[1];
+  		CarIMU.linear_acceleration.x = -car_status.IMU[1];
   		CarIMU.linear_acceleration.y = -car_status.IMU[0];
   		CarIMU.linear_acceleration.z = car_status.IMU[2];
   	}
