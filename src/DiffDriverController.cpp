@@ -183,7 +183,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     //if(vx_temp>0 && vx_temp<0.1) vx_temp=0.1;
     //if(vx_temp<0 && vx_temp>-0.1) vx_temp=-0.1;
 
-    if(std::fabs(xq_status->get_wheel_v_theta()-carTwist.angular.z)>1.0) vtheta_temp=0;
+    if(std::fabs(xq_status->get_wheel_v_theta()-carTwist.angular.z)>1.0) vtheta_temp=0; //注释禁用角速度保护
     if((!xq_status->can_movefoward()) && DetectFlag_)
     {
       if(command.linear.x>0)
@@ -196,6 +196,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
         vx_temp=0.0;
         vtheta_temp=0;
       }
+      vx_temp = 0.0; //禁用快速制动
     }
 
     float bar_distance = xq_status->get_ultrasonic_min_distance();
@@ -207,23 +208,31 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     }
 
     speed_lin=vx_temp/(2.0*PI*radius);
-    //speed_ang=command.angular.z*separation/(2.0*PI*radius);
-    speed_ang=vtheta_temp;
+    speed_ang=vtheta_temp*separation/(2.0*PI*radius);
 
+    float scale=std::max(std::abs(speed_lin+speed_ang/2.0),std::abs(speed_lin-speed_ang/2.0))/max_wheelspeed;
+    if(scale>1.0)
+    {
+      scale=1.0/scale;
+    }
+    else
+    {
+      scale=1.0;
+    }
     //转出最大速度百分比,并进行限幅
-    speed_temp[0]=speed_lin/max_wheelspeed*100.0;
+    speed_temp[0]=scale*(speed_lin+speed_ang/2)/max_wheelspeed*100.0;
     speed_temp[0]=std::min(speed_temp[0],100.0);
     speed_temp[0]=std::max(-100.0,speed_temp[0]);
 
-    speed_temp[1]=speed_ang/3.0*100.0;
+    speed_temp[1]=scale*(speed_lin-speed_ang/2)/max_wheelspeed*100.0;
     speed_temp[1]=std::min(speed_temp[1],100.0);
     speed_temp[1]=std::max(-100.0,speed_temp[1]);
 
-    //ROS_ERROR("speed %f %f %f",speed_temp[0],vx_temp,bar_distance);
+    //  command.linear.x/
     for(i=0;i<2;i++)
     {
-     speed[i]=(int8_t)speed_temp[i];
-     speed_debug[i]=(int8_t)speed_temp[i];
+     speed[i]=speed_temp[i];
+     speed_debug[i]=speed_temp[i];
      if(speed[i]<0)
      {
          //if(speed[i]>-5) speed[i]=-4;
@@ -244,7 +253,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     }
 
     boost::mutex::scoped_lock lock(mMutex);
-    cmdTwist_ = command;
+
     if(!MoveFlag)
     {
       cmd_str[5]=(char)0x53;
@@ -289,6 +298,7 @@ void DiffDriverController::check_faster_stop()
     if(car_twist.linear.x<=0.01) vx_temp =0.0;
 
     if(current_fag) vx_temp =0.0;
+    vx_temp = 0.0; //禁用快速制动
     last_flag = current_fag;
   }
   //下发速度
@@ -296,21 +306,30 @@ void DiffDriverController::check_faster_stop()
   char speed[2]={0,0};//右一左二
   char cmd_str[13]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x09,(char)0x74,(char)0x53,(char)0x53,(char)0x53,(char)0x53,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
   radius=xq_status->get_wheel_radius();
+  float separation=xq_status->get_wheel_separation();
 
   speed_lin=vx_temp/(2.0*PI*radius);
-  //speed_ang=command.angular.z*separation/(2.0*PI*radius);
-  speed_ang=vtheta_temp;
+  speed_ang=vtheta_temp*separation/(2.0*PI*radius);
+
+  float scale=std::max(std::abs(speed_lin+speed_ang/2.0),std::abs(speed_lin-speed_ang/2.0))/max_wheelspeed;
+  if(scale>1.0)
+  {
+    scale=1.0/scale;
+  }
+  else
+  {
+    scale=1.0;
+  }
   //转出最大速度百分比,并进行限幅
-  speed_temp[0]=speed_lin/max_wheelspeed*100.0;
+  speed_temp[0]=scale*(speed_lin+speed_ang/2)/max_wheelspeed*100.0;
   speed_temp[0]=std::min(speed_temp[0],100.0);
   speed_temp[0]=std::max(-100.0,speed_temp[0]);
 
-  speed_temp[1]=speed_ang/3.0*100.0;
+  speed_temp[1]=scale*(speed_lin-speed_ang/2)/max_wheelspeed*100.0;
   speed_temp[1]=std::min(speed_temp[1],100.0);
   speed_temp[1]=std::max(-100.0,speed_temp[1]);
 
-
-  //ROS_ERROR("speed %f",speed_temp[0]);
+  //  command.linear.x/
   for(i=0;i<2;i++)
   {
    speed[i]=speed_temp[i];
@@ -336,6 +355,11 @@ void DiffDriverController::check_faster_stop()
 
   boost::mutex::scoped_lock lock(mMutex);
 
+  if(!MoveFlag)
+  {
+    cmd_str[5]=(char)0x53;
+    cmd_str[6]=(char)0x53;
+  }
   if(NULL!=cmd_serial)
   {
       cmd_serial->write(cmd_str,13);
