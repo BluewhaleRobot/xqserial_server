@@ -50,7 +50,7 @@ public:
     void send_speed();
     void filterSpeed();
     bool UpdateC4Flag(ShutdownRequest &req, ShutdownResponse &res);
-
+    void sendHeartbag();
     int speed_debug[2];
     ros::WallTime last_ordertime;
     bool DetectFlag_;

@@ -109,6 +109,16 @@ void DiffDriverController::imuCalibration(const std_msgs::Bool& calFlag)
   }
 }
 
+void DiffDriverController::sendHeartbag()
+{
+  //下发底层心跳包
+  char cmd_str[5]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x01,(char)0x4c};
+  if(NULL!=cmd_serial)
+  {
+      cmd_serial->write(cmd_str,5);
+  }
+}
+
 void DiffDriverController::updateBarDetectFlag(const std_msgs::Bool& DetectFlag)
 {
   if(DetectFlag.data)

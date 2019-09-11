@@ -101,6 +101,11 @@ int main(int argc, char **argv)
               char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x01};
               serial.write(cmd_str,6);
             }
+            if(i%100 == 0)
+            {
+              //每隔2秒下发心跳包
+              xq_diffdriver.sendHeartbag();
+            }
             if(i%5==0)
             {
               if(!xq_diffdriver.checkStop())
