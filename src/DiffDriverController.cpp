@@ -254,7 +254,7 @@ bool DiffDriverController::checkStop()
       if(!forward_flag) return_flag = true;
       return_flag = false;
     }
-    this->send_speed();
+    if(return_flag) this->send_speed();
     return return_flag;
 }
 
