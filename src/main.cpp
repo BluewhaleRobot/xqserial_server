@@ -46,8 +46,8 @@ int main(int argc, char **argv)
     double separation=0,radius=0;
     bool DebugFlag = false;
 
-    ros::param::param<double>("~wheel_separation", separation, 0.6);
-    ros::param::param<double>("~wheel_radius", radius, 0.155);
+    ros::param::param<double>("~wheel_separation", separation, 0.54);
+    ros::param::param<double>("~wheel_radius", radius, 0.075);
     ros::param::param<bool>("~debug_flag", DebugFlag, false);
 
     double rot_dist,tran_dist;
@@ -57,7 +57,7 @@ int main(int argc, char **argv)
     //获取小车控制参数
     double max_speed,r_min;
     string cmd_topic;
-    ros::param::param<double>("~max_speed", max_speed, 5.0);
+    ros::param::param<double>("~max_speed", max_speed, 2.0);
     ros::param::param<double>("~r_min", r_min, 0.5);
     ros::param::param<std::string>("~cmd_topic", cmd_topic, "cmd_vel");
 
@@ -106,7 +106,12 @@ int main(int argc, char **argv)
       {
           if(serial_car.errorStatus() || serial_car.isOpen()==false)
           {
-              cerr<<"Error: serial port closed unexpectedly"<<endl;
+              cerr<<"Error: serial port car closed unexpectedly"<<endl;
+              break;
+          }
+          if(serial_imu.errorStatus() || serial_imu.isOpen()==false)
+          {
+              cerr<<"Error: serial port imu closed unexpectedly"<<endl;
               break;
           }
           i++;

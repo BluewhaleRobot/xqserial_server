@@ -7,7 +7,7 @@ namespace xqserial_server
 
 DiffDriverController::DiffDriverController()
 {
-    max_wheelspeed=10;
+    max_wheelspeed=2;
     cmd_topic="/cmd_vel";
     xq_status=new StatusPublisher();
     cmd_serial_car=NULL;
@@ -165,8 +165,8 @@ void DiffDriverController::filterSpeed()
 
   if(BarFlag)
   {
-    bool forward_flag,rot_flag;
-    xq_status->get_canmove_flag(forward_flag,rot_flag);
+    bool forward_flag,rot_flag,backward_flag;
+    xq_status->get_canmove_flag(forward_flag,rot_flag,backward_flag);
     if(!forward_flag && vx_temp>0.01)
     {
       vx_temp = 0.;
@@ -174,6 +174,10 @@ void DiffDriverController::filterSpeed()
     if(!rot_flag)
     {
       vtheta_temp = 0.;
+    }
+    if(!backward_flag && vx_temp<-0.01)
+    {
+      vx_temp = 0.;
     }
   }
 
@@ -242,7 +246,7 @@ void DiffDriverController::send_speed()
 
   {
     //混合模式
-    speed_temp[0] = scale * ( speed_ang ) / max_wheelspeed * 1000.0;
+    speed_temp[0] = scale * ( speed_ang/2.0 ) / max_wheelspeed * 1000.0;
     speed_temp[0] = std::min(speed_temp[0], 1000.0);
     speed_temp[0] = std::max(-1000.0, speed_temp[0]);
 

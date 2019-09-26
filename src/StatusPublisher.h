@@ -65,7 +65,7 @@ public:
     std_msgs::Float64 get_power();
     nav_msgs::Odometry get_odom();
     UPLOAD_STATUS car_status;
-    void get_canmove_flag(bool &forward_flag,bool &rot_flag);
+    void get_canmove_flag(bool &forward_flag,bool &rot_flag, bool &backward_flag);
     void setBarParams(double rot_dist,double tran_dist)
     {
       rot_dist_ = rot_dist;
@@ -114,6 +114,7 @@ private:
     double tran_dist_;
 
     bool forward_flag_;
+    bool backward_flag_;
     bool rot_flag_;
 
     double distances_[2];

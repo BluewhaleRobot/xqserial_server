@@ -16,8 +16,8 @@ StatusPublisher::StatusPublisher()
 {
     mbUpdated_car=false;
     mbUpdated_imu=false;
-    wheel_separation=0.33;
-    wheel_radius=0.07;
+    wheel_separation=0.54;
+    wheel_radius=0.075;
     power_scale_ =1.0;
 
     CarPos2D.x=0.0;
@@ -41,7 +41,7 @@ StatusPublisher::StatusPublisher()
         status[i]=0;
     }
 
-    car_status.encoder_ppr=40960;
+    car_status.encoder_ppr=4096*15;
     car_status.status_imu = -1;
     car_status.driver_status = 0;
     car_status.status = -1;
@@ -98,6 +98,7 @@ StatusPublisher::StatusPublisher()
 
    forward_flag_ = true;
    rot_flag_ = true;
+   backward_flag_ = true;
 
    rot_dist_ = -0.21;
    tran_dist_ = -0.3;
@@ -196,7 +197,7 @@ void StatusPublisher::Update_imu(const char data[], unsigned int len)
                           if(cmd_string_buf[5*j+4]!=32)
                           {
                             mbUpdated_imu=false;
-                            car_status.encoder_ppr = 40960;
+                            car_status.encoder_ppr = 4096*15;
                             break;
                           }
                       }
@@ -419,20 +420,22 @@ void StatusPublisher::Refresh()
     //超声波测距
     //发布超声波topic
     rot_flag_ = true;
+    backward_flag_ = true;
+    forward_flag_ = true;
+
     if(car_status.sonar_distance[0]>0.1)
     {
       if(car_status.sonar_distance[0]>4.0||car_status.sonar_distance[0]<0.2) car_status.sonar_distance[0]=4.0;
       CarSonar1.header.stamp = current_time.fromSec(base_time_);
       CarSonar1.range = car_status.sonar_distance[0];
       mSonar1Pub.publish(CarSonar1);
-      if(car_status.sonar_distance[0]<rot_dist_ && rot_flag_) rot_flag_ = false;
+      if(car_status.sonar_distance[0]<tran_dist_ && forward_flag_) forward_flag_ = false;
     }
     else
     {
       car_status.sonar_distance[0]=4.0;
     }
 
-    forward_flag_ = true;
     if(car_status.sonar_distance[1]>0.1)
     {
       if(car_status.sonar_distance[1]>4.0||car_status.sonar_distance[1]<0.2) car_status.sonar_distance[1]=4.0;
@@ -452,7 +455,8 @@ void StatusPublisher::Refresh()
       CarSonar3.header.stamp = current_time.fromSec(base_time_);
       CarSonar3.range = car_status.sonar_distance[2];
       mSonar3Pub.publish(CarSonar3);
-      if(car_status.sonar_distance[2]<rot_dist_ && rot_flag_) rot_flag_ = false;
+      //if(car_status.sonar_distance[2]<rot_dist_ && rot_flag_) rot_flag_ = false;
+      if(car_status.sonar_distance[2]<rot_dist_ && backward_flag_) backward_flag_ = false;
     }
     else
     {
@@ -527,10 +531,11 @@ int StatusPublisher::get_status(){
   return car_status.status;
 }
 
-void StatusPublisher::get_canmove_flag(bool &forward_flag,bool &rot_flag)
+void StatusPublisher::get_canmove_flag(bool &forward_flag,bool &rot_flag, bool &backward_flag)
 {
   forward_flag = forward_flag_;
   rot_flag = rot_flag_;
+  backward_flag = backward_flag_;
 }
 
 float StatusPublisher::get_ultrasonic_min_distance()
