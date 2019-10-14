@@ -14,6 +14,10 @@ DiffDriverController::DiffDriverController()
     MoveFlag=true;
     last_ordertime=ros::WallTime::now();
     DetectFlag_=true;
+    c4_axis_ = 15;
+    c3_axis_ = 13;
+    c4_pressed_ = false;
+    c3_pressed_ = false;
 }
 
 DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_)
@@ -27,6 +31,13 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
     speed_debug[1]=0.0;
     last_ordertime=ros::WallTime::now();
     DetectFlag_=true;
+    c4_axis_ = 15;
+    c3_axis_ = 13;
+    c4_pressed_ = false;
+    c3_pressed_ = false;
+    ros::param::param<int>("~c4_axis", c4_axis_, c4_axis_);
+    ros::param::param<int>("~c3_axis", c3_axis_, c3_axis_);
+    //ROS_ERROR("joy1 %d %d",c4_axis_,c3_axis_);
 }
 
 void DiffDriverController::run()
@@ -37,8 +48,75 @@ void DiffDriverController::run()
     ros::Subscriber sub3 = nodeHandler.subscribe("/global_move_flag", 1, &DiffDriverController::updateMoveFlag,this);
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag,this);
     ros::Subscriber sub5 = nodeHandler.subscribe("/move_base/StatusFlag", 1, &DiffDriverController::updateFastStopFlag,this);
+    ros::Subscriber sub6 = nodeHandler.subscribe<sensor_msgs::Joy>("joy", 1, &DiffDriverController::joyCallback, this);
+    ros::Subscriber sub7 = nodeHandler.subscribe("/elevator_pose", 1, &DiffDriverController::updateElevator,this);
     ros::spin();
 }
+
+void DiffDriverController::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
+{
+  boost::mutex::scoped_lock lock(mMutex);
+  static char last_order = 0;
+  c4_pressed_ = joy->buttons[c4_axis_];
+  c3_pressed_ = joy->buttons[c3_axis_];
+  char current_order = 0x03;
+  if(c4_pressed_)
+  {
+    current_order &= 0x03;
+  }
+  else
+  {
+    current_order &= 0x01;
+  }
+  if(c3_pressed_)
+  {
+    current_order &= 0x03;
+  }
+  else
+  {
+    current_order &= 0x02;
+  }
+  if(current_order != last_order)
+  {
+    char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x45,(char)0x00};
+    if(NULL!=cmd_serial)
+    {
+        cmd_str[5] = current_order;
+        cmd_serial->write(cmd_str,6);
+        last_order = current_order;
+        //ROS_ERROR("joy %d",current_order);
+    }
+  }
+
+}
+
+void DiffDriverController::updateElevator(const std_msgs::Int32& elevatormsg)
+{
+  boost::mutex::scoped_lock lock(mMutex);
+  //下发底层c4 c3 IO命令
+  char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x45,(char)0x00};
+  switch (elevatormsg.data) {
+    case 0:
+      cmd_str[5] = (char)0x00;
+      break;
+    case 1:
+      cmd_str[5] = (char)0x01;
+      break;
+    case 2:
+      cmd_str[5] = (char)0x02;
+      break;
+    case 3:
+      cmd_str[5] = (char)0x03;
+      break;
+    default:
+      cmd_str[5] = (char)0x00;
+  }
+  if(NULL!=cmd_serial)
+  {
+      cmd_serial->write(cmd_str,6);
+  }
+}
+
 void DiffDriverController::updateMoveFlag(const std_msgs::Bool& moveFlag)
 {
   boost::mutex::scoped_lock lock(mMutex);

@@ -649,7 +649,7 @@ void StatusPublisher::Refresh()
         }
         distance_sum_i++;
 
-        ros::spinOnce();
+        //ros::spinOnce();
 
         mbUpdated = false;
     }

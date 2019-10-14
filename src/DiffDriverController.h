@@ -4,6 +4,8 @@
 #include "StatusPublisher.h"
 #include "AsyncSerial.h"
 #include <std_msgs/Bool.h>
+#include <std_msgs/Int32.h>
+#include <sensor_msgs/Joy.h>
 
 namespace xqserial_server
 {
@@ -23,6 +25,8 @@ public:
     void sendcmd2(const geometry_msgs::Twist &command);
     void check_faster_stop();
     void updateFastStopFlag(const std_msgs::Int32& fastStopmsg);
+    void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
+    void updateElevator(const std_msgs::Int32& elevatormsg);
     int speed_debug[2];
     ros::WallTime last_ordertime;
     bool DetectFlag_;
@@ -35,6 +39,10 @@ private:
     boost::mutex mMutex;
     bool MoveFlag;
     geometry_msgs::Twist  cmdTwist_;//小车自身坐标系
+    int c4_axis_;
+    int c3_axis_;
+    bool c4_pressed_;
+    bool c3_pressed_;
 };
 
 }
