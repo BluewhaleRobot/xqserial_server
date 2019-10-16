@@ -1,7 +1,5 @@
 <launch>
-  <node pkg="xqserial_server" type="fake_node.py" name="fake_motor_driver" ></node>
-  <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0.15 0 0 0 1 base_footprint base_link 50">
-  </node>
-  <node pkg="tf" type="static_transform_publisher" name="odom_broadcaster" args="0 0 0 0 0 0 1 odom base_footprint 50">
-  </node>
+  <node pkg="xqserial_server" type="fake_node.py" name="motor_driver" />
+  <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0.15 0 0 0 1 base_footprint base_link 50" />
+  <node pkg="tf" type="static_transform_publisher" name="imulink_broadcaster" args="-0.1 -0.03 0 0 0 0 1 base_link imu 50"/>
 </launch>
