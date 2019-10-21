@@ -23,6 +23,16 @@ find_package(catkin REQUIRED COMPONENTS
   galileo_serial_server
 )
 
+add_service_files(
+  FILES
+  Shutdown.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
+
 set(BOOST_LIBS thread date_time system)
 find_package(Boost COMPONENTS ${BOOST_LIBS} REQUIRED)
 find_package(Threads REQUIRED)
