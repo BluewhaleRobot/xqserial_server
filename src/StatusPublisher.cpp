@@ -711,22 +711,38 @@ float StatusPublisher::get_ultrasonic_min_distance()
 
 float StatusPublisher::get_wheel_v_theta()
 {
+  static float r_sums[20]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+  static float l_sums[20]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+  static int index = 0;
   float delta_car_r,delta_car_l;
-  delta_car_r=car_status.encoder_delta_r*1.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius;
-  delta_car_l=car_status.encoder_delta_l*1.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius;
+  r_sums[index]=car_status.encoder_delta_r*1.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius;
+  l_sums[index]=car_status.encoder_delta_l*1.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius;
+  index ++;
+  if(index>=20) index = 0;
+  float r_sum,l_sum;
+  r_sum = 0;
+  l_sum =0;
+  for(int i= 0;i<20;i++)
+  {
+    r_sum += r_sums[i];
+    l_sum += l_sums[i];
+  }
+  delta_car_r = r_sum/20.0;
+  delta_car_l = l_sum/20.0;
 
   if(delta_car_l>0.1||delta_car_l<-0.1)
   {
-    // std::cout<<"get you!"<<std::endl;
+    //std::cout<<"get you1 !"<<std::endl;
     delta_car_l = 0;
   }
   if(delta_car_r>0.1||delta_car_r<-0.1)
   {
-    // std::cout<<"get you!"<<std::endl;
+    //std::cout<<"get you2 !"<<std::endl;
     delta_car_r = 0;
   }
   static float last_value=0.0;
   last_value = last_value*0.8 + (delta_car_r - delta_car_l)*50.f/wheel_separation*0.2;
+  //ROS_ERROR("%f %f %f",delta_car_r,delta_car_l,last_value);
   return last_value;
 }
 } //namespace xqserial_server

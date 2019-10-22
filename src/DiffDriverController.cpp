@@ -264,8 +264,9 @@ void DiffDriverController::check_faster_stop()
   int i =0;
   geometry_msgs::Twist car_twist = xq_status->get_CarTwist();
   float vx_temp=0,vtheta_temp=0;
-  if(std::fabs(xq_status->get_wheel_v_theta()-car_twist.angular.z)>1.0)
+  if(std::fabs(xq_status->get_wheel_v_theta()-car_twist.angular.z)>1.5)
   {
+    //ROS_ERROR("imu slip error: %f %f",xq_status->get_wheel_v_theta(),car_twist.angular.z);
     vtheta_temp=0;
   }else
   {
