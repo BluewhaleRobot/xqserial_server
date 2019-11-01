@@ -45,12 +45,17 @@ int main(int argc, char **argv)
     ros::param::param<double>("~wheel_separation", separation, 0.68);
     ros::param::param<double>("~wheel_radius", radius, 0.0625);
     ros::param::param<bool>("~debug_flag", DebugFlag, false);
-    xqserial_server::StatusPublisher xq_status(separation, radius);
+
+    double power_scale,y_scale;
+    ros::param::param<double>("~power_scale", power_scale, 1.0);
+    ros::param::param<double>("~y_scale", y_scale, 1.0);
+    xqserial_server::StatusPublisher xq_status(separation, radius, power_scale,y_scale);
 
     //获取小车控制参数
-    double max_speed;
+    double max_speed,r_min;
     string cmd_topic;
     ros::param::param<double>("~max_speed", max_speed, 2.0);
+    ros::param::param<double>("~r_min", r_min, 0.5);
     ros::param::param<std::string>("~cmd_topic", cmd_topic, "cmd_vel");
 
     // 初始化log发布者和语音发布者
@@ -66,7 +71,7 @@ int main(int argc, char **argv)
         CallbackAsyncSerial serial_right(port_right,baud_right);
         serial_right.setCallback(boost::bind(&xqserial_server::StatusPublisher::Update_right,&xq_status,_1,_2));
 
-        xqserial_server::DiffDriverController xq_diffdriver(max_speed, cmd_topic, &xq_status,&serial_left,&serial_right);
+        xqserial_server::DiffDriverController xq_diffdriver(max_speed, cmd_topic, &xq_status,&serial_left,&serial_right,r_min);
         boost::thread cmd2serialThread(&xqserial_server::DiffDriverController::run, &xq_diffdriver);
         // send test flag
         char debugFlagCmd[] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x01, 'T'};

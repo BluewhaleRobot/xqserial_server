@@ -17,9 +17,10 @@ DiffDriverController::DiffDriverController()
     cmd_x_ = 0.0;
     cmd_y_ = 0.0;
     cmd_theta_ = 0.0;
+    R_min_ = 0.5;
 }
 
-DiffDriverController::DiffDriverController(double max_speed_, std::string cmd_topic_, StatusPublisher *xq_status_,CallbackAsyncSerial* cmd_serial_left_,CallbackAsyncSerial* cmd_serial_right_)
+DiffDriverController::DiffDriverController(double max_speed_, std::string cmd_topic_, StatusPublisher *xq_status_,CallbackAsyncSerial* cmd_serial_left_,CallbackAsyncSerial* cmd_serial_right_,double r_min)
 {
     MoveFlag = true;
     max_wheelspeed = max_speed_;
@@ -32,6 +33,7 @@ DiffDriverController::DiffDriverController(double max_speed_, std::string cmd_to
     cmd_theta_ = 0.0;
     DetectFlag_ = true;
     barFlag_ = false;
+    R_min_ = r_min;
 }
 
 void DiffDriverController::run()
@@ -41,6 +43,7 @@ void DiffDriverController::run()
     ros::Subscriber sub2 = nodeHandler.subscribe("/imu_cal", 1, &DiffDriverController::imuCalibration, this);
     ros::Subscriber sub3 = nodeHandler.subscribe("/globalMoveFlag", 1, &DiffDriverController::updateMoveFlag, this);
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag, this);
+    ros::Subscriber sub5 = nodeHandler.subscribe("/galileo/status", 1, &DiffDriverController::UpdateNavStatus, this);
     ros::spin();
 }
 void DiffDriverController::updateMoveFlag(const std_msgs::Bool &moveFlag)
@@ -102,6 +105,31 @@ void DiffDriverController::sendcmd()
   radius = xq_status->get_wheel_radius();
   wheel_ppr = xq_status->get_wheel_ppr();
 
+  float x_filter = cmd_x_, z_filter = cmd_theta_ ;
+  {
+   //先过滤速度
+   boost::mutex::scoped_lock lock(mStausMutex_);
+   if(galileoStatus_.mapStatus == 1)
+   {
+     if(std::fabs(cmd_x_) <-0.001 || std::fabs(cmd_theta_)>0.001 )
+     {
+       float R_now =  std::fabs(cmd_x_ / cmd_theta_);
+       if(R_now < R_min_)
+       {
+         if(cmd_theta_>0.001)
+         {
+           z_filter = std::fabs(x_filter/R_min_);
+         }
+         else
+         {
+           z_filter = -std::fabs(x_filter/R_min_);
+         }
+       }
+     }
+   }
+  }
+  cmd_x_ = x_filter;
+  cmd_theta_ = z_filter;
   //转换速度单位，由米转换成转
   speed_lin_x = cmd_x_ / (2.0 * PI * radius);
   speed_lin_y = cmd_y_ / (2.0 * PI * radius);
@@ -123,7 +151,7 @@ void DiffDriverController::sendcmd()
       scale = 1.0;
   }
   //转出最大速度百分比,并进行限幅
-  speed_temp[0] = scale * motor_w1 / max_wheelspeed * 100.0;
+  speed_temp[0] = -scale * motor_w1 / max_wheelspeed * 100.0; //反向
   speed_temp[0] = std::min(speed_temp[0], 100.0);
   speed_temp[0] = std::max(-100.0, speed_temp[0]);
 
@@ -135,7 +163,7 @@ void DiffDriverController::sendcmd()
   speed_temp[2] = std::min(speed_temp[2], 100.0);
   speed_temp[2] = std::max(-100.0, speed_temp[2]);
 
-  speed_temp[3] = scale * motor_w4 / max_wheelspeed * 100.0;
+  speed_temp[3] = -scale * motor_w4 / max_wheelspeed * 100.0; //反向
   speed_temp[3] = std::min(speed_temp[3], 100.0);
   speed_temp[3] = std::max(-100.0, speed_temp[3]);
 
@@ -212,11 +240,11 @@ void DiffDriverController::sendcmd()
   cmd_str_left[9+1] = cmd_str[9+2]; //3号电机
 
 
-  cmd_str_right[5+0] = cmd_str[5+3]; //4号电机
-  cmd_str_right[9+0] = cmd_str[9+3]; //4号电机
+  cmd_str_right[5+0] = cmd_str[5+0]; //1号电机
+  cmd_str_right[9+0] = cmd_str[9+0]; //1号电机
 
-  cmd_str_right[5+1] = cmd_str[5+0]; //1号电机
-  cmd_str_right[9+1] = cmd_str[9+0]; //1号电机
+  cmd_str_right[5+1] = cmd_str[5+3]; //4号电机
+  cmd_str_right[9+1] = cmd_str[9+3]; //4号电机
 
   if(NULL!=cmd_serial_right)
   {
@@ -261,6 +289,15 @@ void DiffDriverController::checkStop()
     }
     sendcmd();
   }
+}
+void DiffDriverController::UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status)
+{
+    boost::mutex::scoped_lock lock(mStausMutex_);
+    galileoStatus_.navStatus = current_receive_status.navStatus;
+    galileoStatus_.visualStatus = current_receive_status.visualStatus;
+    galileoStatus_.chargeStatus = current_receive_status.chargeStatus;
+    galileoStatus_.mapStatus = current_receive_status.mapStatus;
+
 }
 
 } // namespace xqserial_server

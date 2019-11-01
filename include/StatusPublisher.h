@@ -31,10 +31,10 @@ typedef struct
     int encoder_delta_car_left;   //两车轮中心位移，个为单位
     int omga_l_right;              //右轮转速 个每秒
     int omga_l_left;              //左轮转速 个每秒
-    float distance1_left;         //第一个超声模块距离值 单位cm
-    float distance2_left;         //第二个超声模块距离值 单位cm
-    float distance3_left;         //第三个超声模块距离值 单位cm
-    float distance4_left;         //第四个超声模块距离值 单位cm
+    float distance1;         //第一个超声模块距离值 单位cm
+    float distance2;         //第二个超声模块距离值 单位cm
+    float distance3;         //第三个超声模块距离值 单位cm
+    float distance4;         //第四个超声模块距离值 单位cm
     float IMU[9];            //mpu9250 9轴数据
     unsigned int time_stamp_left; //时间戳
 
@@ -47,10 +47,10 @@ typedef struct
     int encoder_delta_car_right;   //两车轮中心位移，个为单位
     int omga_r_right;              //右轮转速 个每秒
     int omga_r_left;              //左轮转速 个每秒
-    float distance1;         //第一个超声模块距离值 单位cm
-    float distance2;         //第二个超声模块距离值 单位cm
-    float distance3;         //第三个超声模块距离值 单位cm
-    float distance4;         //第四个超声模块距离值 单位cm
+    float distance1_right;         //第一个超声模块距离值 单位cm
+    float distance2_right;         //第二个超声模块距离值 单位cm
+    float distance3_right;         //第三个超声模块距离值 单位cm
+    float distance4_right;         //第四个超声模块距离值 单位cm
     float IMU_right[9];            //mpu9250 9轴数据
     unsigned int time_stamp; //时间戳
 
@@ -67,7 +67,7 @@ class StatusPublisher
 
   public:
     StatusPublisher();
-    StatusPublisher(double separation, double radius);
+    StatusPublisher(double separation, double radius,double power_scale,double y_scale);
     void Refresh();
     void Update_left(const char *data, unsigned int len);
     void Update_right(const char *data, unsigned int len);
@@ -112,6 +112,9 @@ class StatusPublisher
 
     ros::Publisher mIMUPub;
     sensor_msgs::Imu CarIMU;
+
+    double power_scale_;
+    double y_scale_;
 };
 
 } //namespace xqserial_server

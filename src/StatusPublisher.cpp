@@ -17,6 +17,8 @@ StatusPublisher::StatusPublisher()
   mbUpdated_right = false;
   wheel_separation = 0.37;
   wheel_radius = 0.06;
+  power_scale_ =1.0;
+  y_scale_ =1.0;
 
   CarPos2D.x = 0.0;
   CarPos2D.y = 0.0;
@@ -38,7 +40,7 @@ StatusPublisher::StatusPublisher()
   {
     status[i] = 0;
   }
-  car_status.encoder_ppr = 4 * 12 * 64;
+  car_status.encoder_ppr = 4 * 13 * 27;
   car_status.status = 0;
 
   mPose2DPub = mNH.advertise<geometry_msgs::Pose2D>("xqserial_server/Pose2D", 1, true);
@@ -61,11 +63,13 @@ StatusPublisher::StatusPublisher()
   move_avalable_ = true;
 }
 
-StatusPublisher::StatusPublisher(double separation, double radius)
+StatusPublisher::StatusPublisher(double separation, double radius,double power_scale,double y_scale)
 {
   new (this) StatusPublisher();
   wheel_separation = separation;
   wheel_radius = radius;
+  power_scale_ = power_scale;
+  y_scale_ = y_scale;
 }
 
 void StatusPublisher::Update_left(const char data[], unsigned int len)
@@ -170,7 +174,7 @@ void StatusPublisher::Update_left(const char data[], unsigned int len)
                 //     std::cout<<(unsigned int)current_str<<std::endl;
                 //   }
                 mbUpdated_left = false;
-                car_status.encoder_ppr_left = 4 * 12 * 64;
+                car_status.encoder_ppr_left = 4 * 13 * 27;
                 break;
               }
             }
@@ -322,7 +326,7 @@ void StatusPublisher::Update_right(const char data[], unsigned int len)
                 //     std::cout<<(unsigned int)current_str<<std::endl;
                 //   }
                 mbUpdated_right = false;
-                car_status.encoder_ppr = 4 * 12 * 64;
+                car_status.encoder_ppr = 4 * 12 * 27;
                 break;
               }
             }
@@ -390,11 +394,12 @@ void StatusPublisher::Refresh()
 
     car_status.encoder_delta_car = (car_status.encoder_delta_r+car_status.encoder_delta_l)/2.0f;
 
-    float motor_w1 = car_status.encoder_delta_r_left;
+    float motor_w1 = -car_status.encoder_delta_r_right; //反向
     float motor_w2 = car_status.encoder_delta_l_right;
     float motor_w3 = car_status.encoder_delta_l_left;
-    float motor_w4 = car_status.encoder_delta_r_right;
+    float motor_w4 = -car_status.encoder_delta_r_left; //反向
 
+    //ROS_ERROR("debug %f %f %f %f",motor_w1,motor_w2,motor_w3,motor_w4);
     // Time
     ros::Time current_time;
 
@@ -414,16 +419,16 @@ void StatusPublisher::Refresh()
 
     delta_car_x = (motor_w1 + motor_w2 + motor_w3 + motor_w4) / 4.0f * 1.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius;
 
-    delta_car_y = (-motor_w1 + motor_w2 + motor_w3 - motor_w4) / 4.0f * 1.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius;
+    delta_car_y = y_scale_*(-motor_w1 + motor_w2 + motor_w3 - motor_w4) / 4.0f * 1.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius;
 
     //ROS_ERROR("x y %f %f, w1-4 %f %f %f %f",delta_car_x,delta_car_y, motor_w1, motor_w2 , motor_w3, motor_w4);
 
-    if (delta_car_x > 0.05 || delta_car_x < -0.05)
+    if (std::isnan(delta_car_x)||delta_car_x > 0.05 || delta_car_x < -0.05)
     {
       delta_car_x = 0;
     }
 
-    if (delta_car_y > 0.05 || delta_car_y < -0.05)
+    if (std::isnan(delta_car_y)||delta_car_y > 0.05 || delta_car_y < -0.05)
     {
       delta_car_y = 0;
     }
@@ -440,7 +445,7 @@ void StatusPublisher::Refresh()
     if (delta_theta < -270)
       delta_theta += 360;
 
-    if ((!theta_updateflag) || delta_theta > 20 || delta_theta < -20)
+    if ((!theta_updateflag)||std::isnan(delta_theta) || delta_theta > 20 || delta_theta < -20)
     {
       delta_theta = 0;
     }
@@ -492,7 +497,7 @@ void StatusPublisher::Refresh()
     CarTwist.angular.z = angle_speed * PI / 180.0f;
     mTwistPub.publish(CarTwist);
 
-    CarPower.data = car_status.power;
+    CarPower.data = car_status.power*power_scale_;
     mPowerPub.publish(CarPower);
 
     CarOdom.header.stamp = current_time.fromSec(base_time_);
