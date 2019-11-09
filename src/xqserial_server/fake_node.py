@@ -35,6 +35,8 @@ CURRENT_ODOM = Odometry()
 CURRENT_POSE2D = Pose2D()
 DATA_LOCK = threading.RLock()
 CURRENT_IMU = Imu()
+CURRENT_POWER = Float64()
+CURRENT_POWER.data = 12
 
 def update_current_speed(twist):
     global CURRENT_TWIST, DATA_LOCK
@@ -52,7 +54,7 @@ def update_move_flag(flag):
         MOVE_FLAG.data = flag.data
 
 def update_location():
-    global DATA_LOCK, CURRENT_ODOM, MOVE_FLAG, CURRENT_TWIST, CURRENT_POSE2D, CURRENT_IMU
+    global DATA_LOCK, CURRENT_ODOM, MOVE_FLAG, CURRENT_TWIST, CURRENT_POSE2D, CURRENT_IMU, CURRENT_POWER
     rate = rospy.Rate(50)
     odom_pub = rospy.Publisher("/xqserial_server/Odom", Odometry, queue_size=0)
     pose_pub = rospy.Publisher("/xqserial_server/Pose2D", Pose2D, queue_size=0)
@@ -104,9 +106,11 @@ def update_location():
         CURRENT_IMU.linear_acceleration.y = 0
         CURRENT_IMU.linear_acceleration.z = 9.8
         imu_pub.publish(CURRENT_IMU)
-        # 更新电压
-        current_power = Float64()
-        current_power.data = 12.0    
+        # 更新电压, 每秒下降0.01v用于测试自动充电程序
+        current_power = CURRENT_POWER
+        current_power.data -= 0.01 / 50
+        if current_power.data < 10:
+            current_power.data = 10
         power_pub.publish(current_power)
         # 更新statusFlag
         current_status = Int32()
@@ -124,10 +128,16 @@ def update_location():
         rate.sleep()
 
 
+def update_power(power):
+    # 设置电压话题，用于虚拟自动充电节点更新电压
+    global CURRENT_POWER
+    CURRENT_POWER.data = power.data
+
 if __name__ == "__main__":
     rospy.init_node("xqserial_server", anonymous=True)
     rospy.Subscriber("/cmd_vel", Twist, update_current_speed)
     rospy.Subscriber("/global_move_flag", Bool, update_move_flag)
+    rospy.Subscriber("/set_power", Float64, update_power)
     update_location()
     
     
