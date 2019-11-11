@@ -115,10 +115,12 @@ def update_location():
         CURRENT_IMU.linear_acceleration.z = 9.8
         imu_pub.publish(CURRENT_IMU)
         # 更新电压, 每秒下降0.01v用于测试自动充电程序
-        current_power = CURRENT_POWER
-        current_power.data -= 0.01 / 50
-        if current_power.data < 10:
-            current_power.data = 10
+        current_power = None
+        with DATA_LOCK:
+            current_power = CURRENT_POWER
+            current_power.data -= 0.01 / 50
+            if current_power.data < 10:
+                current_power.data = 10
         power_pub.publish(current_power)
         # 更新statusFlag
         current_status = Int32()
@@ -138,8 +140,9 @@ def update_location():
 
 def update_power(power):
     # 设置电压话题，用于虚拟自动充电节点更新电压
-    global CURRENT_POWER
-    CURRENT_POWER.data = power.data
+    global CURRENT_POWER, DATA_LOCK
+    with DATA_LOCK:
+        CURRENT_POWER.data = power.data
 
 if __name__ == "__main__":
     rospy.init_node("xqserial_server", anonymous=True)
