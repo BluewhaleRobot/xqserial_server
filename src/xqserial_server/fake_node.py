@@ -41,6 +41,10 @@ CURRENT_POWER.data = 12
 def update_current_speed(twist):
     global CURRENT_TWIST, DATA_LOCK
     with DATA_LOCK:
+        if twist.linear.x > 10 or twist.linear.y > 10 or twist.linear.x > 10 or \
+            twist.angular.x > 10 or twist.angular.y > 10 or twist.angular.z > 10:
+            rospy.logerr("Invalid twist data received")
+            return
         CURRENT_TWIST.linear.x = twist.linear.x
         CURRENT_TWIST.linear.y = twist.linear.y
         CURRENT_TWIST.linear.z = twist.linear.z
