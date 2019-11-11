@@ -73,9 +73,13 @@ def update_location():
         with DATA_LOCK:
             if MOVE_FLAG.data:
                 # 更新当前位置
+                if CURRENT_TWIST.linear.x > 10:
+                    rospy.logerr("Invalid current twist")
                 CURRENT_POSE2D.x += CURRENT_TWIST.linear.x * 0.02 * math.cos( CURRENT_POSE2D.theta * math.pi / 180 )
                 CURRENT_POSE2D.y += CURRENT_TWIST.linear.x * 0.02 * math.sin( CURRENT_POSE2D.theta * math.pi / 180 )
                 CURRENT_POSE2D.theta += CURRENT_TWIST.angular.z * 0.02 * 180 / math.pi
+                if CURRENT_POSE2D.x > 1000 or CURRENT_POSE2D.y > 1000:
+                    rospy.logerr("Invalid current pose")
                 if CURRENT_POSE2D.theta > 360:
                     CURRENT_POSE2D.theta -= 360
                 if CURRENT_POSE2D.theta < 0:
