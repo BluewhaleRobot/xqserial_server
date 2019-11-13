@@ -67,6 +67,7 @@ void DiffDriverController::imuCalibration(const std_msgs::Bool& calFlag)
 }
 void DiffDriverController::updateFastStopFlag(const std_msgs::Int32& fastStopmsg)
 {
+  boost::mutex::scoped_lock lock(mStausMutex_);
   if(fastStopmsg.data == 2)
   {
     fastStopFlag_ = true;
@@ -216,7 +217,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     //if(vx_temp<0 && vx_temp>-0.1) vx_temp=-0.1;
 
     if(std::fabs(xq_status->get_wheel_v_theta()-carTwist.angular.z)>1.0) vtheta_temp=0;
-    if((!xq_status->can_movefoward()) && DetectFlag_)
+    if((!xq_status->can_movefoward()) && DetectFlag_ && std::fabs(carTwist.linear.x)>0.1)
     {
       if(x_filter>0)
       {
@@ -296,6 +297,9 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
 
 void DiffDriverController::check_faster_stop()
 {
+  boost::mutex::scoped_lock lock2(mStausMutex_);
+  if(galileoStatus_.targetStatus != 1) fastStopFlag_ = false;
+
   static bool last_flag=true;
   int i =0;
   geometry_msgs::Twist car_twist = xq_status->get_CarTwist();
@@ -309,7 +313,7 @@ void DiffDriverController::check_faster_stop()
     vtheta_temp=0;
   }else
   {
-    if( (!DetectFlag_) || xq_status->get_status()==0 || cmdTwist_.linear.x<=-0.001)
+    if( (!DetectFlag_) || xq_status->get_status()==0 || cmdTwist_.linear.x<=-0.001 || (cmdTwist_.linear.x<=0.01 && std::fabs(cmdTwist_.angular.z)>0.01))
     {
       fastStopFlag_ = false;
       return;
@@ -390,7 +394,7 @@ void DiffDriverController::UpdateNavStatus(const galileo_serial_server::GalileoS
     galileoStatus_.visualStatus = current_receive_status.visualStatus;
     galileoStatus_.chargeStatus = current_receive_status.chargeStatus;
     galileoStatus_.mapStatus = current_receive_status.mapStatus;
-
+    galileoStatus_.targetStatus = current_receive_status.targetStatus;
 }
 
 
