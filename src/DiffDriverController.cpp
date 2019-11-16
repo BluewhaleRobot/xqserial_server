@@ -215,9 +215,11 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     }
     //if(vx_temp>0 && vx_temp<0.1) vx_temp=0.1;
     //if(vx_temp<0 && vx_temp>-0.1) vx_temp=-0.1;
+    bool detect_bar_global_flag = true;
+    ros::param::get("/xqserial_server/params/detect_bar", detect_bar_global_flag);
 
     if(std::fabs(xq_status->get_wheel_v_theta()-carTwist.angular.z)>1.0) vtheta_temp=0;
-    if((!xq_status->can_movefoward()) && DetectFlag_ && std::fabs(carTwist.linear.x)>0.1)
+    if((!xq_status->can_movefoward()) && (detect_bar_global_flag && DetectFlag_) && std::fabs(carTwist.linear.x)>0.1)
     {
       if(x_filter>0)
       {
@@ -232,7 +234,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     }
 
     float bar_distance = xq_status->get_ultrasonic_min_distance();
-    if(!DetectFlag_) bar_distance = 4.2;
+    if(!DetectFlag_ || !detect_bar_global_flag) bar_distance = 4.2;
 
     if(bar_distance<=1.2)
     {
@@ -313,7 +315,9 @@ void DiffDriverController::check_faster_stop()
     vtheta_temp=0;
   }else
   {
-    if( (!DetectFlag_) || xq_status->get_status()==0 || cmdTwist_.linear.x<=-0.001 || (cmdTwist_.linear.x<=0.01 && std::fabs(cmdTwist_.angular.z)>0.01))
+    bool detect_bar_global_flag = true;
+    ros::param::get("/xqserial_server/params/detect_bar", detect_bar_global_flag);
+    if( (!DetectFlag_)||(!detect_bar_global_flag) || xq_status->get_status()==0 || cmdTwist_.linear.x<=-0.001 || (cmdTwist_.linear.x<=0.01 && std::fabs(cmdTwist_.angular.z)>0.01))
     {
       fastStopFlag_ = false;
       return;
