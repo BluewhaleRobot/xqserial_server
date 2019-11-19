@@ -50,6 +50,7 @@ void DiffDriverController::run()
     ros::Subscriber sub5 = nodeHandler.subscribe("/move_base/StatusFlag", 1, &DiffDriverController::updateFastStopFlag,this);
     ros::Subscriber sub6 = nodeHandler.subscribe<sensor_msgs::Joy>("joy", 1, &DiffDriverController::joyCallback, this);
     ros::Subscriber sub7 = nodeHandler.subscribe("/elevator_pose", 1, &DiffDriverController::updateElevator,this);
+    ros::Subscriber sub8 = nodeHandler.subscribe("/galileo/status", 1, &DiffDriverController::UpdateNavStatus, this);
     ros::spin();
 }
 
@@ -137,6 +138,7 @@ void DiffDriverController::imuCalibration(const std_msgs::Bool& calFlag)
 }
 void DiffDriverController::updateFastStopFlag(const std_msgs::Int32& fastStopmsg)
 {
+  boost::mutex::scoped_lock lock(mStausMutex_);
   if(fastStopmsg.data == 2)
   {
     fastStopFlag_ = true;
@@ -347,6 +349,11 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
 
 void DiffDriverController::check_faster_stop()
 {
+  boost::mutex::scoped_lock lock2(mStausMutex_);
+  if(galileoStatus_.targetStatus != 1)
+  {
+    fastStopFlag_ = false;
+  }
   static bool last_flag=true;
   int i =0;
   geometry_msgs::Twist car_twist = xq_status->get_CarTwist();
@@ -445,7 +452,15 @@ void DiffDriverController::check_faster_stop()
   last_ordertime=ros::WallTime::now();
 }
 
-
+void DiffDriverController::UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status)
+{
+    boost::mutex::scoped_lock lock(mStausMutex_);
+    galileoStatus_.navStatus = current_receive_status.navStatus;
+    galileoStatus_.visualStatus = current_receive_status.visualStatus;
+    galileoStatus_.chargeStatus = current_receive_status.chargeStatus;
+    galileoStatus_.mapStatus = current_receive_status.mapStatus;
+    galileoStatus_.targetStatus = current_receive_status.mapStatus;
+}
 
 
 

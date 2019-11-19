@@ -6,6 +6,7 @@
 #include <std_msgs/Bool.h>
 #include <std_msgs/Int32.h>
 #include <sensor_msgs/Joy.h>
+#include "galileo_serial_server/GalileoStatus.h"
 
 namespace xqserial_server
 {
@@ -31,6 +32,7 @@ public:
     ros::WallTime last_ordertime;
     bool DetectFlag_;
     bool fastStopFlag_;
+    void UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status);
 private:
     double max_wheelspeed;//单位为转每秒,只能为正数
     std::string cmd_topic;
@@ -43,6 +45,8 @@ private:
     int c3_axis_;
     bool c4_pressed_;
     bool c3_pressed_;
+    boost::mutex mStausMutex_;
+    galileo_serial_server::GalileoStatus galileoStatus_;
 };
 
 }
