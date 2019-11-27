@@ -7,7 +7,8 @@ IMPORT{builtin}="path_id"
 #ENV{ID_SERIAL}=="FTDI_USB__-__Serial"                                    , SYMLINK="stm32Car"        , SYMLINK+="ttyUSB001" , OWNER="xiaoqiang" ,RUN+="/bin/setserial /dev/ttyUSB001 low_latency"
 #ENV{ID_SERIAL}=="Prolific_Technology_Inc._USB-Serial_Controller"         , SYMLINK="stm32Car"        , SYMLINK+="ttyUSB001" , OWNER="xiaoqiang" ,MODE="0666"
 ENV{ID_SERIAL}=="Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001" , SYMLINK="rplidarA2"       , SYMLINK+="ttyUSB002" , OWNER="xiaoqiang" ,MODE="0666"
-KERNELS=="2-4:1.0"         ,SYMLINK="ttyUSB011" ,  SYMLINK+="stm32Imu", OWNER="xiaoqiang" ,RUN+="/bin/setserial /dev/ttyUSB011 low_latency"
+KERNELS=="2-3:1.0"         ,SYMLINK="ttyUSB001" ,  SYMLINK+="stm32Car", OWNER="xiaoqiang" ,RUN+="/bin/setserial /dev/ttyUSB011 low_latency"
+KERNELS=="2-2:1.0"         ,SYMLINK="ttyUSB011" ,  SYMLINK+="stm32Imu", OWNER="xiaoqiang" ,RUN+="/bin/setserial /dev/ttyUSB011 low_latency"
 
 
 LABEL="persistent_serial_end"
