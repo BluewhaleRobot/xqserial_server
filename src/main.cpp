@@ -25,13 +25,14 @@ int main(int argc, char **argv)
     ros::param::param<int>("~baud", baud, 115200);
     cout<<"port:"<<port<<" baud:"<<baud<<endl;
     //获取小车机械参数
-    double separation=0,radius=0,crash_distance=0.2;
+    double separation=0,radius=0,crash_distance=0.2,power_scale=1.0;
     bool DebugFlag = false;
     ros::param::param<double>("~wheel_separation", separation, 0.36);
     ros::param::param<double>("~wheel_radius", radius, 0.0825);
     ros::param::param<bool>("~debug_flag", DebugFlag, false);
     ros::param::param<double>("~crash_distance", crash_distance, 0.2);
-    xqserial_server::StatusPublisher xq_status(separation,radius,crash_distance);
+    ros::param::param<double>("~power_scale", power_scale, 1.0);
+    xqserial_server::StatusPublisher xq_status(separation,radius,crash_distance,power_scale);
 
     //获取小车控制参数
     double max_speed;

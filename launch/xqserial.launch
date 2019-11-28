@@ -8,6 +8,7 @@
     <param name="crash_distance" value="-0.4"/>
     <param name="c4_axis" value="12"/>
     <param name="c3_axis" value="14"/>
+    <param name="power_scale" value="1.01"/>
   </node>
   <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0.15 0 0 0 1 base_footprint base_link 20">
   </node>

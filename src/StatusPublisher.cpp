@@ -78,12 +78,13 @@ StatusPublisher::StatusPublisher()
    crash_distance_= 0.2;
 }
 
-StatusPublisher::StatusPublisher(double separation,double radius,double crash_distance)
+StatusPublisher::StatusPublisher(double separation,double radius,double crash_distance,double power_scale)
 {
     new (this)StatusPublisher();
     wheel_separation=separation;
     wheel_radius=radius;
     crash_distance_ = crash_distance;
+    power_scale_ = power_scale;
 }
 
 void StatusPublisher::Update(const char data[], unsigned int len)
@@ -505,7 +506,7 @@ void StatusPublisher::Refresh()
 
         mTwistPub.publish(CarTwist);
 
-        CarPower.data = car_status.power;
+        CarPower.data = car_status.power*power_scale_;
         mPowerPub.publish(CarPower);
 
         CarOdom.header.stamp = current_time.fromSec(base_time_);
