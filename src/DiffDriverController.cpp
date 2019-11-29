@@ -14,9 +14,10 @@ DiffDriverController::DiffDriverController()
     MoveFlag=true;
     last_ordertime=ros::WallTime::now();
     DetectFlag_=true;
+    R_min_ = 0.25;
 }
 
-DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_)
+DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_,double r_min)
 {
     MoveFlag=true;
     max_wheelspeed=max_speed_;
@@ -27,6 +28,7 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
     speed_debug[1]=0.0;
     last_ordertime=ros::WallTime::now();
     DetectFlag_=true;
+    R_min_ = r_min;
 }
 
 void DiffDriverController::run()
@@ -37,6 +39,7 @@ void DiffDriverController::run()
     ros::Subscriber sub3 = nodeHandler.subscribe("/global_move_flag", 1, &DiffDriverController::updateMoveFlag,this);
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag,this);
     ros::Subscriber sub5 = nodeHandler.subscribe("/move_base/StatusFlag", 1, &DiffDriverController::updateFastStopFlag,this);
+    ros::Subscriber sub6 = nodeHandler.subscribe("/galileo/status", 1, &DiffDriverController::UpdateNavStatus, this);
     ros::spin();
 }
 void DiffDriverController::updateMoveFlag(const std_msgs::Bool& moveFlag)
@@ -59,6 +62,7 @@ void DiffDriverController::imuCalibration(const std_msgs::Bool& calFlag)
 }
 void DiffDriverController::updateFastStopFlag(const std_msgs::Int32& fastStopmsg)
 {
+  boost::mutex::scoped_lock lock(mStausMutex_);
   if(fastStopmsg.data == 2)
   {
     fastStopFlag_ = true;
@@ -172,9 +176,33 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     wheel_ppr=xq_status->get_wheel_ppr();
     geometry_msgs::Twist  carTwist = xq_status->get_CarTwist();
 
+    float x_filter = command.linear.x, z_filter = command.angular.z ;
+    {
+      //先过滤速度
+      boost::mutex::scoped_lock lock2(mStausMutex_);
+      if(galileoStatus_.mapStatus == 1)
+      {
+        if(command.angular.z <-0.001 || command.angular.z>0.001 )
+        {
+          float R_now =  std::fabs(command.linear.x / command.angular.z);
+          if(R_now < R_min_)
+          {
+            if(command.angular.z>0.001)
+            {
+              z_filter = std::fabs(x_filter/R_min_);
+            }
+            else
+            {
+              z_filter = -std::fabs(x_filter/R_min_);
+            }
+          }
+        }
+      }
+    }
+
     double vx_temp,vtheta_temp;
-    vx_temp=command.linear.x;
-    vtheta_temp=command.angular.z;
+    vx_temp=x_filter;
+    vtheta_temp=z_filter;
     if(std::fabs(vx_temp)<0.1)
     {
       if(vtheta_temp>0.0002&&vtheta_temp<0.1) vtheta_temp=0.1;
@@ -184,27 +212,27 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     //if(vx_temp<0 && vx_temp>-0.1) vx_temp=-0.1;
 
     if(std::fabs(xq_status->get_wheel_v_theta()-carTwist.angular.z)>1.0) vtheta_temp=0;
-    if((!xq_status->can_movefoward()) && DetectFlag_)
+    if((!xq_status->can_movefoward()) && DetectFlag_ && carTwist.linear.x>=0.01)
     {
-      if(command.linear.x>0)
+      if(x_filter>0)
       {
         vx_temp=-2.3;
-        vtheta_temp=0;
+        //vtheta_temp=0;
       }
-      if(command.linear.x==0)
+      if(x_filter==0)
       {
         vx_temp=0.0;
-        vtheta_temp=0;
+        //vtheta_temp=0;
       }
     }
 
     float bar_distance = xq_status->get_ultrasonic_min_distance();
     if(!DetectFlag_) bar_distance = 4.2;
 
-    if(bar_distance<=1.2)
-    {
-      vx_temp = std::min(vx_temp,0.5*(bar_distance-0.2));
-    }
+    // if(bar_distance<=1.2)
+    // {
+    //   vx_temp = std::min(vx_temp,0.5*(bar_distance-0.2));
+    // }
 
     speed_lin=vx_temp/(2.0*PI*radius);
     //speed_ang=command.angular.z*separation/(2.0*PI*radius);
@@ -260,6 +288,8 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
 
 void DiffDriverController::check_faster_stop()
 {
+  boost::mutex::scoped_lock lock2(mStausMutex_);
+  if(galileoStatus_.targetStatus != 1) fastStopFlag_ = false;
   static bool last_flag=true;
   int i =0;
   geometry_msgs::Twist car_twist = xq_status->get_CarTwist();
@@ -269,7 +299,7 @@ void DiffDriverController::check_faster_stop()
     vtheta_temp=0;
   }else
   {
-    if( (!DetectFlag_) || xq_status->get_status()==0 || cmdTwist_.linear.x<=-0.001)
+    if( (!DetectFlag_) || xq_status->get_status()==0 || cmdTwist_.linear.x<=-0.001 || (cmdTwist_.linear.x<=0.01 && std::fabs(cmdTwist_.angular.z)>0.01))
     {
       fastStopFlag_ = false;
       return;
@@ -343,7 +373,15 @@ void DiffDriverController::check_faster_stop()
   last_ordertime=ros::WallTime::now();
 }
 
-
+void DiffDriverController::UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status)
+{
+    boost::mutex::scoped_lock lock(mStausMutex_);
+    galileoStatus_.navStatus = current_receive_status.navStatus;
+    galileoStatus_.visualStatus = current_receive_status.visualStatus;
+    galileoStatus_.chargeStatus = current_receive_status.chargeStatus;
+    galileoStatus_.mapStatus = current_receive_status.mapStatus;
+    galileoStatus_.targetStatus = current_receive_status.targetStatus;
+}
 
 
 
