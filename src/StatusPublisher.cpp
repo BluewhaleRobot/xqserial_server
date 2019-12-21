@@ -37,7 +37,7 @@ StatusPublisher::StatusPublisher()
     {
         status[i]=0;
     }
-    car_status.encoder_ppr=720;
+    car_status.encoder_ppr=600;
 
    mPose2DPub = mNH.advertise<geometry_msgs::Pose2D>("xqserial_server/Pose2D",1,true);
    mStatusFlagPub = mNH.advertise<std_msgs::Int32>("xqserial_server/StatusFlag",1,true);
@@ -184,7 +184,7 @@ void StatusPublisher::Update(const char data[], unsigned int len)
                             //     std::cout<<(unsigned int)current_str<<std::endl;
                             //   }
                             mbUpdated=false;
-                            car_status.encoder_ppr=720;
+                            car_status.encoder_ppr=600;
                             break;
                           }
                       }
@@ -240,10 +240,11 @@ void StatusPublisher::Refresh()
      static unsigned int ii=0;
      static bool theta_updateflag = false;
      static bool theta_update_first = true;
-     ii++;
+     static int hbz1_num=0,hbz2_num=0,hbz4_num=0;
     //std::cout<<"runR"<< mbUpdated<<std::endl;
     if(mbUpdated)
     {
+      ii++;
       // Time
       ros::Time current_time = ros::Time::now();
 
@@ -476,6 +477,117 @@ void StatusPublisher::Refresh()
            }
         }
         distance_sum_i++;
+
+        int barArea_nums=0;
+        int clearArea_nums=0;
+        if(distances_[1]<tran_dist_)
+        {
+          hbz1_num++;
+          if(hbz1_num>10) barArea_nums+=5;
+        }else{
+          hbz1_num--;
+          if(hbz1_num<0) hbz1_num=0;
+          if(hbz1_num==0) clearArea_nums+=10;
+        }
+        if(distances_[0]<tran_dist_)
+        {
+          hbz2_num++;
+          if(hbz2_num>10) barArea_nums+=5;
+        }else{
+          hbz2_num--;
+          if(hbz2_num<0) hbz2_num=0;
+          if(hbz2_num==0) clearArea_nums+=10;
+        }
+
+        if(barArea_nums>0)
+        {
+          //发布雷区
+          PointCloud::Ptr barcloud_msg(new PointCloud);
+          barcloud_msg->header.stamp = current_time;
+          barcloud_msg->height = 1;
+          barcloud_msg->width  = barArea_nums;
+          barcloud_msg->is_dense = true;
+          barcloud_msg->is_bigendian = false;
+          barcloud_msg->header.frame_id="kinect_link_new";
+          sensor_msgs::PointCloud2Modifier pcd_modifier1(*barcloud_msg);
+          pcd_modifier1.setPointCloud2FieldsByString(1,"xyz");
+          sensor_msgs::PointCloud2Iterator<float> bariter_x(*barcloud_msg, "x");
+          sensor_msgs::PointCloud2Iterator<float> bariter_y(*barcloud_msg, "y");
+          sensor_msgs::PointCloud2Iterator<float> bariter_z(*barcloud_msg, "z");
+          if(distances_[0]<tran_dist_&&hbz2_num>10)
+          {
+            for(int k=0;k<5;k++,++bariter_x, ++bariter_y,++bariter_z)
+            {
+              *bariter_x=0.2+0.2;
+              *bariter_y=-k*0.04;
+              *bariter_z=0.15;
+            }
+          }
+
+          if(distances_[1]<tran_dist_&&hbz1_num>10)
+          {
+            for(int k=0;k<5;k++,++bariter_x, ++bariter_y,++bariter_z)
+            {
+              *bariter_x=0.2+0.2;
+              *bariter_y=k*0.04;
+              *bariter_z=0.15;
+            }
+          }
+          if(ii%1==0)
+          {
+            pub_barpoint_cloud_.publish(barcloud_msg);
+          }
+        }
+        if(clearArea_nums>0)
+        {
+          //清除雷区
+          PointCloud::Ptr clearcloud_msg(new PointCloud);
+          clearcloud_msg->header.stamp = current_time;
+          clearcloud_msg->height = 1;
+          clearcloud_msg->width  = clearArea_nums;
+          clearcloud_msg->is_dense = true;
+          clearcloud_msg->is_bigendian = false;
+          clearcloud_msg->header.frame_id="kinect_link_new";
+          sensor_msgs::PointCloud2Modifier pcd_modifier1(*clearcloud_msg);
+          pcd_modifier1.setPointCloud2FieldsByString(1,"xyz");
+          sensor_msgs::PointCloud2Iterator<float> cleariter_x(*clearcloud_msg, "x");
+          sensor_msgs::PointCloud2Iterator<float> cleariter_y(*clearcloud_msg, "y");
+          sensor_msgs::PointCloud2Iterator<float> cleariter_z(*clearcloud_msg, "z");
+          if(distances_[0]>=tran_dist_&&hbz2_num==0)
+          {
+            for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            {
+              *cleariter_x=0.2+0.2;
+              *cleariter_y=-k*0.04;
+              *cleariter_z=0.0;
+            }
+            for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            {
+              *cleariter_x=0.15+0.2;
+              *cleariter_y=-k*0.04;
+              *cleariter_z=0.0;
+            }
+          }
+          if(distances_[1]>=tran_dist_&&hbz1_num==0)
+          {
+            for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            {
+              *cleariter_x=0.2+0.2;
+              *cleariter_y=k*0.04;
+              *cleariter_z=0.0;
+            }
+            for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+            {
+              *cleariter_x=0.15+0.2;
+              *cleariter_y=k*0.04;
+              *cleariter_z=0.0;
+            }
+          }
+          if(ii%1==0)
+          {
+            pub_clearpoint_cloud_.publish(clearcloud_msg);
+          }
+        }
 
         mbUpdated = false;
     }

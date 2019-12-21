@@ -240,6 +240,7 @@ bool DiffDriverController::checkStop()
     if(galileoStatus_.target_status != 1)
     {
       return_flag = false;
+      stopFlag_ = false;
     }
 
     if(stopFlag_)
@@ -272,6 +273,11 @@ void DiffDriverController::filterSpeed()
   // {
   //   vx_temp = std::min(vx_temp,0.5*(bar_distance-0.2));
   // }
+  if(galileoStatus_.target_status != 1 || vx_temp<=-0.001||(vx_temp<=0.01 && std::fabs(vtheta_temp)>0.01))
+  {
+    stopFlag_ = false;
+  }
+
   if (!MoveFlag || stopFlag_)
   {
     vx_temp = 0.;
