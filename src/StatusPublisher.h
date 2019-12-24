@@ -72,6 +72,7 @@ public:
       tran_dist_ = tran_dist;
     }
     float get_ultrasonic_min_distance();
+    int get_cstatus();
 private:
     //Wheel separation, wrt the midpoint of the wheel width: meters
     double wheel_separation;
@@ -101,6 +102,10 @@ private:
     ros::Publisher mSonar2Pub;
     ros::Publisher mSonar3Pub;
     ros::Publisher mSonar4Pub;
+
+    ros::Publisher pub_barpoint_cloud_;
+    ros::Publisher pub_clearpoint_cloud_;
+
     bool mbUpdated_imu;
     bool mbUpdated_car;
 

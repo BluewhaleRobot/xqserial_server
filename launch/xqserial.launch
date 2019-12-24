@@ -5,10 +5,10 @@
     <param name="wheel_radius" value="0.0857"/>
     <param name="max_speed" value="4.0"/>
     <param name="rot_dist" value="-0.8"/>
-    <param name="tran_dist" value="-0.5"/>
+    <param name="tran_dist" value="0.6"/>
     <param name="port_car" value="/dev/stm32Car"/>
     <param name="port_imu" value="/dev/stm32Imu"/>
-    <param name="power_scale" value="1.008213"/>
+    <param name="power_scale" value="1.00"/>
     <param name="r_min" value="1.0"/>
   </node>
   <!-- <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster1" args="-0.1 -0.22 0.15 4.7123889 0 0  base_link sonar1 20"/> -->

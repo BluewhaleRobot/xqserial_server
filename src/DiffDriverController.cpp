@@ -67,15 +67,16 @@ void DiffDriverController::run()
 
       {
         boost::mutex::scoped_lock lock(mMutex);
+        int c3_flag = xq_status->get_cstatus();
         //3秒速度保持功能，
         if(t_diff.toSec()<3.0)
         {
-          if(i%10==0 || updateOrderflag_)
+          if(i%10==0 || updateOrderflag_ || c3_flag==4)
           {
             updateOrderflag_ = false;
 
             //有速度指令则发速度，没有则停止
-            if(send_flag_)
+            if(send_flag_ && c3_flag!=4)
             {
               filterSpeed();
               send_speed();
