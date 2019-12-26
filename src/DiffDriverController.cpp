@@ -198,16 +198,16 @@ void DiffDriverController::send_speed()
   }
 
   //转出最大速度百分比,并进行限幅
-  speed_temp[0] = scale * (speed_lin + speed_ang / 2) / max_wheelspeed * 1000.0;
+  speed_temp[0] = scale * (speed_lin) / max_wheelspeed * 1000.0;
   speed_temp[0] = std::min(speed_temp[0], 1000.0);
   speed_temp[0] = std::max(-1000.0, speed_temp[0]);
 
-  speed_temp[1] = scale * (speed_lin - speed_ang / 2) / max_wheelspeed * 1000.0;
+  speed_temp[1] = scale * (speed_ang) / max_wheelspeed * 1000.0;
   speed_temp[1] = std::min(speed_temp[1], 1000.0);
   speed_temp[1] = std::max(-1000.0, speed_temp[1]);
 
-  left_speed_ = (int16_t)(speed_temp[1]);
-  right_speed_ = (int16_t)(speed_temp[0]);
+  left_speed_ = -(int16_t)(speed_temp[0]);
+  right_speed_ = -(int16_t)(speed_temp[1]);
 
   //下发速度指令
   char buffer [30];

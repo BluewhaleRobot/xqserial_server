@@ -246,7 +246,9 @@ void StatusPublisher::Refresh()
     var_len = (50.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius) * (50.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius);
     var_angle = (0.01f / 180.0f * PI) * (0.01f / 180.0f * PI);
 
-    delta_car = (car_status.encoder_delta_r + car_status.encoder_delta_l) / 2.0f * 1.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius;
+    delta_car = (-car_status.encoder_delta_r - car_status.encoder_delta_l) / 2.0f * 1.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius;
+    
+    //ROS_ERROR("%d %d",-car_status.encoder_delta_r,-car_status.encoder_delta_l);
 
     if (std::isnan(delta_car)||delta_car > 0.10|| delta_car < -0.10)
     {
