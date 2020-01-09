@@ -37,7 +37,7 @@ int main(int argc, char **argv)
     ros::param::param<double>("~wheel_separation", separation, 0.36);
     ros::param::param<double>("~wheel_radius", radius, 0.0825);
     ros::param::param<bool>("~debug_flag", DebugFlag, false);
-    
+
     double rot_dist,tran_dist;
     ros::param::param<double>("~rot_dist", rot_dist, -0.21);
     ros::param::param<double>("~tran_dist", tran_dist, -0.3);
@@ -54,7 +54,7 @@ int main(int argc, char **argv)
     ros::param::param<double>("~max_speed", max_speed, 5.0);
     ros::param::param<std::string>("~cmd_topic", cmd_topic, "cmd_vel");
     ros::param::param<double>("~r_min", r_min, 0.25);
-    
+
     // 初始化语音发布者
     ros::NodeHandle mNH;
     ros::Publisher audio_pub = mNH.advertise<std_msgs::String>("/xiaoqiang_tts/text", 1, true);
@@ -108,6 +108,16 @@ int main(int argc, char **argv)
             {
               xq_diffdriver.check_faster_stop();
             }
+
+            //更新按钮
+            if(xq_diffdriver.dealBackSwitch())
+            {
+              //告诉用户回去了
+              std_msgs::String audio_msg;
+              audio_msg.data = "好的，我回去了!";
+              audio_pub.publish(audio_msg);
+            }
+
             i++;
             r.sleep();
             //cout<<"run"<<endl;

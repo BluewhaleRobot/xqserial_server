@@ -5,6 +5,7 @@
 #include "AsyncSerial.h"
 #include <std_msgs/Bool.h>
 #include "galileo_serial_server/GalileoStatus.h"
+#include "galileo_serial_server/GalileoNativeCmds.h"
 
 namespace xqserial_server
 {
@@ -25,11 +26,12 @@ public:
     void check_faster_stop();
     void updateFastStopFlag(const std_msgs::Int32& fastStopmsg);
     void UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status);
+    bool dealBackSwitch();
     int speed_debug[2];
     ros::WallTime last_ordertime;
     bool DetectFlag_;
     bool fastStopFlag_;
- 
+
 private:
     double max_wheelspeed;//单位为转每秒,只能为正数
     std::string cmd_topic;
@@ -41,6 +43,10 @@ private:
     boost::mutex mStausMutex_;
     galileo_serial_server::GalileoStatus galileoStatus_;
     float R_min_;
+    bool back_touch_falg_;
+    ros::NodeHandle mNH_;
+    ros::Publisher mgalileoCmdsPub_;
+    ros::WallTime last_touchtime_;
 };
 
 }

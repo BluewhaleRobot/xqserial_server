@@ -29,6 +29,9 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
     last_ordertime=ros::WallTime::now();
     DetectFlag_=true;
     R_min_ = r_min;
+    mgalileoCmdsPub_ = mNH_.advertise<galileo_serial_server::GalileoNativeCmds>("/galileo/cmds", 0, true);
+    back_touch_falg_ = false;
+    last_touchtime_ = ros::WallTime::now();
 }
 
 void DiffDriverController::run()
@@ -381,9 +384,52 @@ void DiffDriverController::UpdateNavStatus(const galileo_serial_server::GalileoS
     galileoStatus_.chargeStatus = current_receive_status.chargeStatus;
     galileoStatus_.mapStatus = current_receive_status.mapStatus;
     galileoStatus_.targetStatus = current_receive_status.targetStatus;
+    galileoStatus_.targetNumID = current_receive_status.targetNumID;
 }
 
-
+bool DiffDriverController::dealBackSwitch()
+{
+  boost::mutex::scoped_lock lock(mStausMutex_);
+  if(galileoStatus_.navStatus ==1 )
+  {
+    if(galileoStatus_.visualStatus != 0)
+    {
+      if(galileoStatus_.targetNumID != 0)
+      {
+        if(galileoStatus_.targetStatus == 0)
+        {
+          //判断开关是否按下
+          if(xq_status->car_status.hbz1==1)
+          {
+            back_touch_falg_ = true;
+            last_touchtime_ = ros::WallTime::now();
+          }
+          else
+          {
+            //消除按键抖动
+            ros::WallDuration t_diff = ros::WallTime::now() - last_touchtime_;
+            if(back_touch_falg_ && t_diff.toSec()>=0.1)
+            {
+              //开关松开
+              back_touch_falg_ = false;
+              //发布回零号点命令
+              galileo_serial_server::GalileoNativeCmds currentCmds;
+              currentCmds.header.stamp = ros::Time::now();
+              currentCmds.header.frame_id = "xq_serial_server";
+              currentCmds.length = 2;
+              currentCmds.data.resize(2);
+              currentCmds.data[0] = (char)0x67;
+              currentCmds.data[1] = (char)0x00;
+              mgalileoCmdsPub_.publish(currentCmds);
+              return true;
+            }
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
 
 
 
