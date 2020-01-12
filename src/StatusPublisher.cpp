@@ -41,15 +41,18 @@ StatusPublisher::StatusPublisher()
         status[i]=0;
     }
 
-    car_status.encoder_ppr=4000*15;
+    car_status.encoder_ppr=1024*4;
     car_status.status_imu = -1;
-    car_status.driver_status = 0;
     car_status.status = -1;
 
     for(i=0;i<4;i++)
     {
       car_status.sonar_distance[i]=4.2;
     }
+
+    car_status.left_driver_status = -1;
+    car_status.right_driver_status = -1;
+
    mPose2DPub = mNH.advertise<geometry_msgs::Pose2D>("xqserial_server/Pose2D",1,true);
    mStatusFlagPub = mNH.advertise<std_msgs::Int32>("xqserial_server/StatusFlag",1,true);
    mTwistPub = mNH.advertise<geometry_msgs::Twist>("xqserial_server/Twist",1,true);
@@ -109,6 +112,8 @@ StatusPublisher::StatusPublisher()
    distances_[0] = 4.2;
    distances_[1] = 4.2;
    base_time_ = ros::Time::now().toSec();
+
+
 }
 
 StatusPublisher::StatusPublisher(double separation,double radius,bool debugFlag,double power_scale)
@@ -120,10 +125,84 @@ StatusPublisher::StatusPublisher(double separation,double radius,bool debugFlag,
     power_scale_ = power_scale;
 }
 
-void StatusPublisher::Update_car(const char data[], unsigned int len)
+void StatusPublisher::Update_car_left(const char data[], unsigned int len)
 {
-    ROS_DEBUG("receive one package! %s , len %d",data,len);
+    int i=0,j=0;
+    int * receive_byte;
+    static std::deque<unsigned char>  cmd_string_buf={(unsigned char)0x00,(unsigned char)0x00,(unsigned char)0x00,(unsigned char)0x00,(unsigned char)0x00,(unsigned char)0x00};
+    unsigned char current_str=0x00;
+
+    for(i=0;i<len;i++)
+    {
+        current_str=data[i];
+        cmd_string_buf.pop_front();
+        cmd_string_buf.push_back(current_str);
+        //std::cout<< std::hex  << (int)current_str <<std::endl;
+        //ROS_ERROR("current %d %d",data[i],i);
+        if((cmd_string_buf[0]!=(unsigned char)0x60 && cmd_string_buf[1]!=(unsigned char)0x60)) //校验地址
+        {
+          continue;
+        }
+        //校验头部信息
+        int check_sum;
+        check_sum = 0;
+        for(int k=2;k<5;k++)
+        {
+          check_sum += cmd_string_buf[k];
+        }
+        unsigned char sum_low8 = check_sum&0x000000ff;
+
+        if(sum_low8 != cmd_string_buf[5]) continue;
+
+        ROS_DEBUG("port car left receive one package!");
+        //有效包，开始提取数据
+        {
+          boost::mutex::scoped_lock lock(mMutex_car);
+          car_status.left_driver_status = cmd_string_buf[4];
+          ROS_DEBUG("left_driver_status %d ",car_status.left_driver_status);
+        }
+    }
     return;
+}
+
+void StatusPublisher::Update_car_right(const char data[], unsigned int len)
+{
+  int i=0,j=0;
+  int * receive_byte;
+  static std::deque<unsigned char>  cmd_string_buf={(unsigned char)0x00,(unsigned char)0x00,(unsigned char)0x00,(unsigned char)0x00,(unsigned char)0x00,(unsigned char)0x00};
+  unsigned char current_str=0x00;
+
+  for(i=0;i<len;i++)
+  {
+      current_str=data[i];
+      cmd_string_buf.pop_front();
+      cmd_string_buf.push_back(current_str);
+      //std::cout<< std::hex  << (int)current_str <<std::endl;
+      //ROS_ERROR("current %d %d",data[i],i);
+      if((cmd_string_buf[0]!=(unsigned char)0x60 && cmd_string_buf[1]!=(unsigned char)0x60)) //校验地址
+      {
+        continue;
+      }
+      //校验头部信息
+      int check_sum;
+      check_sum = 0;
+      for(int k=2;k<5;k++)
+      {
+        check_sum += cmd_string_buf[k];
+      }
+      unsigned char sum_low8 = check_sum&0x000000ff;
+
+      if(sum_low8 != cmd_string_buf[5]) continue;
+
+      ROS_DEBUG("port car right receive one package!");
+      //有效包，开始提取数据
+      {
+        boost::mutex::scoped_lock lock(mMutex_car);
+        car_status.right_driver_status = cmd_string_buf[4];
+        ROS_DEBUG("right_driver_status %d ",car_status.right_driver_status);
+      }
+  }
+  return;
 }
 
 void StatusPublisher::Update_imu(const char data[], unsigned int len)
@@ -201,13 +280,14 @@ void StatusPublisher::Update_imu(const char data[], unsigned int len)
                           if(cmd_string_buf[5*j+4]!=32)
                           {
                             mbUpdated_imu=false;
-                            car_status.encoder_ppr = 4000*15;
+                            car_status.encoder_ppr = 1024*4;
                             break;
                           }
                       }
                     }
                     if (mbUpdated_imu)
                     {
+                      car_status.encoder_delta_r = - car_status.encoder_delta_r; //右轮编码器方向反转
                       base_time_ = ros::Time::now().toSec();
                     }
                     new_packed_ok_len=0;
@@ -313,7 +393,11 @@ void StatusPublisher::Refresh()
     {
       //反映驱动板错误
       boost::mutex::scoped_lock lock(mMutex_car);
-      car_status.status = car_status.driver_status;
+      if(car_status.left_driver_status>1) car_status.status = car_status.left_driver_status + 2;
+      if(car_status.right_driver_status>1) car_status.status = car_status.right_driver_status + 2;
+
+      if(car_status.left_driver_status==-1) car_status.status = -2;
+      if(car_status.right_driver_status==-1) car_status.status = -2;
     }
 
     flag.data = car_status.status;

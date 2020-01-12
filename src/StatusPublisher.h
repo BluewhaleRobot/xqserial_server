@@ -38,9 +38,8 @@ typedef struct {
   	float IMU[9];           //IMU 9轴数据
     unsigned int time_stamp_imu;//时间戳
 
-    int encoder_r_current;  //右轮编码器当期读数， 个为单位
-    int encoder_l_current;  //左轮编码器当期读数， 个为单位
-    int driver_status;      //0正常，正数代表驱动器错误状态
+    int left_driver_status;      //左侧驱动器状态 ，-1 未初始化 ，0 松轴， 1 锁轴，大于1异常
+    int right_driver_status;      //左侧驱动器状态 ，-1 未初始化 ，0 松轴， 1 锁轴，大于1异常
 
     int status;            //0 正常 -1未初始化 -2有障碍物 正数代表驱动器错误状态
 
@@ -53,7 +52,8 @@ public:
     StatusPublisher();
     StatusPublisher(double separation,double radius,bool debugFlag,double power_scale);
     void Refresh();
-    void Update_car(const char *data, unsigned int len);
+    void Update_car_left(const char *data, unsigned int len);
+    void Update_car_right(const char *data, unsigned int len);
     void Update_imu(const char *data, unsigned int len);
     double get_wheel_separation();
     double get_wheel_radius();
@@ -73,6 +73,14 @@ public:
     }
     float get_ultrasonic_min_distance();
     int get_cstatus();
+    int get_left_driver_status()
+    {
+      return car_status.left_driver_status;
+    }
+    int get_right_driver_status()
+    {
+      return car_status.right_driver_status;
+    }
 private:
     //Wheel separation, wrt the midpoint of the wheel width: meters
     double wheel_separation;

@@ -13,7 +13,7 @@ class DiffDriverController
 {
 public:
     DiffDriverController();
-    DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_car_,CallbackAsyncSerial* cmd_serial_imu_,double r_min);
+    DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_car_left_,CallbackAsyncSerial* cmd_serial_car_right_,CallbackAsyncSerial* cmd_serial_imu_,double r_min);
 
     void run();
     void dealCmd_vel(const geometry_msgs::Twist& command);
@@ -24,7 +24,6 @@ public:
     void send_speed();
     void filterSpeed();
     void send_stop();
-    void send_fasterstop();
     void send_release();
     ros::WallTime last_ordertime;
     void UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status);
@@ -33,7 +32,8 @@ private:
     double max_wheelspeed;//单位为转每秒,只能为正数
     std::string cmd_topic;
     StatusPublisher* xq_status;
-    CallbackAsyncSerial* cmd_serial_car;
+    CallbackAsyncSerial* cmd_serial_car_left;
+    CallbackAsyncSerial* cmd_serial_car_right;
     CallbackAsyncSerial* cmd_serial_imu;
     boost::mutex mMutex;
     bool MoveFlag;

@@ -7,10 +7,11 @@ namespace xqserial_server
 
 DiffDriverController::DiffDriverController()
 {
-    max_wheelspeed=2;
+    max_wheelspeed=5;
     cmd_topic="/cmd_vel";
     xq_status=new StatusPublisher();
-    cmd_serial_car=NULL;
+    cmd_serial_car_left=NULL;
+    cmd_serial_car_right=NULL;
     cmd_serial_imu=NULL;
     MoveFlag=true;
     left_speed_ = 0;
@@ -20,19 +21,20 @@ DiffDriverController::DiffDriverController()
     send_flag_ = false;
     updateOrderflag_ = false;
     fastStopFlag_ = false;
-    last_ordertime=ros::WallTime::now();
+    last_ordertime=ros::WallTime::now()- ros::WallDuration(30);
     galileoStatus_.mapStatus = 0;
     R_min_ = 0.25;
 }
 
-DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_car_,CallbackAsyncSerial* cmd_serial_imu_,double r_min)
+DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_car_left_,CallbackAsyncSerial* cmd_serial_car_right_,CallbackAsyncSerial* cmd_serial_imu_,double r_min)
 {
     MoveFlag=true;
     BarFlag=true;
     max_wheelspeed=max_speed_;
     cmd_topic=cmd_topic_;
     xq_status=xq_status_;
-    cmd_serial_car=cmd_serial_car_;
+    cmd_serial_car_left=cmd_serial_car_left_;
+    cmd_serial_car_right=cmd_serial_car_right_;
     cmd_serial_imu=cmd_serial_imu_;
     left_speed_ = 0;
     right_speed_ = 0;
@@ -41,7 +43,7 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
     send_flag_ = false;
     updateOrderflag_ = false;
     fastStopFlag_ = false;
-    last_ordertime=ros::WallTime::now();
+    last_ordertime=ros::WallTime::now() - ros::WallDuration(30);
     R_min_ = r_min;
     galileoStatus_.mapStatus = 0;
 }
@@ -64,7 +66,6 @@ void DiffDriverController::run()
       r.sleep();
       if (xq_status->get_status() == -1|| xq_status->get_status()>0) continue; //底层还在初始化
       ros::WallDuration t_diff = ros::WallTime::now() - last_ordertime;
-
       {
         boost::mutex::scoped_lock lock(mMutex);
         int c3_flag = xq_status->get_cstatus();
@@ -91,6 +92,13 @@ void DiffDriverController::run()
         //3秒后开始锁轴
         fastStopFlag_ = false;
         send_flag_ = false;
+        if(t_diff.toSec()<10.0)
+        {
+          if(i%20==0) send_stop();
+          continue;
+        }
+        //10秒后开始释放电机
+        if(i%20==0) send_release();
       }//速度指令结束
 
     }
@@ -246,72 +254,115 @@ void DiffDriverController::send_speed()
   // }
 
   {
-    //混合模式
-    speed_temp[0] = scale * ( speed_ang) / max_wheelspeed * 1000.0;
-    speed_temp[0] = std::min(speed_temp[0], 1000.0);
-    speed_temp[0] = std::max(-1000.0, speed_temp[0]);
+    //独立模式，左轮反向
+    speed_temp[0] = scale * ( speed_lin + speed_ang / 2.0)*60.0 / 3000.0 * 8192.0;
+    speed_temp[0] = std::min(speed_temp[0], 819.2);
+    speed_temp[0] = std::max(-819.2, speed_temp[0]);
 
-    speed_temp[1] = scale * (speed_lin) / max_wheelspeed * 1000.0;
-    speed_temp[1] = std::min(speed_temp[1], 1000.0);
-    speed_temp[1] = std::max(-1000.0, speed_temp[1]);
+    speed_temp[1] = -scale * (speed_lin - speed_ang / 2.0)*60.0 / 3000.0 * 8192.0;
+    speed_temp[1] = std::min(speed_temp[1], 819.2);
+    speed_temp[1] = std::max(-819.2, speed_temp[1]);
 
-    left_speed_ = (int16_t)(speed_temp[0]);
-    right_speed_ = (int16_t)(speed_temp[1]);
+    right_speed_ = (int16_t)(speed_temp[0]);
+    left_speed_ = (int16_t)(speed_temp[1]);
+    if(left_speed_<0)
+    {
+      left_speed_ -= 3;
+    }
+    else
+    {
+      if(left_speed_>0) left_speed_ +=1;
+    }
+
   }
-
 
   //下发速度指令
-  char buffer [30];
-  int len;
-  len = std::sprintf(buffer, "!M %d %d", left_speed_,right_speed_);
-  buffer[len] = (char)0x0d;
-  buffer[len+1] = (char)0x0a;
-  if(NULL!=cmd_serial_car)
+  char left_speed_mode_cmd3[4] = {(char)0x06,(char)0x00,(char)0x00,(char)0x06};//目标速度
+  const char left_speed_mode_cmd4[4] = {(char)0x00,(char)0x00,(char)0x01,(char)0x01};//使能电机 锁轴
+
+  char right_speed_mode_cmd3[4] = {(char)0x06,(char)0x00,(char)0x00,(char)0x06};//目标速度
+  const char right_speed_mode_cmd4[4] = {(char)0x00,(char)0x00,(char)0x01,(char)0x01};//使能电机 锁轴
+
+  char * speed_byte = (char *)&left_speed_;
+  left_speed_mode_cmd3[1] = speed_byte[1];
+  left_speed_mode_cmd3[2] = speed_byte[0];
+  left_speed_mode_cmd3[3] = left_speed_mode_cmd3[0] + left_speed_mode_cmd3[1] + left_speed_mode_cmd3[2];
+
+  speed_byte = (char *)&right_speed_;
+  right_speed_mode_cmd3[1] = speed_byte[1];
+  right_speed_mode_cmd3[2] = speed_byte[0];
+  right_speed_mode_cmd3[3] = right_speed_mode_cmd3[0] + right_speed_mode_cmd3[1] + right_speed_mode_cmd3[2];
+
+  //ROS_ERROR("%d %d",left_speed_,right_speed_);
+  if(NULL!=cmd_serial_car_left)
   {
-      cmd_serial_car->write(buffer,len+2);
+      cmd_serial_car_left->write(left_speed_mode_cmd3,4);
+      if(xq_status->get_left_driver_status() != 1)
+      {
+        cmd_serial_car_left->write(left_speed_mode_cmd4,4);
+      }
   }
-  //ROS_ERROR("send speed %s %d",buffer,len);
+
+  if(NULL!=cmd_serial_car_right)
+  {
+      cmd_serial_car_right->write(right_speed_mode_cmd3,4);
+      if(xq_status->get_right_driver_status() != 1)
+      {
+        cmd_serial_car_right->write(right_speed_mode_cmd4,4);
+      }
+  }
+
 }
 
 void DiffDriverController::send_stop()
 {
-  //下发速度指令
-  char buffer [30];
-  int len;
-  len = std::sprintf(buffer, "!M %d %d", 0,0);
-  buffer[len] = (char)0x0d;
-  buffer[len+1] = (char)0x0a;
-  if(NULL!=cmd_serial_car)
+  //下发停止速度指令
+  const char speed_mode_cmd3[4] = {(char)0x06,(char)0x00,(char)0x00,(char)0x06};//目标速度
+  const char speed_mode_cmd4[4] = {(char)0x00,(char)0x00,(char)0x01,(char)0x01};//使能电机 锁轴
+
+  if(NULL!=cmd_serial_car_left)
   {
-      cmd_serial_car->write(buffer,len+2);
+      cmd_serial_car_left->write(speed_mode_cmd3,4);
+      if(xq_status->get_left_driver_status() != 1)
+      {
+        cmd_serial_car_left->write(speed_mode_cmd4,4);
+      }
+  }
+
+  if(NULL!=cmd_serial_car_right)
+  {
+      cmd_serial_car_right->write(speed_mode_cmd3,4);
+      if(xq_status->get_right_driver_status() != 1)
+      {
+        cmd_serial_car_right->write(speed_mode_cmd4,4);
+      }
   }
 }
 
-void DiffDriverController::send_fasterstop()
-{
-  //下发急停指令
-  char buffer [30];
-  int len;
-  len = std::sprintf(buffer, "!EX");
-  buffer[len] = (char)0x0d;
-  buffer[len+1] = (char)0x0a;
-  if(NULL!=cmd_serial_car)
-  {
-      cmd_serial_car->write(buffer,len+2);
-  }
-}
 
 void DiffDriverController::send_release()
 {
   //下发急停释放指令
-  char buffer [30];
-  int len;
-  len = std::sprintf(buffer, "!MG");
-  buffer[len] = (char)0x0d;
-  buffer[len+1] = (char)0x0a;
-  if(NULL!=cmd_serial_car)
+  const char speed_mode_cmd3[4] = {(char)0x06,(char)0x00,(char)0x00,(char)0x06};//目标速度
+  const char speed_mode_cmd5[4] = {(char)0x00,(char)0x00,(char)0x00,(char)0x00};//松轴
+
+  if(NULL!=cmd_serial_car_left)
   {
-      cmd_serial_car->write(buffer,len+2);
+
+      if(xq_status->get_left_driver_status() != 0)
+      {
+        cmd_serial_car_left->write(speed_mode_cmd3,4);
+        cmd_serial_car_left->write(speed_mode_cmd5,4);
+      }
+  }
+
+  if(NULL!=cmd_serial_car_right)
+  {
+      if(xq_status->get_right_driver_status() != 0)
+      {
+        cmd_serial_car_right->write(speed_mode_cmd3,4);
+        cmd_serial_car_right->write(speed_mode_cmd5,4);
+      }
   }
 }
 
