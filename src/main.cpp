@@ -46,8 +46,8 @@ int main(int argc, char **argv)
     double separation=0,radius=0;
     bool DebugFlag = false;
 
-    ros::param::param<double>("~wheel_separation", separation, 0.54);
-    ros::param::param<double>("~wheel_radius", radius, 0.075);
+    ros::param::param<double>("~wheel_separation", separation, 0.82);
+    ros::param::param<double>("~wheel_radius", radius, 0.018);
     ros::param::param<bool>("~debug_flag", DebugFlag, false);
 
     double rot_dist,tran_dist;
@@ -57,7 +57,7 @@ int main(int argc, char **argv)
     //获取小车控制参数
     double max_speed,r_min;
     string cmd_topic;
-    ros::param::param<double>("~max_speed", max_speed, 2.0);
+    ros::param::param<double>("~max_speed", max_speed, 10.0);
     ros::param::param<double>("~r_min", r_min, 0.5);
     ros::param::param<std::string>("~cmd_topic", cmd_topic, "cmd_vel");
 

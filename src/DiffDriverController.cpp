@@ -7,7 +7,7 @@ namespace xqserial_server
 
 DiffDriverController::DiffDriverController()
 {
-    max_wheelspeed=2;
+    max_wheelspeed=10;
     cmd_topic="/cmd_vel";
     xq_status=new StatusPublisher();
     cmd_serial_car=NULL;
@@ -255,8 +255,8 @@ void DiffDriverController::send_speed()
     speed_temp[1] = std::min(speed_temp[1], 1000.0);
     speed_temp[1] = std::max(-1000.0, speed_temp[1]);
 
-    left_speed_ = (int16_t)(speed_temp[0]);
-    right_speed_ = (int16_t)(speed_temp[1]);
+    left_speed_ = -(int16_t)(speed_temp[1]);//直线速度
+    right_speed_ = -(int16_t)(speed_temp[0]);//角速度
   }
 
 

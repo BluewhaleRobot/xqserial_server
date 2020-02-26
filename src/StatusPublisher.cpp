@@ -16,8 +16,8 @@ StatusPublisher::StatusPublisher()
 {
     mbUpdated_car=false;
     mbUpdated_imu=false;
-    wheel_separation=0.54;
-    wheel_radius=0.075;
+    wheel_separation=0.82;
+    wheel_radius=0.018;
     power_scale_ =1.0;
 
     CarPos2D.x=0.0;
@@ -41,7 +41,7 @@ StatusPublisher::StatusPublisher()
         status[i]=0;
     }
 
-    car_status.encoder_ppr=4000*15;
+    car_status.encoder_ppr=50000;
     car_status.status_imu = -1;
     car_status.driver_status = 0;
     car_status.status = -1;
@@ -201,13 +201,14 @@ void StatusPublisher::Update_imu(const char data[], unsigned int len)
                           if(cmd_string_buf[5*j+4]!=32)
                           {
                             mbUpdated_imu=false;
-                            car_status.encoder_ppr = 4000*15;
+                            car_status.encoder_ppr = 50000;
                             break;
                           }
                       }
                     }
                     if (mbUpdated_imu)
                     {
+                      car_status.encoder_delta_l = -car_status.encoder_delta_l;
                       base_time_ = ros::Time::now().toSec();
                     }
                     new_packed_ok_len=0;
@@ -254,6 +255,7 @@ void StatusPublisher::Refresh()
 
     delta_car = (car_status.encoder_delta_r + car_status.encoder_delta_l) / 2.0f * 1.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius;
 
+    //std::cout<<"get you! "<<car_status.encoder_delta_r<<" "<<car_status.encoder_delta_l<<" "<<car_status.encoder_ppr<<std::endl;
     if (std::isnan(delta_car)||delta_car > 0.20|| delta_car < -0.20)
     {
       // std::cout<<"get you!"<<std::endl;
@@ -524,7 +526,7 @@ void StatusPublisher::Refresh()
       {
         for(int k=0;k<5;k++,++bariter_x, ++bariter_y,++bariter_z)
         {
-          *bariter_x=0.5+0.2;
+          *bariter_x=0.75+0.2;
           *bariter_y=-k*0.05;
           *bariter_z=0.15;
         }
@@ -534,7 +536,7 @@ void StatusPublisher::Refresh()
       {
         for(int k=0;k<5;k++,++bariter_x, ++bariter_y,++bariter_z)
         {
-          *bariter_x=0.5+0.2;
+          *bariter_x=0.75+0.2;
           *bariter_y=k*0.05;
           *bariter_z=0.15;
         }
@@ -564,13 +566,13 @@ void StatusPublisher::Refresh()
       {
         for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
         {
-          *cleariter_x=0.5+0.2;
+          *cleariter_x=0.75+0.2;
           *cleariter_y=-k*0.05;
           *cleariter_z=0.0;
         }
         for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
         {
-          *cleariter_x=0.45+0.2;
+          *cleariter_x=0.65+0.2;
           *cleariter_y=-k*0.05;
           *cleariter_z=0.0;
         }
@@ -579,13 +581,13 @@ void StatusPublisher::Refresh()
       {
         for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
         {
-          *cleariter_x=0.5+0.2;
+          *cleariter_x=0.75+0.2;
           *cleariter_y=k*0.05;
           *cleariter_z=0.0;
         }
         for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
         {
-          *cleariter_x=0.45+0.2;
+          *cleariter_x=0.65+0.2;
           *cleariter_y=k*0.05;
           *cleariter_z=0.0;
         }
