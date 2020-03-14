@@ -306,7 +306,7 @@ void StatusPublisher::Refresh()
         std_msgs::Int32 flag;
         flag.data=car_status.status;
         //底层障碍物信息
-        if((car_status.hbz1+car_status.hbz2+car_status.hbz3+car_status.hbz4)>0.1&&(car_status.hbz1+car_status.hbz2+car_status.hbz3+car_status.hbz4)<5.0)
+        if((car_status.hbz1+car_status.hbz3)>0.1&&(car_status.hbz1+car_status.hbz3)<3.0)  //c2和c4现在是输出
         {
           //有障碍物
           flag.data=2;
@@ -508,7 +508,7 @@ void StatusPublisher::Refresh()
 
       }
       distance_sum_i++;
-      
+
       int barArea_nums=0;
       int clearArea_nums=0;
       if(distances_[1]<tran_dist_)
@@ -529,7 +529,7 @@ void StatusPublisher::Refresh()
         if(hbz2_num<0) hbz2_num=0;
         if(hbz2_num==0) clearArea_nums+=10;
       }
-      
+
       if(barArea_nums>0)
       {
         //发布雷区

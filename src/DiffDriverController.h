@@ -27,6 +27,7 @@ public:
     void updateFastStopFlag(const std_msgs::Int32& fastStopmsg);
     void UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status);
     bool dealBackSwitch();
+    void updateC2C4();
     int speed_debug[2];
     ros::WallTime last_ordertime;
     bool DetectFlag_;

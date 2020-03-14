@@ -59,6 +59,10 @@ int main(int argc, char **argv)
     ros::NodeHandle mNH;
     ros::Publisher audio_pub = mNH.advertise<std_msgs::String>("/xiaoqiang_tts/text", 1, true);
 
+    //初始化c2 c4输出
+    ros::param::set("/xqserial_server/params/out1", 0);
+    ros::param::set("/xqserial_server/params/out2", 0);
+
     try {
         CallbackAsyncSerial serial(port,baud);
         serial.setCallback(boost::bind(&xqserial_server::StatusPublisher::Update,&xq_status,_1,_2));
@@ -116,6 +120,11 @@ int main(int argc, char **argv)
               std_msgs::String audio_msg;
               audio_msg.data = "好的，我回去了!";
               audio_pub.publish(audio_msg);
+            }
+
+            if(i%10 == 0)
+            {
+              xq_diffdriver.updateC2C4();
             }
 
             i++;
