@@ -114,11 +114,17 @@ int main(int argc, char **argv)
             }
 
             //更新按钮
-            if(xq_diffdriver.dealBackSwitch())
+            int backBtnStauts = xq_diffdriver.dealBackSwitch();
+            if(backBtnStauts == 1)
             {
               //告诉用户回去了
               std_msgs::String audio_msg;
-              audio_msg.data = "好的，我回去了!";
+              audio_msg.data = "正在返回充电";
+              audio_pub.publish(audio_msg);
+            }
+            if(backBtnStauts == 2){
+              std_msgs::String audio_msg;
+              audio_msg.data = "取消返回充电";
               audio_pub.publish(audio_msg);
             }
 

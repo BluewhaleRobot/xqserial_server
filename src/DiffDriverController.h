@@ -6,6 +6,8 @@
 #include <std_msgs/Bool.h>
 #include "galileo_serial_server/GalileoStatus.h"
 #include "galileo_serial_server/GalileoNativeCmds.h"
+#include "xqserial_server/http_request.hpp"
+#include "json.hpp"
 
 namespace xqserial_server
 {
@@ -26,7 +28,7 @@ public:
     void check_faster_stop();
     void updateFastStopFlag(const std_msgs::Int32& fastStopmsg);
     void UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status);
-    bool dealBackSwitch();
+    int dealBackSwitch();
     void updateC2C4();
     int speed_debug[2];
     ros::WallTime last_ordertime;
@@ -44,7 +46,7 @@ private:
     boost::mutex mStausMutex_;
     galileo_serial_server::GalileoStatus galileoStatus_;
     float R_min_;
-    bool back_touch_falg_;
+    bool back_touch_flag_;
     ros::NodeHandle mNH_;
     ros::Publisher mgalileoCmdsPub_;
     ros::WallTime last_touchtime_;

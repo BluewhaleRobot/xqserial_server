@@ -30,7 +30,7 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
     DetectFlag_=true;
     R_min_ = r_min;
     mgalileoCmdsPub_ = mNH_.advertise<galileo_serial_server::GalileoNativeCmds>("/galileo/cmds", 0, true);
-    back_touch_falg_ = false;
+    back_touch_flag_ = false;
     last_touchtime_ = ros::WallTime::now();
 }
 
@@ -388,48 +388,62 @@ void DiffDriverController::UpdateNavStatus(const galileo_serial_server::GalileoS
     galileoStatus_.targetNumID = current_receive_status.targetNumID;
 }
 
-bool DiffDriverController::dealBackSwitch()
+int DiffDriverController::dealBackSwitch()
 {
   boost::mutex::scoped_lock lock(mStausMutex_);
   if(galileoStatus_.navStatus ==1 )
   {
     if(galileoStatus_.visualStatus != 0)
     {
-      if(galileoStatus_.targetNumID != 0)
+      //判断开关是否按下
+      if(xq_status->car_status.hbz1==1)
       {
-        if(galileoStatus_.targetStatus == 0)
+        back_touch_flag_ = true;
+        last_touchtime_ = ros::WallTime::now();
+      }
+      else
+      {
+        //消除按键抖动
+        ros::WallDuration t_diff = ros::WallTime::now() - last_touchtime_;
+        if(back_touch_flag_ && t_diff.toSec()>=0.1)
         {
-          //判断开关是否按下
-          if(xq_status->car_status.hbz1==1)
+          //开关松开
+          back_touch_flag_ = false;
+          static std::string previousChargeTaskId = "";
+          std::string previousTaskStatus = "";
+          if(previousChargeTaskId != "")
           {
-            back_touch_falg_ = true;
-            last_touchtime_ = ros::WallTime::now();
-          }
-          else
-          {
-            //消除按键抖动
-            ros::WallDuration t_diff = ros::WallTime::now() - last_touchtime_;
-            if(back_touch_falg_ && t_diff.toSec()>=0.1)
-            {
-              //开关松开
-              back_touch_falg_ = false;
-              //发布回零号点命令
-              galileo_serial_server::GalileoNativeCmds currentCmds;
-              currentCmds.header.stamp = ros::Time::now();
-              currentCmds.header.frame_id = "xq_serial_server";
-              currentCmds.length = 2;
-              currentCmds.data.resize(2);
-              currentCmds.data[0] = (char)0x67;
-              currentCmds.data[1] = (char)0x00;
-              mgalileoCmdsPub_.publish(currentCmds);
-              return true;
+            http::Request request("http://127.0.0.1:3546/api/v1/task?id=" + previousChargeTaskId);
+            const http::Response response = request.send("GET");
+            if(response.status == 200){
+              auto res_json = nlohmann::json::parse(std::string(response.body.begin(), response.body.end()));
+              previousTaskStatus = res_json["state"];
             }
           }
+          // 若之前充电任务未完成则先取消任务
+          if(previousChargeTaskId == "" || previousTaskStatus == "ERROR" || previousTaskStatus == "COMPLETE" || previousTaskStatus == "CANCELLED")
+          {
+            // 没有当前任务在执行， 发布充电任务
+            http::Request request("http://127.0.0.1:3546/api/v1/navigation/go_charge");
+            const http::Response response = request.send("GET");
+            if(response.status == 200){
+              auto res_json = nlohmann::json::parse(std::string(response.body.begin(), response.body.end()));
+              previousChargeTaskId = res_json["id"];
+              return 1;
+            }
+          }
+          else{
+            // 有导航任务在执行，取消充电任务
+            http::Request request("http://127.0.0.1:3546/api/v1/navigation/stop_charge");
+            const http::Response response = request.send("GET");
+            return 2;
+          }
+          return 0;
         }
       }
     }
   }
-  return false;
+  return 0;
 }
 
 void DiffDriverController::updateC2C4()
