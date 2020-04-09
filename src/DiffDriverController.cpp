@@ -420,6 +420,14 @@ int DiffDriverController::dealBackSwitch()
               previousTaskStatus = res_json["state"];
             }
           }
+          // 处于充电状态下按下开关则取消充电
+          if(galileoStatus_.chargeStatus != 0)
+          {
+            galileo_serial_server::GalileoNativeCmds cmd;
+            cmd.data = {'j', 0x01};
+            mgalileoCmdsPub_.publish(cmd);
+            return 2;
+          }
           // 若之前充电任务未完成则先取消任务
           if(previousChargeTaskId == "" || previousTaskStatus == "ERROR" || previousTaskStatus == "COMPLETE" || previousTaskStatus == "CANCELLED")
           {
