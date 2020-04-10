@@ -57,7 +57,8 @@ class StatusPublisher
     std_msgs::Float64 get_power();
     nav_msgs::Odometry get_odom();
     UPLOAD_STATUS car_status;
-
+    void get_current_counters(float & sr, float & sl, float & theta, float & t, float & vtheta);
+    void update_current_counters();
   private:
     //Wheel separation, wrt the midpoint of the wheel width: meters
     double wheel_separation;
@@ -85,6 +86,13 @@ class StatusPublisher
 
     ros::Publisher mIMUPub;
     sensor_msgs::Imu CarIMU;
+
+    boost::mutex mMutex_counters;
+    float msr;
+    float msl;
+    float mtheta;
+    float mt;
+    float mvtheta;
 };
 
 } //namespace xqserial_server

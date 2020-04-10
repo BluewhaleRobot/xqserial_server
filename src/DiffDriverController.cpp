@@ -23,6 +23,16 @@ DiffDriverController::DiffDriverController(double max_speed_, std::string cmd_to
     xq_status = xq_status_;
     cmd_serial = cmd_serial_;
     R_min_ = r_min;
+
+    mcalibrate_flag = false;
+    mA = cv::Mat::zeros(20, 3, CV_32F);
+    mb = cv::Mat::zeros(20, 1, CV_32F);
+    mx = cv::Mat::zeros(3, 1, CV_32F);
+    mcurrent_step = 0;
+    mstep_now = 0;
+    mt1_flag = false;
+    mt2_flag = false;
+
 }
 
 void DiffDriverController::run()
@@ -33,6 +43,7 @@ void DiffDriverController::run()
     ros::Subscriber sub3 = nodeHandler.subscribe("/global_move_flag", 1, &DiffDriverController::updateMoveFlag, this);
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag, this);
     ros::Subscriber sub5 = nodeHandler.subscribe("/galileo/status", 1, &DiffDriverController::UpdateNavStatus, this);
+    ros::Subscriber sub6 = nodeHandler.subscribe("/xqserial_server/calibFlag", 1, &DiffDriverController::updateCalibFlag, this);
     ros::spin();
 }
 void DiffDriverController::updateMoveFlag(const std_msgs::Bool &moveFlag)
@@ -208,6 +219,152 @@ void DiffDriverController::UpdateNavStatus(const galileo_serial_server::GalileoS
     galileoStatus_.chargeStatus = current_receive_status.chargeStatus;
     galileoStatus_.mapStatus = current_receive_status.mapStatus;
 
+}
+
+void DiffDriverController::updateCalibFlag(const std_msgs::Bool &calibFlag)
+{
+  boost::mutex::scoped_lock lock(mStausMutex_);
+  mcalibrate_flag =  calibFlag.data;
+  if(mcalibrate_flag)
+  {
+    mcurrent_step = 0;
+    mstep_now = 0;
+    mt1_flag = false;
+    mt2_flag = false;
+  }
+}
+
+void DiffDriverController::dealCalibrateS()
+{
+  boost::mutex::scoped_lock lock(mStausMutex_);
+  static float sr1=0,sl1=0,theta1=0,t1=0,vtheta1=0;
+  static float sr2=0,sl2=0,theta2=0,t2=0,vtheta2=0;
+  static float sr3=0,sl3=0,theta3=0,t3=0,vtheta3=0;
+  static float run_time = 0;
+  if(mcalibrate_flag)
+  {
+    float angular_z = 0;
+    if(mcurrent_step <=9)
+    {
+      angular_z = -1.0 + 0.1*mcurrent_step;
+    }
+    else
+    {
+      angular_z = -0.9 + 0.1*mcurrent_step;
+    }
+
+    if(mcurrent_step>19)
+    {
+      //结束标定
+      linearSolve(mA, mb, mx);
+      float b = xq_status->get_wheel_separation();
+      float r = xq_status->get_wheel_radius();
+      ROS_ERROR("theory: k1  %f k2 %f k3 %f", r/b, r/b, 0.0);
+      ROS_ERROR("cal: k1  %f k2 %f k3 %f", mx.at<float>(0), mx.at<float>(1), mx.at<float>(2));
+      mcalibrate_flag = false;
+    }
+    else
+    {
+      float run_angle = 1.5*3.1415926;
+      switch ( mstep_now)
+      {
+        case 0:
+        {
+          //原地旋转run_angle角度
+            if(!mt1_flag)
+            {
+              xq_status->get_current_counters(sr1, sl1, theta1, t1, vtheta1);
+              if(vtheta1>0.05)
+              {
+                mt1_flag = true;
+              }
+            }
+            else
+            {
+              xq_status->get_current_counters(sr2, sl2, theta2, t2, vtheta2);
+
+              float delta_sr = sr2 - sr1;
+              float delta_sl = sl2 - sl1;
+              float delta_theta = theta2 - theta1;
+              float delta_t21 = t2 -t1;
+
+              if(angular_z<0.01)
+              {
+                //反转
+                if(delta_theta>0)
+                {
+                  delta_theta -= 2*3.1415926;
+                }
+              }
+              else
+              {
+                //正转
+                if(delta_theta<0)
+                {
+                  delta_theta += 2*3.1415926;
+                }
+              }
+
+              if(std::fabs(delta_theta)>run_angle)
+              {
+                mt2_flag = true;
+                mstep_now = 1;
+                //保存数据
+                 mA.at<float>(mcurrent_step,0) = delta_sr;
+                 mA.at<float>(mcurrent_step,1) = delta_sl;
+                 mA.at<float>(mcurrent_step,2) = delta_t21;
+                 mb.at<float>(mcurrent_step) = delta_theta;
+                 ROS_ERROR("current_step: %d , sr %f sl %f t %f theta %f",mcurrent_step, delta_sr, delta_sl, delta_t21, delta_theta);
+              }
+            }
+            //下发角速度
+            geometry_msgs::Twist current_vel;
+            current_vel.linear.x = 0;
+            current_vel.linear.y = 0;
+            current_vel.linear.z = 0;
+            current_vel.angular.x = 0;
+            current_vel.angular.y = 0;
+            current_vel.angular.z = angular_z;
+            sendcmd(current_vel);
+            break;
+        }
+        case 1:
+        {
+          //原地等待10秒
+            xq_status->get_current_counters(sr3, sl3, theta3, t3, vtheta3);
+            float delta_t31 = t3 -t1;
+            if(std::fabs(delta_t31)>10.0)
+            {
+              mstep_now = 2;
+            }
+            //下发角速度
+            geometry_msgs::Twist current_vel;
+            current_vel.linear.x = 0;
+            current_vel.linear.y = 0;
+            current_vel.linear.z = 0;
+            current_vel.angular.x = 0;
+            current_vel.angular.y = 0;
+            current_vel.angular.z = 0;
+            sendcmd(current_vel);
+            break;
+        }
+        case 2:
+        {
+          //继续下一个角速度采集
+          mcurrent_step += 1;
+          mstep_now = 0;
+          mt1_flag = false;
+          mt2_flag = false;
+          break;
+        }
+      }
+    }
+  }
+}
+
+void DiffDriverController::linearSolve(const cv::Mat & A, const cv::Mat & b, cv::Mat & x)
+{
+  x = (A.t()*A).inv()*(A.t()*b);
 }
 
 } // namespace xqserial_server

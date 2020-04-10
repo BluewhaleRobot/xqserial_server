@@ -81,6 +81,7 @@ int main(int argc, char **argv)
                 break;
             }
             xq_status.Refresh(); //定时发布状态
+            xq_diffdriver.dealCalibrateS();
             r.sleep();
             //cout<<"run"<<endl;
         }

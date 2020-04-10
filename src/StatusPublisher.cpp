@@ -56,6 +56,12 @@ StatusPublisher::StatusPublisher()
    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "base_footprint", "base_link"));
    */
   base_time_ = ros::Time::now().toSec();
+
+  float msr = 0;
+  float msl = 0;
+  float mtheta = 0;
+  float mt = 0;
+  float mvtheta = 0;
 }
 
 StatusPublisher::StatusPublisher(double separation, double radius)
@@ -488,8 +494,8 @@ void StatusPublisher::Refresh()
     transform.setRotation(q);
     br.sendTransform(tf::StampedTransform(transform, current_time.fromSec(base_time_), "odom", "base_footprint"));
 
-    ros::spinOnce();
-
+    //ros::spinOnce();
+    update_current_counters();
     mbUpdated = false;
   }
 }
@@ -538,6 +544,26 @@ nav_msgs::Odometry StatusPublisher::get_odom()
 int StatusPublisher::get_status()
 {
   return car_status.status;
+}
+
+void StatusPublisher::get_current_counters(float & sr, float & sl, float & theta, float & t, float & vtheta)
+{
+  boost::mutex::scoped_lock lock(mMutex_counters);
+  sr = msr;
+  sl = msl;
+  theta = mtheta;
+  t = mt;
+  vtheta = mvtheta;
+}
+
+void StatusPublisher::update_current_counters()
+{
+  boost::mutex::scoped_lock lock(mMutex_counters);
+  msr += 1.0f*car_status.encoder_delta_r / car_status.encoder_ppr *2*PI;
+  msl += 1.0f*car_status.encoder_delta_l / car_status.encoder_ppr *2*PI;
+  mtheta = car_status.theta* PI / 180.0f;
+  mvtheta = -car_status.IMU[5]* PI / 180.0f;
+  mt = car_status.time_stamp/500.0f;
 }
 
 } //namespace xqserial_server

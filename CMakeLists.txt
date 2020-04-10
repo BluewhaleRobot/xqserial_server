@@ -27,6 +27,7 @@ set(BOOST_LIBS thread date_time system)
 find_package(Boost COMPONENTS ${BOOST_LIBS} REQUIRED)
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
+find_package(OpenCV 3.1.0 REQUIRED)
 
 pkg_check_modules(JSONCPP REQUIRED jsoncpp)
 
@@ -52,6 +53,7 @@ add_dependencies(
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${JSONCPP_LIBRARIES}
+  ${OpenCV_LIBS}
 )
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME} PREFIX "")
 
