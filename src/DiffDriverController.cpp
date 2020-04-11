@@ -223,7 +223,7 @@ void DiffDriverController::UpdateNavStatus(const galileo_serial_server::GalileoS
 
 void DiffDriverController::updateCalibFlag(const std_msgs::Bool &calibFlag)
 {
-  boost::mutex::scoped_lock lock(mStausMutex_);
+  boost::mutex::scoped_lock lock(mMutex_calibrate);
   mcalibrate_flag =  calibFlag.data;
   if(mcalibrate_flag)
   {
@@ -232,15 +232,26 @@ void DiffDriverController::updateCalibFlag(const std_msgs::Bool &calibFlag)
     mt1_flag = false;
     mt2_flag = false;
   }
+  else
+  {
+    geometry_msgs::Twist current_vel;
+    current_vel.linear.x = 0;
+    current_vel.linear.y = 0;
+    current_vel.linear.z = 0;
+    current_vel.angular.x = 0;
+    current_vel.angular.y = 0;
+    current_vel.angular.z = 0;
+    sendcmd(current_vel);
+  }
 }
 
 void DiffDriverController::dealCalibrateS()
 {
-  boost::mutex::scoped_lock lock(mStausMutex_);
+  boost::mutex::scoped_lock lock(mMutex_calibrate);
   static float sr1=0,sl1=0,theta1=0,t1=0,vtheta1=0;
   static float sr2=0,sl2=0,theta2=0,t2=0,vtheta2=0;
   static float sr3=0,sl3=0,theta3=0,t3=0,vtheta3=0;
-  static float run_time = 0;
+  static float delta_theta21 = 0;
   if(mcalibrate_flag)
   {
     float angular_z = 0;
@@ -265,7 +276,7 @@ void DiffDriverController::dealCalibrateS()
     }
     else
     {
-      float run_angle = 1.5*3.1415926;
+      float run_time = 20;
       switch ( mstep_now)
       {
         case 0:
@@ -274,24 +285,28 @@ void DiffDriverController::dealCalibrateS()
             if(!mt1_flag)
             {
               xq_status->get_current_counters(sr1, sl1, theta1, t1, vtheta1);
-              if(vtheta1>0.05)
+              ROS_DEBUG("mt1 current_step: %d , sr %f sl %f t %f theta %f",mcurrent_step, sr1, sl1, t1, theta1);
+              if(std::fabs(vtheta1)>0.05)
               {
                 mt1_flag = true;
+                delta_theta21 = 0;
+                theta3 = theta1;
               }
             }
             else
             {
               xq_status->get_current_counters(sr2, sl2, theta2, t2, vtheta2);
-
+              ROS_DEBUG("mt2 current_step: %d , sr %f sl %f t %f theta %f",mcurrent_step, sr2, sl2, t2, theta2);
               float delta_sr = sr2 - sr1;
               float delta_sl = sl2 - sl1;
-              float delta_theta = theta2 - theta1;
+              float delta_theta = theta2 - theta3;
+              theta3 = theta2;
               float delta_t21 = t2 -t1;
 
               if(angular_z<0.01)
               {
                 //反转
-                if(delta_theta>0)
+                if(delta_theta>1.0)
                 {
                   delta_theta -= 2*3.1415926;
                 }
@@ -299,13 +314,15 @@ void DiffDriverController::dealCalibrateS()
               else
               {
                 //正转
-                if(delta_theta<0)
+                if(delta_theta<-1.0)
                 {
                   delta_theta += 2*3.1415926;
                 }
               }
 
-              if(std::fabs(delta_theta)>run_angle)
+              delta_theta21 += delta_theta;
+
+              if(std::fabs(delta_t21)>run_time)
               {
                 mt2_flag = true;
                 mstep_now = 1;
@@ -313,13 +330,13 @@ void DiffDriverController::dealCalibrateS()
                  mA.at<float>(mcurrent_step,0) = delta_sr;
                  mA.at<float>(mcurrent_step,1) = delta_sl;
                  mA.at<float>(mcurrent_step,2) = delta_t21;
-                 mb.at<float>(mcurrent_step) = delta_theta;
-                 ROS_ERROR("current_step: %d , sr %f sl %f t %f theta %f",mcurrent_step, delta_sr, delta_sl, delta_t21, delta_theta);
+                 mb.at<float>(mcurrent_step) = delta_theta21;
+                 ROS_ERROR("current_step: %d , sr %f sl %f t %f theta %f",mcurrent_step, delta_sr, delta_sl, delta_t21, delta_theta21);
               }
             }
             //下发角速度
             geometry_msgs::Twist current_vel;
-            current_vel.linear.x = 0;
+            current_vel.linear.x = 0.5*angular_z;
             current_vel.linear.y = 0;
             current_vel.linear.z = 0;
             current_vel.angular.x = 0;
@@ -332,8 +349,8 @@ void DiffDriverController::dealCalibrateS()
         {
           //原地等待10秒
             xq_status->get_current_counters(sr3, sl3, theta3, t3, vtheta3);
-            float delta_t31 = t3 -t1;
-            if(std::fabs(delta_t31)>10.0)
+            float delta_t32 = t3 -t2;
+            if(std::fabs(delta_t32)>10.0)
             {
               mstep_now = 2;
             }
@@ -364,7 +381,16 @@ void DiffDriverController::dealCalibrateS()
 
 void DiffDriverController::linearSolve(const cv::Mat & A, const cv::Mat & b, cv::Mat & x)
 {
+  // std::stringstream buf_A;
+  // buf_A <<"a "<< A<<std::endl;
+  // ROS_ERROR("%s",buf_A.str().c_str());
+  // std::stringstream buf_b;
+  // buf_b <<"b "<< b<<std::endl;
+  // ROS_ERROR("%s",buf_b.str().c_str());
   x = (A.t()*A).inv()*(A.t()*b);
+  // std::stringstream buf_x;
+  // buf_x <<"x "<< x<<std::endl;
+  // ROS_ERROR("%s",buf_x.str().c_str());
 }
 
 } // namespace xqserial_server

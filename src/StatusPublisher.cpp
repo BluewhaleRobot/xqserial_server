@@ -563,7 +563,7 @@ void StatusPublisher::update_current_counters()
   msl += 1.0f*car_status.encoder_delta_l / car_status.encoder_ppr *2*PI;
   mtheta = car_status.theta* PI / 180.0f;
   mvtheta = -car_status.IMU[5]* PI / 180.0f;
-  mt = car_status.time_stamp/500.0f;
+  mt = car_status.time_stamp*1.0f/500.0f;
 }
 
 } //namespace xqserial_server
