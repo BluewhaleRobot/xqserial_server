@@ -246,8 +246,12 @@ void DiffDriverController::send_speed()
   }
   //下发速度指令
   //                           0           1           2          3          4          5          6          7          8          9          10         11
-   char speed_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x00,(char)0x00,(char)0x00,(char)0x90,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60};
+   char speed_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x00,(char)0x00,(char)0x01,(char)0x05,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60};
 
+  if(left_speed_==0 && right_speed_==0)
+  {
+    speed_cmd[6] = (char)0x06;
+  }
   speed_cmd[7] = right_speed_&0xff;
   speed_cmd[8] = (right_speed_>>8)&0xff;
 
@@ -255,6 +259,7 @@ void DiffDriverController::send_speed()
   speed_cmd[10] = (left_speed_>>8)&0xff;
   if(NULL!=cmd_serial_car)
   {
+      ROS_DEBUG("send speed %d %d",left_speed_,right_speed_);
       cmd_serial_car->write(speed_cmd,12);
   }
 }
@@ -263,9 +268,10 @@ void DiffDriverController::send_stop()
 {
   //下发速度指令
   //                           0           1           2          3          4          5          6          7          8          9          10         11
-   char speed_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x00,(char)0x00,(char)0x00,(char)0x90,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60};
+   char speed_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x00,(char)0x00,(char)0x01,(char)0x10,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60};
   if(NULL!=cmd_serial_car)
   {
+      ROS_DEBUG("send  stop");
       cmd_serial_car->write(speed_cmd,12);
   }
 }
@@ -274,9 +280,10 @@ void DiffDriverController::send_fasterstop()
 {
   //下发速度指令
   //                           0           1           2          3          4          5          6          7          8          9          10         11
-  char speed_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x00,(char)0x00,(char)0x00,(char)0xf0,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60};
+  char speed_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x00,(char)0x00,(char)0x01,(char)0x10,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60};
   if(NULL!=cmd_serial_car)
   {
+      ROS_DEBUG("send  faster stop");
       cmd_serial_car->write(speed_cmd,12);
   }
 }
@@ -288,6 +295,7 @@ void DiffDriverController::send_release()
    char speed_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x02,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60};
   if(NULL!=cmd_serial_car)
   {
+      ROS_DEBUG("send  release");
       cmd_serial_car->write(speed_cmd,12);
   }
 }

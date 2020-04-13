@@ -12,8 +12,8 @@
   </node>
   <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster1" args="-0.1 -0.22 0.15 4.7123889 0 0  base_link sonar1 20"/>
   <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster2" args="0.25 0.150 0.10 0 0 0  base_link sonar2 20"/>
-  <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster3" args="-0.1 0.22 0.15 1.5707963 0 0  base_link sonar1 20"/>
-  <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster4" args="0.25 -0.15 0.1 0 0 0  base_link sonar2 20"/>
+  <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster3" args="-0.1 0.22 0.15 1.5707963 0 0  base_link sonar3 20"/>
+  <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster4" args="0.25 -0.15 0.1 0 0 0  base_link sonar4 20"/>
   <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0.15 0 0 0 1 base_footprint base_link 50">
   </node>
   <node pkg="tf" type="static_transform_publisher" name="imulink_broadcaster" args="0.0 0.0 0.0 0 0 0 1 base_link imu 20"/>

@@ -472,6 +472,7 @@ void StatusPublisher::Refresh()
     forward_flag_ = true;
     if(car_status.sonar_distance[1]>0.1)
     {
+      car_status.sonar_distance[1] = 4.0; //屏蔽掉
       if(car_status.sonar_distance[1]>4.0||car_status.sonar_distance[1]<0.2) car_status.sonar_distance[1]=4.0;
       CarSonar2.header.stamp = current_time.fromSec(base_time_);
       CarSonar2.range = car_status.sonar_distance[1];
