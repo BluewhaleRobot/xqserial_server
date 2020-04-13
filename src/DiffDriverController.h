@@ -4,6 +4,8 @@
 #include "StatusPublisher.h"
 #include "AsyncSerial.h"
 #include <std_msgs/Bool.h>
+#include "galileo_serial_server/GalileoStatus.h"
+#include "galileo_serial_server/GalileoNativeCmds.h"
 
 namespace xqserial_server
 {
@@ -20,6 +22,7 @@ public:
     void updateMoveFlag(const std_msgs::Bool& moveFlag);
     void updateBarDetectFlag(const std_msgs::Bool& DetectFlag);
     void updateFastStopFlag(const std_msgs::Int32& fastStopmsg);
+    void UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status);
     void send_speed();
     void filterSpeed();
     void send_stop();
@@ -43,6 +46,8 @@ private:
     float linear_x_;
     float theta_z_;
     bool send_flag_;
+    boost::mutex mStausMutex_;
+    galileo_serial_server::GalileoStatus galileoStatus_;
 };
 
 }

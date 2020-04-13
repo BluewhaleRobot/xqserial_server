@@ -50,6 +50,7 @@ void DiffDriverController::run()
     ros::Subscriber sub3 = nodeHandler.subscribe("/global_move_flag", 1, &DiffDriverController::updateMoveFlag,this);
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag,this);
     ros::Subscriber sub5 = nodeHandler.subscribe("/move_base/StatusFlag", 1, &DiffDriverController::updateFastStopFlag,this);
+    ros::Subscriber sub6 = nodeHandler.subscribe("/galileo/status", 1, &DiffDriverController::UpdateNavStatus, this);
     ros::Rate r(100);//发布周期为50hz
     int i=0;
     while (ros::ok())
@@ -57,12 +58,13 @@ void DiffDriverController::run()
       i++;
       ros::spinOnce();
       r.sleep();
-      if (xq_status->get_status() == -1|| xq_status->get_status()>0) continue; //底层还在初始化
+      int c3_flag = xq_status->get_c3status();
+      if (xq_status->get_status() == -1|| (xq_status->get_status()>0 && c3_flag!=4) ) continue; //底层还在初始化
       ros::WallDuration t_diff = ros::WallTime::now() - last_ordertime;
 
       {
         boost::mutex::scoped_lock lock(mMutex);
-        int c3_flag = xq_status->get_c3status();
+
         //3秒速度or急停保持功能，
         if(t_diff.toSec()<3.0)
         {
@@ -84,7 +86,15 @@ void DiffDriverController::run()
               }
               else
               {
-                send_stop();
+                if(c3_flag == 4)
+                {
+                  send_release();
+                }
+                else
+                {
+                  send_stop();
+                }
+
               }
             }
           }
@@ -95,7 +105,17 @@ void DiffDriverController::run()
         send_flag_ = false;
         if(t_diff.toSec()<30.0)
         {
-          if(i%20==0) send_stop();
+          if(i%20==0)
+          {
+            if(c3_flag == 4)
+            {
+              send_release();
+            }
+            else
+            {
+              send_stop();
+            }
+          }
           continue;
         }
         //30秒后开始释放电机
@@ -140,6 +160,13 @@ void DiffDriverController::updateFastStopFlag(const std_msgs::Int32& fastStopmsg
   boost::mutex::scoped_lock lock(mMutex);
   if(fastStopmsg.data == 2)
   {
+    boost::mutex::scoped_lock lock2(mStausMutex_);
+    if(galileoStatus_.targetStatus != 1 || (std::fabs(galileoStatus_.controlSpeedX)<0.01&&std::fabs(galileoStatus_.controlSpeedTheta)>0.01) )
+    {
+      fastStopFlag_ = false;
+      return;
+    }
+
     fastStopFlag_ = true;
     updateOrderflag_ = true;
     last_ordertime=ros::WallTime::now();
@@ -247,7 +274,7 @@ void DiffDriverController::send_speed()
   }
   //下发速度指令
   //                           0           1           2          3          4          5          6          7          8          9          10         11
-   char speed_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x00,(char)0x00,(char)0x01,(char)0x05,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60};
+   char speed_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x00,(char)0x00,(char)0x01,(char)0x06,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60};
 
   if(left_speed_==0 && right_speed_==0)
   {
@@ -269,7 +296,7 @@ void DiffDriverController::send_stop()
 {
   //下发速度指令
   //                           0           1           2          3          4          5          6          7          8          9          10         11
-   char speed_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x00,(char)0x00,(char)0x01,(char)0x10,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60};
+   char speed_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x00,(char)0x00,(char)0x01,(char)0x15,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60};
   if(NULL!=cmd_serial_car)
   {
       ROS_DEBUG("send  stop");
@@ -281,7 +308,7 @@ void DiffDriverController::send_fasterstop()
 {
   //下发速度指令
   //                           0           1           2          3          4          5          6          7          8          9          10         11
-  char speed_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x00,(char)0x00,(char)0x01,(char)0x10,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60};
+  char speed_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x00,(char)0x00,(char)0x01,(char)0x15,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60};
   if(NULL!=cmd_serial_car)
   {
       ROS_DEBUG("send  faster stop");
@@ -301,7 +328,19 @@ void DiffDriverController::send_release()
   }
 }
 
+void DiffDriverController::UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status)
+{
+    boost::mutex::scoped_lock lock(mStausMutex_);
+    galileoStatus_.navStatus = current_receive_status.navStatus;
+    galileoStatus_.visualStatus = current_receive_status.visualStatus;
+    galileoStatus_.chargeStatus = current_receive_status.chargeStatus;
+    galileoStatus_.mapStatus = current_receive_status.mapStatus;
+    galileoStatus_.targetStatus = current_receive_status.targetStatus;
+    galileoStatus_.targetNumID = current_receive_status.targetNumID;
+    galileoStatus_.controlSpeedX = current_receive_status.controlSpeedX;
+    galileoStatus_.controlSpeedTheta = current_receive_status.controlSpeedTheta;
 
+}
 
 
 

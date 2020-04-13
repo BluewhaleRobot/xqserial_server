@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   tf
   xiaoqiang_log
+  galileo_serial_server
 )
 
 
