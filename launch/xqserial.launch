@@ -1,14 +1,14 @@
 <launch>
   <node pkg="xqserial_server" type="xqserial_server" name="motor_driver" respawn="true" respawn_delay="10">
     <param name="debug_flag" value="false"/>
-    <param name="wheel_separation" value="0.33"/>
-    <param name="wheel_radius" value="0.085"/>
+    <param name="wheel_separation" value="0.38"/>
+    <param name="wheel_radius" value="0.0825"/>
     <param name="max_speed" value="5.0"/>
     <param name="rot_dist" value="0.21"/>
     <param name="tran_dist" value="0.3"/>
     <param name="port_car" value="/dev/stm32Car"/>
     <param name="port_imu" value="/dev/stm32Imu"/>
-    <param name="power_scale" value="1.0186"/>
+    <param name="power_scale" value="1.018"/>
   </node>
   <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster1" args="-0.1 -0.22 0.15 4.7123889 0 0  base_link sonar1 20"/>
   <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster2" args="0.25 0.150 0.10 0 0 0  base_link sonar2 20"/>

@@ -41,7 +41,7 @@ StatusPublisher::StatusPublisher()
         status[i]=0;
     }
 
-    car_status.encoder_ppr=4000;
+    car_status.encoder_ppr=4096;
     car_status.status_imu = -1;
     car_status.driver_status = 5;
     car_status.status = -1;
@@ -61,6 +61,9 @@ StatusPublisher::StatusPublisher()
    mSonar2Pub = mNH.advertise<sensor_msgs::Range>("xqserial_server/Sonar2", 1, true);
    mSonar3Pub = mNH.advertise<sensor_msgs::Range>("xqserial_server/Sonar3", 1, true);
    mSonar4Pub = mNH.advertise<sensor_msgs::Range>("xqserial_server/Sonar4", 1, true);
+
+   pub_barpoint_cloud_ = mNH.advertise<PointCloud>("kinect/barpoints", 1, true);
+   pub_clearpoint_cloud_ = mNH.advertise<PointCloud>("kinect/clearpoints", 1, true);
 
    CarSonar1.header.frame_id = "sonar1";
    CarSonar1.radiation_type = 0;
@@ -233,7 +236,7 @@ void StatusPublisher::Update_imu(const char data[], unsigned int len)
                           if(cmd_string_buf[5*j+4]!=32)
                           {
                             mbUpdated_imu=false;
-                            car_status.encoder_ppr = 4000;
+                            car_status.encoder_ppr = 4096;
                             break;
                           }
                       }
@@ -262,6 +265,7 @@ void StatusPublisher::Refresh()
   static bool theta_updateflag = false;
   static bool theta_update_first = true;
   ii++;
+  static int hbz2_num=0,hbz4_num=0;
   //std::cout<<"runR"<< mbUpdated<<std::endl;
   if (mbUpdated_imu)
   {
@@ -472,7 +476,7 @@ void StatusPublisher::Refresh()
     forward_flag_ = true;
     if(car_status.sonar_distance[1]>0.1)
     {
-      car_status.sonar_distance[1] = 4.0; //屏蔽掉
+      //s2 左边
       if(car_status.sonar_distance[1]>4.0||car_status.sonar_distance[1]<0.2) car_status.sonar_distance[1]=4.0;
       CarSonar2.header.stamp = current_time.fromSec(base_time_);
       CarSonar2.range = car_status.sonar_distance[1];
@@ -499,6 +503,7 @@ void StatusPublisher::Refresh()
 
     if(car_status.sonar_distance[3]>0.1)
     {
+      //右边
       if(car_status.sonar_distance[3]>4.0||car_status.sonar_distance[3]<0.2) car_status.sonar_distance[3]=4.0;
       CarSonar4.header.stamp = current_time.fromSec(base_time_);
       CarSonar4.range = car_status.sonar_distance[3];
@@ -513,7 +518,118 @@ void StatusPublisher::Refresh()
     distances_[0] = car_status.sonar_distance[1];
     distances_[1] = car_status.sonar_distance[3];
 
-    // pub transform
+      int barArea_nums=0;
+      int clearArea_nums=0;
+      if(distances_[0]<tran_dist_)
+      {
+        hbz2_num++;
+        if(hbz2_num>10) barArea_nums+=5;
+      }else{
+        hbz2_num--;
+        if(hbz2_num<0) hbz2_num=0;
+        if(hbz2_num==0) clearArea_nums+=10;
+      }
+      if(distances_[1]<tran_dist_)
+      {
+        hbz4_num++;
+        if(hbz4_num>10) barArea_nums+=5;
+      }else{
+        hbz4_num--;
+        if(hbz4_num<0) hbz4_num=0;
+        if(hbz4_num==0) clearArea_nums+=10;
+      }
+
+      if(barArea_nums>0)
+      {
+        //发布雷区
+        PointCloud::Ptr barcloud_msg(new PointCloud);
+        barcloud_msg->header.stamp = current_time.fromSec(base_time_);
+        barcloud_msg->height = 1;
+        barcloud_msg->width  = barArea_nums;
+        barcloud_msg->is_dense = true;
+        barcloud_msg->is_bigendian = false;
+        barcloud_msg->header.frame_id="kinect_link_new";
+        sensor_msgs::PointCloud2Modifier pcd_modifier1(*barcloud_msg);
+        pcd_modifier1.setPointCloud2FieldsByString(1,"xyz");
+        sensor_msgs::PointCloud2Iterator<float> bariter_x(*barcloud_msg, "x");
+        sensor_msgs::PointCloud2Iterator<float> bariter_y(*barcloud_msg, "y");
+        sensor_msgs::PointCloud2Iterator<float> bariter_z(*barcloud_msg, "z");
+        if(distances_[1]<tran_dist_&&hbz4_num>10)
+        {
+          //右侧
+          for(int k=0;k<5;k++,++bariter_x, ++bariter_y,++bariter_z)
+          {
+            *bariter_x=0.2+0.2;
+            *bariter_y=-k*0.05;
+            *bariter_z=0.15;
+          }
+        }
+
+        if(distances_[0]<tran_dist_&&hbz2_num>10)
+        {
+          //左侧
+          for(int k=0;k<5;k++,++bariter_x, ++bariter_y,++bariter_z)
+          {
+            *bariter_x=0.2+0.2;
+            *bariter_y=k*0.05;
+            *bariter_z=0.15;
+          }
+        }
+        if(ii%1==0)
+        {
+          pub_barpoint_cloud_.publish(barcloud_msg);
+        }
+      }
+      if(clearArea_nums>0)
+      {
+        //清除雷区
+        PointCloud::Ptr clearcloud_msg(new PointCloud);
+        clearcloud_msg->header.stamp = current_time.fromSec(base_time_);
+        clearcloud_msg->height = 1;
+        clearcloud_msg->width  = clearArea_nums;
+        clearcloud_msg->is_dense = true;
+        clearcloud_msg->is_bigendian = false;
+        clearcloud_msg->header.frame_id="kinect_link_new";
+        sensor_msgs::PointCloud2Modifier pcd_modifier1(*clearcloud_msg);
+        pcd_modifier1.setPointCloud2FieldsByString(1,"xyz");
+        sensor_msgs::PointCloud2Iterator<float> cleariter_x(*clearcloud_msg, "x");
+        sensor_msgs::PointCloud2Iterator<float> cleariter_y(*clearcloud_msg, "y");
+        sensor_msgs::PointCloud2Iterator<float> cleariter_z(*clearcloud_msg, "z");
+        if(distances_[1]>=tran_dist_&&hbz4_num==0)
+        {
+          for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+          {
+            *cleariter_x=0.2+0.2;
+            *cleariter_y=-k*0.05;
+            *cleariter_z=0.0;
+          }
+          for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+          {
+            *cleariter_x=0.15+0.2;
+            *cleariter_y=-k*0.05;
+            *cleariter_z=0.0;
+          }
+        }
+        if(distances_[0]>=tran_dist_&&hbz2_num==0)
+        {
+          for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+          {
+            *cleariter_x=0.2+0.2;
+            *cleariter_y=k*0.05;
+            *cleariter_z=0.0;
+          }
+          for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
+          {
+            *cleariter_x=0.15+0.2;
+            *cleariter_y=k*0.05;
+            *cleariter_z=0.0;
+          }
+        }
+        if(ii%1==0)
+        {
+          pub_clearpoint_cloud_.publish(clearcloud_msg);
+        }
+      }
 
     static tf::TransformBroadcaster br;
     tf::Quaternion q;
