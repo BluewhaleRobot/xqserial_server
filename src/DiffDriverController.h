@@ -48,6 +48,7 @@ private:
     ros::NodeHandle mNH_;
     ros::Publisher mgalileoCmdsPub_;
     ros::WallTime last_touchtime_;
+    boost::mutex mOutputMutex_;
 };
 
 }

@@ -434,11 +434,30 @@ bool DiffDriverController::dealBackSwitch()
 
 void DiffDriverController::updateC2C4()
 {
+  boost::mutex::scoped_lock lock(mStausMutex_);
   int c2_value = 0;
   int c4_value = 0;
   ros::param::param<int>("/xqserial_server/params/out1", c2_value, c2_value);
   ros::param::param<int>("/xqserial_server/params/out2", c4_value, c4_value);
   ROS_DEBUG("c2 %d %d , c4 %d %d",c2_value,xq_status->car_status.hbz2, c4_value, xq_status->car_status.hbz4);
+
+  if(galileoStatus_.navStatus == 1)
+  {
+    if(c4_value!=1)
+    {
+      c4_value = 1;
+      ros::param::set("/xqserial_server/params/out2", 1);
+    }
+  }
+  else
+  {
+    if(c4_value!=0)
+    {
+      c4_value = 0;
+      ros::param::set("/xqserial_server/params/out2", 0);
+    }
+  }
+
   if(xq_status->car_status.hbz2 != c2_value)
   {
     char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x4b,(char)0x00};
