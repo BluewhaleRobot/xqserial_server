@@ -436,9 +436,11 @@ void DiffDriverController::updateC2C4()
 {
   int c2_value = 0;
   int c4_value = 0;
+  int c1_value = 0;
   ros::param::param<int>("/xqserial_server/params/out1", c2_value, c2_value);
   ros::param::param<int>("/xqserial_server/params/out2", c4_value, c4_value);
-  ROS_DEBUG("c2 %d %d , c4 %d %d",c2_value,xq_status->car_status.hbz2, c4_value, xq_status->car_status.hbz4);
+  ros::param::param<int>("/xqserial_server/params/out3", c1_value, c1_value);
+  ROS_DEBUG("c2 %d %d , c4 %d %d , c1 %d %d",c2_value,xq_status->car_status.hbz2, c4_value, xq_status->car_status.hbz4, c1_value, xq_status->car_status.hbz1);
   if(xq_status->car_status.hbz2 != c2_value)
   {
     char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x4b,(char)0x00};
@@ -452,6 +454,15 @@ void DiffDriverController::updateC2C4()
   {
     char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x4e,(char)0x00};
     cmd_str[5] = c4_value;
+    if(NULL!=cmd_serial)
+    {
+        cmd_serial->write(cmd_str,6);
+    }
+  }
+  if(xq_status->car_status.hbz1 != c1_value)
+  {
+    char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x4f,(char)0x00};
+    cmd_str[5] = c1_value;
     if(NULL!=cmd_serial)
     {
         cmd_serial->write(cmd_str,6);

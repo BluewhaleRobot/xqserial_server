@@ -59,9 +59,10 @@ int main(int argc, char **argv)
     ros::NodeHandle mNH;
     ros::Publisher audio_pub = mNH.advertise<std_msgs::String>("/xiaoqiang_tts/text", 1, true);
 
-    //初始化c2 c4输出
-    ros::param::set("/xqserial_server/params/out1", 0);
-    ros::param::set("/xqserial_server/params/out2", 0);
+    //初始化c2 c4 C1输出
+    ros::param::set("/xqserial_server/params/out1", 0); //C2
+    ros::param::set("/xqserial_server/params/out2", 0); //C4
+    ros::param::set("/xqserial_server/params/out3", 0); //C1
 
     try {
         CallbackAsyncSerial serial(port,baud);
