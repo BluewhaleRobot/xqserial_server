@@ -1,9 +1,263 @@
 建立包架构
-catkin_create_pkg xqserial_server std_msgs rospy roscpp nav_msgs sensor_msgs
-编译
-catkin_make xqserial_server
-
-c++总结：
-1.cout 需要endl刷新
-2.ros::init(argc, argv, "xqserial_server");中的argv是二级指针
-3.使用ros::param::param<int>("~baud", baud, 115200);这种写法获取baud参数时，debug时提供的参数列表为 _baud:=9600 ，请留意～与_
+[
+    {
+        "url": "http://git.bwbot.org/publish/rgbd_launch.git", 
+        "localName": "rgbd_launch", 
+        "branch": "master"
+    }, 
+    {
+        "url": "https://github.com/BluewhaleRobot/xiaoqiang_log.git", 
+        "localName": "xiaoqiang_log", 
+        "branch": "master"
+    }, 
+    {
+        "url": "https://github.com/bluewhalerobot/xiaoqiang_nlp.git", 
+        "localName": "xiaoqiang_nlp", 
+        "branch": "master"
+    }, 
+    {
+        "url": "https://github.com/BlueWhaleRobot/c-toxcore.git", 
+        "localName": "c-toxcore", 
+        "branch": "master"
+    }, 
+    {
+        "url": "http://git.bwbot.org/publish/image_pipeline.git", 
+        "localName": "image_pipeline", 
+        "branch": "kinetic"
+    }, 
+    {
+        "url": "http://git.bwbot.org/publish/iai_kinect2.git", 
+        "localName": "iai_kinect2", 
+        "branch": "master"
+    }, 
+    {
+        "url": "http://git.bwbot.org/publish/autoWifi.git", 
+        "localName": "autoWifi", 
+        "branch": "xiaoqiang"
+    }, 
+    {
+        "url": "https://github.com/BluewhaleRobot/xiaoqiang_qrcode_wifi.git", 
+        "localName": "xiaoqiang_qrcode_wifi", 
+        "branch": "master"
+    }, 
+    {
+        "url": "https://github.com/bluewhalerobot/usb_cam.git", 
+        "localName": "usb_cam", 
+        "branch": "chitu"
+    }, 
+    {
+        "url": "https://github.com/BlueWhaleRobot/slam_gmapping.git", 
+        "localName": "slam_gmapping", 
+        "branch": "hydro-devel"
+    }, 
+    {
+        "url": "https://github.com/bluewhalerobot/xiaoqiang_audio_controller.git", 
+        "localName": "xiaoqiang_audio_controller", 
+        "branch": "master"
+    }, 
+    {
+        "url": "https://github.com/BlueWhaleRobot/galileo_serial_server.git", 
+        "localName": "galileo_serial_server", 
+        "branch": "master"
+    }, 
+    {
+        "url": "https://github.com/BlueWhaleRobot/startup.git", 
+        "localName": "startup", 
+        "branch": "chitu3_mihai"
+    }, 
+    {
+        "url": "https://github.com/BlueWhaleRobot/joystick_drivers.git", 
+        "localName": "joystick_drivers", 
+        "branch": "indigo-devel"
+    }, 
+    {
+        "url": "https://gitee.com/BluewhaleRobot/galileo_api.git", 
+        "localName": "galileo_api", 
+        "branch": "chitu3_mihai"
+    }, 
+    {
+        "url": "https://github.com/ros/geometry2.git", 
+        "localName": "geometry2", 
+        "branch": "kinetic-devel"
+    }, 
+    {
+        "url": "http://git.bwbot.org/publish/web_video_server.git", 
+        "localName": "web_video_server", 
+        "branch": "master"
+    }, 
+    {
+        "url": "http://git.bwbot.org/publish/ORB_SLAM.git", 
+        "localName": "ORB_SLAM", 
+        "branch": "master"
+    }, 
+    {
+        "url": "https://github.com/BlueWhaleRobot/bw_auto_dock.git", 
+        "localName": "bw_auto_dock", 
+        "branch": "chitu3_mihai"
+    }, 
+    {
+        "url": "https://github.com/BlueWhaleRobot/hector_compressed_map_transport.git", 
+        "localName": "hector_compressed_map_transport", 
+        "branch": "master"
+    }, 
+    {
+        "url": "http://git.bwbot.org/publish/lagrange_navigation.git", 
+        "localName": "lagrange_navigation", 
+        "branch": "chitu3"
+    }, 
+    {
+        "url": "https://github.com/BlueWhaleRobot/freenect_stack.git", 
+        "localName": "freenect_stack", 
+        "branch": "master"
+    }, 
+    {
+        "url": "https://github.com/BlueWhaleRobot/openslam_gmapping.git", 
+        "localName": "openslam_gmapping", 
+        "branch": "master"
+    }, 
+    {
+        "url": "http://git.bwbot.org/publish/cam_auto_brightness.git", 
+        "localName": "cam_auto_brightness", 
+        "branch": "master"
+    }, 
+    {
+        "url": "http://git.bwbot.org/randoms/bwbot_check.git", 
+        "localName": "bwbot_check", 
+        "branch": "chitu3_mihai"
+    }, 
+    {
+        "url": "https://gitee.com/BluewhaleRobot/galileo_msg.git", 
+        "localName": "galileo_msg", 
+        "branch": "master"
+    }, 
+    {
+        "url": "https://github.com/BlueWhaleRobot/stm32loader.git", 
+        "localName": "stm32loader", 
+        "branch": "chitu3_mihai"
+    }, 
+    {
+        "url": "http://git.bwbot.org/publish/BwbotCenter.git", 
+        "localName": "BwbotCenter", 
+        "branch": "master"
+    }, 
+    {
+        "url": "https://github.com/BluewhaleRobot/bw_env_sensors.git", 
+        "localName": "bw_env_sensors", 
+        "branch": "master"
+    }, 
+    {
+        "url": "http://git.bwbot.org/publish/galileo_multi_global_planner.git", 
+        "localName": "galileo_multi_global_planner", 
+        "branch": "master"
+    }, 
+    {
+        "url": "https://github.com/BluewhaleRobot/xiaoqiang_greeting.git", 
+        "localName": "xiaoqiang_greeting", 
+        "branch": "chitu"
+    }, 
+    {
+        "url": "http://git.bwbot.org/ros/turtlebot.git", 
+        "localName": "turtlebot", 
+        "branch": "indigo"
+    }, 
+    {
+        "url": "https://github.com/BlueWhaleRobot/SharpLink.git", 
+        "localName": "SharpLink", 
+        "branch": "master"
+    }, 
+    {
+        "url": "http://git.bwbot.org/publish/rplidar_ros.git", 
+        "localName": "rplidar_ros", 
+        "branch": "chitu3_mihai"
+    }, 
+    {
+        "url": "http://git.bwbot.org/publish/robot_arm.git", 
+        "localName": "robot_arm", 
+        "branch": "master"
+    }, 
+    {
+        "url": "https://github.com/BlueWhaleRobot/xqserial_server.git", 
+        "localName": "xqserial_server", 
+        "branch": "chitu3_mihai"
+    }, 
+    {
+        "url": "https://github.com/BlueWhaleRobot/cartographer_ros.git", 
+        "localName": "cartographer_ros", 
+        "branch": "master"
+    }, 
+    {
+        "url": "http://git.bwbot.org/publish/ORB_SLAM2.git", 
+        "localName": "ORB_SLAM2", 
+        "branch": "chitu3_mihai"
+    }, 
+    {
+        "url": "http://git.bwbot.org/publish/bwbotupdater.git", 
+        "localName": "bwbotupdater", 
+        "branch": "v3"
+    }, 
+    {
+        "url": "https://github.com/bluewhalerobot/xiaoqiang_tts.git", 
+        "localName": "xiaoqiang_tts", 
+        "branch": "master"
+    }, 
+    {
+        "url": "https://github.com/BlueWhaleRobot/system_monitor.git", 
+        "localName": "system_monitor", 
+        "branch": "chitu3_mihai"
+    }, 
+    {
+        "url": "https://github.com/BlueWhaleRobot/turtlebot_apps.git", 
+        "localName": "turtlebot_apps", 
+        "branch": "indigo"
+    }, 
+    {
+        "url": "https://github.com/ros-drivers/audio_common.git", 
+        "localName": "audio_common", 
+        "branch": "master"
+    }, 
+    {
+        "url": "http://git.bwbot.org/publish/addwa_local_planner.git", 
+        "localName": "addwa_local_planner", 
+        "branch": "chitu3_mihai"
+    }, 
+    {
+        "url": "http://git.bwbot.org/publish/NLlinepatrol_planner.git", 
+        "localName": "NLlinepatrol_planner", 
+        "branch": "master"
+    }, 
+    {
+        "url": "https://github.com/BlueWhaleRobot/laser_filters.git", 
+        "localName": "laser_filters", 
+        "branch": "chitu3_mihai"
+    }, 
+    {
+        "url": "https://github.com/BlueWhaleRobot/navigation.git", 
+        "localName": "navigation", 
+        "branch": "jade-devel"
+    }, 
+    {
+        "url": "https://github.com/BlueWhaleRobot/nav_test.git", 
+        "localName": "nav_test", 
+        "branch": "chitu3_mihai"
+    }, 
+    {
+        "url": "https://github.com/bluewhalerobot/xiaoqiang_audio.git", 
+        "localName": "xiaoqiang_audio", 
+        "branch": "master"
+    }, 
+    {
+        "url": "http://git.bwbot.org/publish/libuvc_ros.git", 
+        "localName": "libuvc_ros", 
+        "branch": "master"
+    }, 
+    {
+        "url": "https://github.com/BlueWhaleRobot/xiaoqiang_udrf.git", 
+        "localName": "xiaoqiang_udrf", 
+        "branch": "master"
+    }, 
+    {
+        "url": "https://github.com/BlueWhaleRobot/orb_init.git", 
+        "localName": "orb_init", 
+        "branch": "master"
+    }
+]
