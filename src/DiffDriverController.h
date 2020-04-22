@@ -7,6 +7,8 @@
 #include "galileo_serial_server/GalileoNativeCmds.h"
 #include "galileo_serial_server/GalileoStatus.h"
 #include "xqserial_server/Shutdown.h"
+#include "xqserial_server/http_request.hpp"
+#include "json.hpp"
 
 namespace xqserial_server
 {

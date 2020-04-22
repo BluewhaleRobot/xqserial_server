@@ -369,15 +369,22 @@ bool DiffDriverController::dealBackSwitch()
               //开关松开
               back_touch_falg_ = false;
               //发布会厨房命令
-              galileo_serial_server::GalileoNativeCmds currentCmds;
-              currentCmds.header.stamp = ros::Time::now();
-              currentCmds.header.frame_id = "xq_serial_server";
-              currentCmds.length = 2;
-              currentCmds.data.resize(2);
-              currentCmds.data[0] = (char)0x67;
-              currentCmds.data[1] = (char)0x00;
-              mgalileoCmdsPub_.publish(currentCmds);
-              return true;
+              // galileo_serial_server::GalileoNativeCmds currentCmds;
+              // currentCmds.header.stamp = ros::Time::now();
+              // currentCmds.header.frame_id = "xq_serial_server";
+              // currentCmds.length = 2;
+              // currentCmds.data.resize(2);
+              // currentCmds.data[0] = (char)0x67;
+              // currentCmds.data[1] = (char)0x00;
+              // mgalileoCmdsPub_.publish(currentCmds);
+
+              // 更新当前WaitReqAction
+              http::Request request("http://127.0.0.1:3546/api/v1/action/update_wait_req");
+              const http::Response response = request.send("GET");
+              if(response.status == 200){
+                return true;
+              }
+              return false;
             }
           }
         }
