@@ -435,6 +435,8 @@ bool DiffDriverController::dealBackSwitch()
 void DiffDriverController::updateC2C4()
 {
   boost::mutex::scoped_lock lock(mStausMutex_);
+  static ros::WallTime c2_high_time =ros::WallTime::now();
+  static int c2_value_old = 0;
   int c2_value = 0;
   int c4_value = 0;
   ros::param::param<int>("/xqserial_server/params/out1", c2_value, c2_value);
@@ -456,6 +458,31 @@ void DiffDriverController::updateC2C4()
       c4_value = 0;
       ros::param::set("/xqserial_server/params/out2", 0);
     }
+  }
+
+  if(c2_value == 1 && c2_value_old == 0)
+  {
+    c2_high_time = ros::WallTime::now();
+  }
+  c2_value_old =  c2_value;
+
+  if(galileoStatus_.chargeStatus != 0 ||  xq_status->car_status.power < 32.5)
+  {
+      //在充电，同时电压低于32.5输出高电平
+      c2_value = 1;
+      ros::param::set("/xqserial_server/params/out1", 1);
+
+  }
+  else
+  {
+    ros::WallDuration free_diff = ros::WallTime::now() - c2_high_time;
+    if(free_diff.toSec()>5)
+    {
+      //其他情况输出低电平, 5秒延时稳定
+      c2_value = 0;
+      ros::param::set("/xqserial_server/params/out1", 0);
+    }
+
   }
 
   if(xq_status->car_status.hbz2 != c2_value)
