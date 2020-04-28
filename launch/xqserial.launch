@@ -5,7 +5,7 @@
     <param name="wheel_radius" value="0.020689"/>
     <param name="max_speed" value="10.0"/>
     <param name="rot_dist" value="-0.8"/>
-    <param name="tran_dist" value="0.6"/>
+    <param name="tran_dist" value="0.5"/>
     <param name="port_car" value="/dev/stm32Car"/>
     <param name="port_imu" value="/dev/stm32Imu"/>
     <param name="power_scale" value="1.00"/>
