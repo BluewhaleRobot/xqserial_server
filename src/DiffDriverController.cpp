@@ -25,9 +25,9 @@ DiffDriverController::DiffDriverController(double max_speed_, std::string cmd_to
     R_min_ = r_min;
 
     mcalibrate_flag = false;
-    mA = cv::Mat::zeros(20, 3, CV_32F);
+    mA = cv::Mat::zeros(20, 2, CV_32F);
     mb = cv::Mat::zeros(20, 1, CV_32F);
-    mx = cv::Mat::zeros(3, 1, CV_32F);
+    mx = cv::Mat::zeros(2, 1, CV_32F);
     mcurrent_step = 0;
     mstep_now = 0;
     mt1_flag = false;
@@ -270,8 +270,8 @@ void DiffDriverController::dealCalibrateS()
       linearSolve(mA, mb, mx);
       float b = xq_status->get_wheel_separation();
       float r = xq_status->get_wheel_radius();
-      ROS_ERROR("theory: k1  %f k2 %f k3 %f", r/b, r/b, 0.0);
-      ROS_ERROR("cal: k1  %f k2 %f k3 %f", mx.at<float>(0), mx.at<float>(1), mx.at<float>(2));
+      ROS_ERROR("theory: k1  %f k2 %f ", r/b, 0.0);
+      ROS_ERROR("cal: k1  %f k2 %f ", mx.at<float>(0), mx.at<float>(1));
       mcalibrate_flag = false;
     }
     else
@@ -327,16 +327,15 @@ void DiffDriverController::dealCalibrateS()
                 mt2_flag = true;
                 mstep_now = 1;
                 //保存数据
-                 mA.at<float>(mcurrent_step,0) = delta_sr;
-                 mA.at<float>(mcurrent_step,1) = delta_sl;
-                 mA.at<float>(mcurrent_step,2) = delta_t21;
+                 mA.at<float>(mcurrent_step,0) = delta_sr - delta_sl;
+                 mA.at<float>(mcurrent_step,1) = delta_t21;
                  mb.at<float>(mcurrent_step) = delta_theta21;
                  ROS_ERROR("current_step: %d , sr %f sl %f t %f theta %f",mcurrent_step, delta_sr, delta_sl, delta_t21, delta_theta21);
               }
             }
             //下发角速度
             geometry_msgs::Twist current_vel;
-            current_vel.linear.x = 0.5*angular_z;
+            current_vel.linear.x = 0;
             current_vel.linear.y = 0;
             current_vel.linear.z = 0;
             current_vel.angular.x = 0;

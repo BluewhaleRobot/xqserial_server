@@ -44,6 +44,8 @@ StatusPublisher::StatusPublisher()
   mTwistPub = mNH.advertise<geometry_msgs::Twist>("xqserial_server/Twist", 1, true);
   mPowerPub = mNH.advertise<std_msgs::Float64>("xqserial_server/Power", 1, true);
   mOdomPub = mNH.advertise<nav_msgs::Odometry>("xqserial_server/Odom", 1, true);
+  mOdomPub2 = mNH.advertise<nav_msgs::Odometry>("xqserial_server/Odom2", 1, true);
+  mOdomPub3 = mNH.advertise<nav_msgs::Odometry>("xqserial_server/Odom3", 1, true);
   pub_barpoint_cloud_ = mNH.advertise<PointCloud>("kinect/barpoints", 1, true);
   pub_clearpoint_cloud_ = mNH.advertise<PointCloud>("kinect/clearpoints", 1, true);
   mIMUPub = mNH.advertise<sensor_msgs::Imu>("xqserial_server/IMU", 1, true);
@@ -57,11 +59,29 @@ StatusPublisher::StatusPublisher()
    */
   base_time_ = ros::Time::now().toSec();
 
-  float msr = 0;
-  float msl = 0;
-  float mtheta = 0;
-  float mt = 0;
-  float mvtheta = 0;
+  msr = 0;
+  msl = 0;
+  mtheta = 0;
+  mt = 0;
+  mvtheta = 0;
+
+  mx_raw = 0;
+  my_raw = 0;
+  mtheta_raw = 0;
+
+  mx_raw3 = 0;
+  my_raw3 = 0;
+  mtheta_raw3 = 0;
+
+  Jf = cv::Mat::zeros(8, 8, CV_32F); //8x8
+  Jh = cv::Mat::zeros(4, 8, CV_32F); //4x8
+  x0 = cv::Mat::zeros(8, 1, CV_32F); //8x1
+  Pk = cv::Mat::zeros(8, 8, CV_32F); //8x8
+  Qk = cv::Mat::zeros(8, 8, CV_32F); //8x8
+  Rk = cv::Mat::zeros(4, 4, CV_32F); //4x4
+  Xka = cv::Mat::zeros(8, 1, CV_32F); //8x1
+  Zk = cv::Mat::zeros(4, 1, CV_32F); //4x1
+
 }
 
 StatusPublisher::StatusPublisher(double separation, double radius)
@@ -69,6 +89,54 @@ StatusPublisher::StatusPublisher(double separation, double radius)
   new (this) StatusPublisher();
   wheel_separation = separation;
   wheel_radius = radius;
+
+  float dt = 0.02;
+  float half_dt2 = 0.0002;
+  Jf.at<float>(0,2) = dt;
+  Jf.at<float>(0,4) = half_dt2;
+  Jf.at<float>(1,3) = dt;
+  Jf.at<float>(1,5) = half_dt2;
+  Jf.at<float>(2,2) = 1;
+  Jf.at<float>(2,4) = dt;
+  Jf.at<float>(3,3) = 1;
+  Jf.at<float>(3,5) = dt;
+  Jf.at<float>(4,4) = 1;
+  Jf.at<float>(5,5) = 1;
+  Jf.at<float>(6,6) = 1;
+  Jf.at<float>(7,7) = 1;
+
+  x0.at<float>(7) = 0;
+
+  //Pk.at<float>(6,6) = 0.001;
+  //Pk.at<float>(7,7) = 0.1;
+
+  Qk.at<float>(0,0) = 0.0001;
+  Qk.at<float>(1,1) = 0.0001;
+  Qk.at<float>(2,2) = 0.0001;
+  Qk.at<float>(3,3) = 0.0001;
+  Qk.at<float>(4,4) = 0.01;
+  Qk.at<float>(5,5) = 0.01;
+  Qk.at<float>(6,6) = 0.0001;
+  Qk.at<float>(7,7) = 0.001;
+
+  Rk.at<float>(0,0) = 2;
+  Rk.at<float>(1,1) = 2;
+  Rk.at<float>(2,2) = 0.000001;
+  Rk.at<float>(3,3) = 0.0001;
+
+  Xka = x0.clone();
+
+  std::stringstream buf_Xka;
+  buf_Xka <<"Xka "<< Xka<<std::endl;
+  ROS_ERROR("%s",buf_Xka.str().c_str());
+
+  std::stringstream buf_Qk;
+  buf_Qk <<"Qk "<< Qk<<std::endl;
+  ROS_ERROR("%s",buf_Qk.str().c_str());
+
+  std::stringstream buf_Rk;
+  buf_Rk <<"Rk "<< Rk<<std::endl;
+  ROS_ERROR("%s",buf_Rk.str().c_str());
 }
 
 void StatusPublisher::Update(const char data[], unsigned int len)
@@ -496,8 +564,173 @@ void StatusPublisher::Refresh()
 
     //ros::spinOnce();
     update_current_counters();
+    //不用imu的里程计
+    static int delta_counter = 0;
+    float delta_x2 = delta_car * cos(mtheta_raw );
+    float delta_y2 = delta_car * sin(mtheta_raw );
+
+    float delta_theta2 = 0.2191*(1.0f*car_status.encoder_delta_r / car_status.encoder_ppr *2*PI - 1.0f*car_status.encoder_delta_l / car_status.encoder_ppr *2*PI);
+
+    delta_counter += car_status.encoder_delta_r - car_status.encoder_delta_l;
+    //ROS_ERROR("delta_counter %d %d",delta_counter,(car_status.encoder_delta_r - car_status.encoder_delta_l));
+
+    if (delta_theta2 > PI)
+      delta_theta2 -= 2*PI;
+    if (delta_theta2 < -PI)
+      delta_theta2 += 2*PI;
+
+    mx_raw += delta_x2;
+    my_raw += delta_y2;
+    mtheta_raw += delta_theta2;
+
+    CarOdom2.header.stamp = current_time.fromSec(base_time_);
+    CarOdom2.header.frame_id = "odom";
+    CarOdom2.pose.pose.position.x = mx_raw;
+    CarOdom2.pose.pose.position.y = my_raw;
+    CarOdom2.pose.pose.position.z = 0.0f;
+    geometry_msgs::Quaternion odom_quat2 = tf::createQuaternionMsgFromYaw(mtheta_raw);
+    CarOdom2.pose.pose.orientation = odom_quat2;
+    CarOdom2.pose.covariance = boost::assign::list_of(var_len)(0)(0)(0)(0)(0)(0)(var_len)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(var_angle);
+    CarOdom2.child_frame_id = "base_footprint";
+    CarOdom2.twist.twist.linear.x = CarTwist.linear.x; // * cos(CarPos2D.theta* PI / 180.0f);
+    CarOdom2.twist.twist.linear.y = CarTwist.linear.y; // * sin(CarPos2D.theta* PI / 180.0f);
+    CarOdom2.twist.twist.angular.z = CarTwist.angular.z;
+    CarOdom2.twist.covariance = boost::assign::list_of(var_len)(0)(0)(0)(0)(0)(0)(var_len)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(var_angle);
+    mOdomPub2.publish(CarOdom2);
+
+    // //考虑二阶小量的里程计
+    // float delta_car_x = delta_car;
+    // float delta_car_y = delta_car*delta_theta* PI / 180.0/2.0;
+    //
+    // float theta_temp = (CarPos2D.theta - delta_theta) * PI / 180.0f;
+    // float delta_x2 = delta_car_x * cos(theta_temp) - sin(theta_temp)*delta_car_y;
+    // float delta_y2 = delta_car_x * sin(theta_temp ) + cos(theta_temp)*delta_car_y;
+    //
+    // mx_raw += delta_x2;
+    // my_raw += delta_y2;
+    //
+    // static float sum_delta_y = 0;
+    // sum_delta_y += delta_car_y;
+    // //ROS_ERROR("sum_delta_y %f %f",sum_delta_y, delta_car_y);
+    //
+    // CarOdom2.header.stamp = current_time.fromSec(base_time_);
+    // CarOdom2.header.frame_id = "odom";
+    // CarOdom2.pose.pose.position.x = mx_raw;
+    // CarOdom2.pose.pose.position.y = my_raw;
+    // CarOdom2.pose.pose.position.z = 0.0f;
+    // geometry_msgs::Quaternion odom_quat2 = tf::createQuaternionMsgFromYaw(CarPos2D.theta * PI / 180.0f);
+    // CarOdom2.pose.pose.orientation = odom_quat2;
+    // CarOdom2.pose.covariance = boost::assign::list_of(var_len)(0)(0)(0)(0)(0)(0)(var_len)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(var_angle);
+    // CarOdom2.child_frame_id = "base_footprint";
+    // CarOdom2.twist.twist.linear.x = CarTwist.linear.x; // * cos(CarPos2D.theta* PI / 180.0f);
+    // CarOdom2.twist.twist.linear.y = CarTwist.linear.y; // * sin(CarPos2D.theta* PI / 180.0f);
+    // CarOdom2.twist.twist.angular.z = CarTwist.angular.z;
+    // CarOdom2.twist.covariance = boost::assign::list_of(var_len)(0)(0)(0)(0)(0)(0)(var_len)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(var_angle);
+    // mOdomPub2.publish(CarOdom2);
+
+    //ekf融合的里程计
+    Zk.at<float>(0) = car_status.encoder_delta_r;
+    Zk.at<float>(1) = car_status.encoder_delta_l;
+    Zk.at<float>(2) = delta_theta* PI / 180.0f;
+    Zk.at<float>(3) = CarTwist.angular.z;
+
+    do_ekf();
+    float delta_car3 = Xka.at<float>(0);
+    float delta_theta3 = Xka.at<float>(1);
+
+    float delta_x3 = delta_car3 * cos(mtheta_raw3 );
+    float delta_y3 = delta_car3 * sin(mtheta_raw3 );
+
+    mx_raw3 += delta_x3;
+    my_raw3 += delta_y3;
+
+    mtheta_raw3 += delta_theta3;
+
+    ROS_ERROR("delta %f %f %f %f %f %f %f %f",delta_car, delta_car3, delta_theta/180.0f*PI, delta_theta3,Xka.at<float>(6),Xka.at<float>(7),Xka.at<float>(2),Xka.at<float>(3));
+
+    CarOdom3.header.stamp = current_time.fromSec(base_time_);
+    CarOdom3.header.frame_id = "odom";
+    CarOdom3.pose.pose.position.x = mx_raw3;
+    CarOdom3.pose.pose.position.y = my_raw3;
+    CarOdom3.pose.pose.position.z = 0.0f;
+    geometry_msgs::Quaternion odom_quat3 = tf::createQuaternionMsgFromYaw(mtheta_raw3);
+    CarOdom3.pose.pose.orientation = odom_quat3;
+    CarOdom3.pose.covariance = boost::assign::list_of(var_len)(0)(0)(0)(0)(0)(0)(var_len)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(var_angle);
+    CarOdom3.child_frame_id = "base_footprint";
+    CarOdom3.twist.twist.linear.x = Xka.at<float>(2); // * cos(CarPos2D.theta* PI / 180.0f);
+    CarOdom3.twist.twist.linear.y = CarTwist.linear.y; // * sin(CarPos2D.theta* PI / 180.0f);
+    CarOdom3.twist.twist.angular.z = Xka.at<float>(3);
+    CarOdom3.twist.covariance = boost::assign::list_of(var_len)(0)(0)(0)(0)(0)(0)(var_len)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(999)(0)(0)(0)(0)(0)(0)(var_angle);
+    mOdomPub3.publish(CarOdom3);
+
     mbUpdated = false;
   }
+}
+
+void StatusPublisher::do_ekf()
+{
+  //predictor
+  cv::Mat Xkf = Jf*Xka;
+  cv::Mat Pk1 = Pk.clone();
+  cv::Mat Pkf = Jf*Pk1*Jf.t() + Qk;
+  //corrector
+  float multi_value = car_status.encoder_ppr/2.0f/PI/wheel_radius;
+  float L = wheel_radius/0.2191f/2.0f;
+  float dt = 0.02;
+  cv::Mat Kk =  cv::Mat::zeros(8, 4, CV_32F);
+  static int num_i = 0;
+  num_i ++;
+  for(int i =0;i<2;i++)
+  {
+    Jh.at<float>(0,0) = multi_value;
+    Jh.at<float>(0,1) = multi_value*(1+Xkf.at<float>(7))*L;
+    Jh.at<float>(0,7) = multi_value*Xkf.at<float>(1)*L;
+    Jh.at<float>(1,0) = multi_value;
+    Jh.at<float>(1,1) = -multi_value*(1+Xkf.at<float>(7))*L;
+    Jh.at<float>(1,7) = -multi_value*Xkf.at<float>(1)*L;
+    Jh.at<float>(2,1) = 1;
+    Jh.at<float>(2,6) = 0;//dt;
+    Jh.at<float>(3,3) = 1;
+    Jh.at<float>(3,6) = 1;
+
+    cv::Mat Zkf = cv::Mat::zeros(4, 1, CV_32F); //4x1
+    Zkf.at<float>(0) = multi_value*((1+Xkf.at<float>(7))*L*Xkf.at<float>(1) + Xkf.at<float>(0));
+    Zkf.at<float>(1) = multi_value*(-(1+Xkf.at<float>(7))*L*Xkf.at<float>(1) + Xkf.at<float>(0));
+    Zkf.at<float>(2) = Xkf.at<float>(1);//Xkf.at<float>(1) + dt*Xkf.at<float>(6);
+    Zkf.at<float>(3) = Xkf.at<float>(3) + Xkf.at<float>(6);
+
+    cv::Mat temp_mat = Jh*Pkf*Jh.t() + Rk;
+    Kk = Pkf*Jh.t()*temp_mat.inv();
+
+    Xkf = Xkf + Kk*(Zk -Zkf);
+    if(num_i % 10 ==0)
+    {
+      std::stringstream buf_Xkf;
+      buf_Xkf << "ikf " << i <<" Xkf "<< Xkf<<std::endl;
+      //ROS_ERROR("%s",buf_Xkf.str().c_str());
+
+      std::stringstream buf_Zk;
+      buf_Zk << "zk " << Zk <<std::endl;
+      //ROS_ERROR("%s",buf_Zk.str().c_str());
+
+      std::stringstream buf_Zkf;
+      buf_Zkf << "zkf " << Zkf <<std::endl;
+      //ROS_ERROR("%s",buf_Zkf.str().c_str());
+
+      std::stringstream buf_Kk;
+      buf_Kk << "Kk " << Kk <<std::endl;
+      //ROS_ERROR("%s",buf_Kk.str().c_str());
+    }
+
+  }
+  Xka = Xkf.clone();
+  Pk = (cv::Mat::eye(8, 8, CV_32F) - Kk*Jh)*Pkf;
+  // if(num_i % 10 ==0)
+  // {
+  //   std::stringstream buf_Pk;
+  //   buf_Pk <<"Pk "<< Pk<<std::endl;
+  //   ROS_ERROR("%s",buf_Pk.str().c_str());
+  // }
 }
 
 double StatusPublisher::get_wheel_separation()

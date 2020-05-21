@@ -15,6 +15,7 @@
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include <sensor_msgs/PointField.h>
 #include <sensor_msgs/Imu.h>
+#include <opencv2/core/core.hpp>
 
 #define PI 3.14159265
 
@@ -59,6 +60,7 @@ class StatusPublisher
     UPLOAD_STATUS car_status;
     void get_current_counters(float & sr, float & sl, float & theta, float & t, float & vtheta);
     void update_current_counters();
+    void do_ekf();
   private:
     //Wheel separation, wrt the midpoint of the wheel width: meters
     double wheel_separation;
@@ -78,6 +80,10 @@ class StatusPublisher
     ros::Publisher mOdomPub;
     ros::Publisher pub_barpoint_cloud_;
     ros::Publisher pub_clearpoint_cloud_;
+    nav_msgs::Odometry CarOdom2;     // 小车位置和速度信息
+    ros::Publisher mOdomPub2;
+    nav_msgs::Odometry CarOdom3;
+    ros::Publisher mOdomPub3;
 
     bool mbUpdated;
 
@@ -93,6 +99,23 @@ class StatusPublisher
     float mtheta;
     float mt;
     float mvtheta;
+
+    float mx_raw;
+    float my_raw;
+    float mtheta_raw;
+
+    float mx_raw3;
+    float my_raw3;
+    float mtheta_raw3;
+
+    cv::Mat Jf; //8x8
+    cv::Mat Jh; //4x8
+    cv::Mat x0; //8x1
+    cv::Mat Pk; //8x8
+    cv::Mat Qk; //8x8
+    cv::Mat Rk; //4x4
+    cv::Mat Xka; //8x1
+    cv::Mat Zk; //4x1
 };
 
 } //namespace xqserial_server
