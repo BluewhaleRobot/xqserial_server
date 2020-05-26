@@ -441,16 +441,6 @@ void StatusPublisher::Refresh()
 
         if(distance_sum_i%5==0)
         {
-          // if((car_status.hbz1+car_status.hbz2+car_status.hbz4)>0.1&&(car_status.hbz1+car_status.hbz2+car_status.hbz4)<4.0)
-          // {
-          //   move_forward_flag = false;
-          // }
-          // else{
-          //   if(!move_forward_flag)
-          //   {
-          //     if((delta_car*50.0f)>=0) move_forward_flag = true;
-          //   }
-          // }
           if(car_status.hbz3>0.1&&car_status.hbz3<2.0)
           {
             move_backward_flag = false;
@@ -504,6 +494,19 @@ void StatusPublisher::Refresh()
         if(distances_[0]<tran_dist_||distances_[1]<tran_dist_)
         {
           move_forward_flag = false;
+        }
+        else
+        {
+          if((car_status.hbz1+car_status.hbz2+car_status.hbz4)>0.1&&(car_status.hbz1+car_status.hbz2+car_status.hbz4)<4.0)
+          {
+            move_forward_flag = false;
+          }
+          // else{
+          //   if(!move_forward_flag)
+          //   {
+          //     if((delta_car*50.0f)>=0) move_forward_flag = true;
+          //   }
+          // }
         }
 
       }

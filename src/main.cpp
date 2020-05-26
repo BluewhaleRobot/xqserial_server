@@ -113,19 +113,19 @@ int main(int argc, char **argv)
               xq_diffdriver.check_faster_stop();
             }
 
-            //更新按钮
-            if(xq_diffdriver.dealBackSwitch())
-            {
-              //告诉用户回去了
-              std_msgs::String audio_msg;
-              audio_msg.data = "好的，我回去了!";
-              audio_pub.publish(audio_msg);
-            }
-
-            if(i%10 == 0)
-            {
-              xq_diffdriver.updateC2C4();
-            }
+            // //更新按钮
+            // if(xq_diffdriver.dealBackSwitch())
+            // {
+            //   //告诉用户回去了
+            //   std_msgs::String audio_msg;
+            //   audio_msg.data = "好的，我回去了!";
+            //   audio_pub.publish(audio_msg);
+            // }
+            //
+            // if(i%10 == 0)
+            // {
+            //   xq_diffdriver.updateC2C4();
+            // }
 
             i++;
             r.sleep();
