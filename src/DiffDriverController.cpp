@@ -376,7 +376,7 @@ bool DiffDriverController::dealBackSwitch()
                 return true;
               }
 
-              //发布会厨房命令 兼容老版本客户端
+              //发布回厨房命令 兼容老版本客户端
               galileo_serial_server::GalileoNativeCmds currentCmds;
               currentCmds.header.stamp = ros::Time::now();
               currentCmds.header.frame_id = "xq_serial_server";
@@ -385,7 +385,7 @@ bool DiffDriverController::dealBackSwitch()
               currentCmds.data[0] = (char)0x67;
               currentCmds.data[1] = (char)0x00;
               mgalileoCmdsPub_.publish(currentCmds);
-              return false;
+              return true;
             }
           }
         }
