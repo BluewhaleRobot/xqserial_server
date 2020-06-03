@@ -350,8 +350,9 @@ bool DiffDriverController::dealBackSwitch()
   {
     if(galileoStatus_.visual_status != 0)
     {
-      if(galileoStatus_.target_numID != 0)
-      {
+      // http api 不会设置 target id
+      // if(galileoStatus_.target_numID != 0)
+      // {
         if(galileoStatus_.target_status == 0)
         {
           //判断开关是否按下
@@ -389,7 +390,7 @@ bool DiffDriverController::dealBackSwitch()
             }
           }
         }
-      }
+      // }
     }
   }
   return false;
