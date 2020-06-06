@@ -356,8 +356,9 @@ bool DiffDriverController::dealBackSwitch()
   {
     if(galileoStatus_.visual_status != 0)
     {
-      if(galileoStatus_.target_numID != 0)
-      {
+      // http api 不会设置 target id
+      // if(galileoStatus_.target_numID != 0)
+      // {
         if(galileoStatus_.target_status == 0)
         {
           //判断开关是否按下
@@ -374,7 +375,15 @@ bool DiffDriverController::dealBackSwitch()
             {
               //开关松开
               back_touch_falg_ = false;
-              //发布会厨房命令
+
+              // 更新当前WaitReqAction
+              http::Request request("http://127.0.0.1:3546/api/v1/action/update_wait_req");
+              const http::Response response = request.send("GET");
+              if(response.status == 200){
+                return true;
+              }
+
+              //发布回厨房命令 兼容老版本客户端
               galileo_serial_server::GalileoNativeCmds currentCmds;
               currentCmds.header.stamp = ros::Time::now();
               currentCmds.header.frame_id = "xq_serial_server";
@@ -387,7 +396,7 @@ bool DiffDriverController::dealBackSwitch()
             }
           }
         }
-      }
+      // }
     }
   }
   return false;
