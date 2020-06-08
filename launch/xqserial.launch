@@ -5,7 +5,7 @@
     <param name="wheel_radius" value="0.085"/>
     <param name="max_speed" value="5.0"/>
     <param name="port" value="/dev/ttyUSB001"/>`1
-    <param name="rot_dist" value="0.3"/>
+    <param name="rot_dist" value="0.25"/>
     <param name="tran_dist" value="0.4"/>
     <param name="power_scale" value="1.0"/>
     <param name="r_min" value="1.0"/>
