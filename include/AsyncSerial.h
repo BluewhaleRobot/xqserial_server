@@ -11,9 +11,9 @@
 #include <vector>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
-#include <boost/thread.hpp>
+#include <thread>
+#include <mutex>
 #include <boost/utility.hpp>
-#include <boost/function.hpp>
 #include <boost/shared_array.hpp>
 
 /**
@@ -167,7 +167,7 @@ class AsyncSerial : private boost::noncopyable
     /**
      * To allow derived classes to set a read callback
      */
-    void setReadCallback(const boost::function<void(const char *, size_t)> &callback);
+    void setReadCallback(const std::function<void(const char *, size_t)> &callback);
 
     /**
      * To unregister the read callback in the derived class destructor so it
@@ -217,7 +217,7 @@ class CallbackAsyncSerial : public AsyncSerial
      * serial port.
      * \param callback the receive callback
      */
-    void setCallback(const boost::function<void(const char *, size_t)> &callback);
+    void setCallback(const std::function<void(const char *, size_t)> &callback);
 
     /**
      * Removes the callback. Any data received after this function call will
