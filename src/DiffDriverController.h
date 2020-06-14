@@ -38,7 +38,7 @@ class DiffDriverController
 {
 public:
     DiffDriverController();
-    DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_,double r_min);
+    DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_car_,CallbackAsyncSerial* cmd_serial_imu_,double r_min);
     void run();
     void sendcmd(const geometry_msgs::Twist& command);
     void imuCalibration(const std_msgs::Bool& calFlag);
@@ -46,13 +46,31 @@ public:
     void updateMoveFlag(const std_msgs::Bool& moveFlag);
     void updateBarDetectFlag(const std_msgs::Bool& DetectFlag);
     void updateStopFlag(const std_msgs::Int32& fastStopmsg);
-    bool checkStop();
     void UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status);
     bool dealBackSwitch();
     void send_speed();
-    void filterSpeed();
+    void UpdateSpeed();
+    void filterGoal();
     bool UpdateC4Flag(ShutdownRequest &req, ShutdownResponse &res);
     void sendHeartbag();
+    void Refresh();
+    void ResetDriver()
+    {
+      boost::mutex::scoped_lock lock(mMutex);
+      linear_x_current_ = 0;
+      theta_z_current_ = 0;
+
+      linear_x_last_ = 0;
+      theta_z_last_ = 0;
+
+      linear_x_goal_ = 0;
+      theta_z_goal_ = 0;
+      R_goal_ = 0;
+
+      acc_vx_ = acc_vx_set_;
+      acc_wz_ = acc_wz_set_;
+    }
+    void send_release();
     int speed_debug[2];
     ros::WallTime last_ordertime;
     bool DetectFlag_;
@@ -63,7 +81,8 @@ private:
     double max_wheelspeed;//单位为转每秒,只能为正数
     std::string cmd_topic;
     StatusPublisher* xq_status;
-    CallbackAsyncSerial* cmd_serial;
+    CallbackAsyncSerial* cmd_serial_car;
+    CallbackAsyncSerial* cmd_serial_imu;
     boost::mutex mMutex;
     bool MoveFlag;
     geometry_msgs::Twist  cmdTwist_;//小车自身坐标系
@@ -72,9 +91,26 @@ private:
     ros::Publisher mgalileoCmdsPub_;
     boost::mutex mStausMutex_;
     bool back_touch_falg_;
-    float linear_x_;
-    float theta_z_;
+
     float R_min_;
+
+    float linear_x_current_;
+    float theta_z_current_;
+
+    float linear_x_last_;
+    float theta_z_last_;
+
+    float linear_x_goal_;
+    float theta_z_goal_;
+    float R_goal_;
+
+    float acc_vx_max_;
+    float acc_wz_max_;
+
+    float acc_vx_;
+    float acc_wz_;
+    float acc_vx_set_;
+    float acc_wz_set_;
 };
 
 }

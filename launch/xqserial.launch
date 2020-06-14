@@ -1,18 +1,21 @@
 <launch>
   <node pkg="xqserial_server" type="xqserial_server" name="motor_driver" respawn="true" respawn_delay="10" output="screen">
     <param name="debug_flag" value="false"/>
-    <param name="wheel_separation" value="0.40"/>
-    <param name="wheel_radius" value="0.0625"/>
+    <param name="wheel_separation" value="0.42"/>
+    <param name="wheel_radius" value="0.086"/>
     <param name="max_speed" value="1.66"/>
-    <param name="port" value="/dev/ttyUSB001"/>
+    <param name="port_car" value="/dev/stm32Car"/>
+    <param name="port_imu" value="/dev/stm32Imu"/>
     <param name="power_scale" value="1.0"/>
-    <param name="tran_dist" value="0.45"/>
+    <param name="tran_dist" value="0.4"/>
     <param name="r_min" value="1.0"/>
     <param name="cmd_topic" value="/cmd_vel" />
   </node>
   <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0.15 0 0 0 1 base_footprint base_link 50">
   </node>
-  <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster1" args="0.135 -0.130 0.24 0 0 0  base_link sonar1 50"/>
-  <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster2" args="0.135 0.130 0.24 0 0 0  base_link sonar2 50"/>
+  <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster1" args="0.135 -0.130 0.44 0 0 0  base_link sonar1 50"/>
+  <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster2" args="0.135 0.130 0.44 0 0 0  base_link sonar2 50"/>
+  <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster3" args="0.135 -0.130 0.64 0 0 0  base_link sonar1 50"/>
+  <node pkg="tf" type="static_transform_publisher" name="baselinkSonar_broadcaster4" args="0.135 0.130 0.64 0 0 0  base_link sonar2 50"/>
   <node pkg="tf" type="static_transform_publisher" name="imulink_broadcaster" args="0.07 -0.03 0 0 0 0 1 base_link imu 50"/>
 </launch>

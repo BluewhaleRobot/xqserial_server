@@ -16,29 +16,37 @@
 #include <sensor_msgs/PointField.h>
 #include <sensor_msgs/Range.h>
 #include <sensor_msgs/Imu.h>
+#include <stdint.h>
+#include "crc16.h"
 
 #define PI 3.14159265
 
 namespace xqserial_server
 {
 typedef struct {
-    int status;//小车状态，0表示未初始化，1表示正常，-1表示error
-    float power;//电源电压【9 13】v
-    float theta;//方位角，【0 360）°
-    unsigned int encoder_ppr;//车轮1转对应的编码器个数
-    int encoder_delta_l;//左轮编码器增量， 个为单位
-    int encoder_delta_r;//右轮编码器增量， 个为单位
-    int encoder_delta_car;//两车轮中心位移，个为单位
-    unsigned int  upwoard;//0表示正面朝下安装，１表示正面朝上安装
-    float max_speed;//最大转速，圈每秒
-    int hbz1;//通道１红外状态，０表示正常１表示触发
-    int hbz2;//通道２红外状态，０表示正常１表示触发
-    int hbz3;//通道３红外状态，０表示正常１表示触发
-    int hbz4;//通道４红外状态，０表示正常１表示触发
-    float distance1;//第一个超声模块距离值 单位cm
-    float distance2;//第二个超声模块距离值 单位cm
-    float IMU[9];//mpu9250 9轴数据
-    unsigned int time_stamp;//时间戳
+  int status;//小车状态，0表示未初始化，1表示正常，-1表示error
+  float power;             //电源电压【9 13】v
+  float theta_imu;             //方位角，【0 360）°
+  int encoder_ppr_imu;         //车轮1转对应的编码器个数
+  int encoder_delta_r;     //右轮编码器增量， 个为单位
+  int encoder_delta_l;     //左轮编码器增量， 个为单位
+  unsigned int upwoard;    //1表示正向安装,0表示反向安装
+  unsigned int hbz_status; //红外模块状态，8421
+  float sonar_distance[4]; //超声模块距离值 单位m
+  float quat[4];          //IMU四元数
+  float IMU[9];           //IMU 9轴数据
+  unsigned int time_stamp_imu;//时间戳
+
+  float theta;
+
+  int encoder_ppr;
+  int encoder_r_current;  //右轮编码器当期读数， 个为单位
+  int encoder_l_current;  //左轮编码器当期读数， 个为单位
+  int driver_error;      //0正常，正数代表驱动器错误状态
+  int driver_error1;      //0正常，正数代表右驱动器错误状态
+  int driver_error2;      //0正常，正数代表左驱动器错误状态
+  int driver_enable1;      //0 释放 ， 1使能
+  int driver_enable2;      //0 释放， 1使能
 }UPLOAD_STATUS;
 
 class StatusPublisher
@@ -48,7 +56,18 @@ public:
     StatusPublisher();
     StatusPublisher(double separation,double radius,double power_scale);
     void Refresh();
-    void Update(const char *data, unsigned int len);
+    void ResetDriver()
+    {
+      boost::mutex::scoped_lock lock(mMutex_car);
+      car_status.driver_enable1 = 0;
+      car_status.driver_enable2 = 0;
+      car_status.encoder_r_current = 0;
+      car_status.encoder_l_current = 0;
+      encoder_r_last = 0;
+      encoder_l_last = 0;
+    }
+    void Update_car(const char *data, unsigned int len);
+    void Update_imu(const char *data, unsigned int len);
     double get_wheel_separation();
     double get_wheel_radius();
     int get_wheel_ppr();
@@ -67,10 +86,8 @@ public:
     }
     void get_canmove_flag(bool &forward_flag,bool &rot_flag);
     float get_ultrasonic_min_distance();
+
 private:
-
-
-
     //Wheel separation, wrt the midpoint of the wheel width: meters
     double wheel_separation;
 
@@ -79,27 +96,39 @@ private:
 
     sensor_msgs::Range CarSonar1;
     sensor_msgs::Range CarSonar2;
+    sensor_msgs::Range CarSonar3;
+    sensor_msgs::Range CarSonar4;
 
     geometry_msgs::Pose2D CarPos2D;//小车开始启动原点坐标系
     geometry_msgs::Twist  CarTwist;//小车自身坐标系
     std_msgs::Float64 CarPower;// 小车电池信息
     nav_msgs::Odometry CarOdom;// 小车位置和速度信息
+
     ros::NodeHandle mNH;
+
     ros::Publisher mPose2DPub;
     ros::Publisher mTwistPub;
     ros::Publisher mStatusFlagPub;
+    ros::Publisher mDriverFlagPub;
     ros::Publisher mPowerPub;
     ros::Publisher mOdomPub;
+
     ros::Publisher pub_barpoint_cloud_;
     ros::Publisher pub_clearpoint_cloud_;
+
     ros::Publisher mSonar1Pub;
     ros::Publisher mSonar2Pub;
+    ros::Publisher mSonar3Pub;
+    ros::Publisher mSonar4Pub;
     ros::Publisher mIMUPub;
     sensor_msgs::Imu  CarIMU;
 
-    bool mbUpdated;
-    double  distances_[2];
-    boost::mutex mMutex;
+    bool mbUpdated_imu;
+    bool mbUpdated_car;
+    double  distances_[4];
+
+    boost::mutex mMutex_car;
+    boost::mutex mMutex_imu;
 
     double power_scale_;
 
@@ -108,6 +137,14 @@ private:
 
     bool forward_flag_;
     bool rot_flag_;
+
+    int encoder_r_last;  //右轮编码器上期读数， 个为单位
+    int encoder_l_last;  //左轮编码上期读数， 个为单位
+
+    float yaw_deltas[100];
+    int yaw_index;
+    float yaw_sum;
+    float yaw_omega;
 };
 
 } //namespace xqserial_server

@@ -53,7 +53,7 @@ include_directories(
   ${JSONCPP_INCLUDE_DIRS}
 )
 
-set(SRCS src/main.cpp src/AsyncSerial.cpp src/DiffDriverController.cpp src/StatusPublisher.cpp)
+set(SRCS src/main.cpp src/AsyncSerial.cpp src/DiffDriverController.cpp src/StatusPublisher.cpp src/crc16.cpp)
 add_executable(${PROJECT_NAME} ${SRCS})
 add_dependencies(
   ${PROJECT_NAME}

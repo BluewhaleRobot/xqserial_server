@@ -28,16 +28,23 @@ int main(int argc, char **argv)
     ros::start();
 
     //获取串口参数
-    std::string port;
-    ros::param::param<std::string>("~port", port, "/dev/ttyUSB0");
-    int baud;
-    ros::param::param<int>("~baud", baud, 115200);
-    cout<<"port:"<<port<<" baud:"<<baud<<endl;
+    std::string port_car;
+    ros::param::param<std::string>("~port_car", port_car, "/dev/stm32Car");
+    int baud_car;
+    ros::param::param<int>("~baud_car", baud_car, 115200);
+    cout<<"port_car:"<<port_car<<" baud_car:"<<baud_car<<endl;
+
+    std::string port_imu;
+    ros::param::param<std::string>("~port_imu", port_imu, "/dev/stm32Imu");
+    int baud_imu;
+    ros::param::param<int>("~baud_imu", baud_imu, 115200);
+    cout<<"port_imu:"<<port_imu<<" baud_car:"<<baud_imu<<endl;
+
     //获取小车机械参数
     double separation=0,radius=0;
     bool DebugFlag = false;
-    ros::param::param<double>("~wheel_separation", separation, 0.36);
-    ros::param::param<double>("~wheel_radius", radius, 0.0825);
+    ros::param::param<double>("~wheel_separation", separation, 0.42);
+    ros::param::param<double>("~wheel_radius", radius, 0.086);
     ros::param::param<bool>("~debug_flag", DebugFlag, false);
 
     double power_scale;
@@ -52,7 +59,7 @@ int main(int argc, char **argv)
     //获取小车控制参数
     double max_speed,r_min;
     string cmd_topic;
-    ros::param::param<double>("~max_speed", max_speed, 2.0);
+    ros::param::param<double>("~max_speed", max_speed, 5.0);
     ros::param::param<double>("~r_min", r_min, 0.5);
     ros::param::param<std::string>("~cmd_topic", cmd_topic, "cmd_vel");
 
@@ -62,122 +69,135 @@ int main(int argc, char **argv)
     ros::Publisher audio_pub = mNH.advertise<std_msgs::String>("/xiaoqiang_tts/text", 1, true);
 
     try {
-        CallbackAsyncSerial serial(port,baud);
-        serial.setCallback(boost::bind(&xqserial_server::StatusPublisher::Update,&xq_status,_1,_2));
-        xqserial_server::DiffDriverController xq_diffdriver(max_speed,cmd_topic,&xq_status,&serial,r_min);
-        boost::thread cmd2serialThread(& xqserial_server::DiffDriverController::run,&xq_diffdriver);
-        // send test flag
-        char debugFlagCmd[] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x01, 'T'};
-        if(DebugFlag){
-          std::cout << "Debug mode Enabled" << std::endl;
-          serial.write(debugFlagCmd, 5);
-        }
-        // send reset cmd
-        char resetCmd[] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x01, 'I'};
-        serial.write(resetCmd, 5);
+      CallbackAsyncSerial serial_car(port_car,baud_car);
+      serial_car.setCallback(boost::bind(&xqserial_server::StatusPublisher::Update_car,&xq_status,_1,_2));
 
-        //下发底层红外开启命令
-        char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x01};
-        serial.write(cmd_str,6);
-        ros::Duration(5).sleep();
+      CallbackAsyncSerial serial_imu(port_imu,baud_imu);
+      serial_imu.setCallback(boost::bind(&xqserial_server::StatusPublisher::Update_imu,&xq_status,_1,_2));
 
-        ros::Rate r(50);//发布周期为50hz
-        ros::WallTime last_movetime=ros::WallTime::now();
-        static int i=0;
-        int  speak_flag =42;
-        bool speak_triger = false;
-        while (ros::ok())
+      xqserial_server::DiffDriverController xq_diffdriver(max_speed,cmd_topic,&xq_status,&serial_car,&serial_imu,r_min);
+      boost::thread cmd2serialThread(& xqserial_server::DiffDriverController::run,&xq_diffdriver);
+
+      // send reset cmd
+      char resetCmd[] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x01, 'I'};
+
+      serial_imu.write(resetCmd, 5);
+
+      ros::Duration(1).sleep();
+
+      const char driver_clear_cmd[8] = {(char)0x01,(char)0x06,(char)0x46,(char)0x02,(char)0x00,(char)0x00,(char)0x3d,(char)0x42}; //模式
+      const char driver_reset_cmd[8] = {(char)0x01,(char)0x06,(char)0x46,(char)0x03,(char)0x00,(char)0x01,(char)0xad,(char)0x42}; //模式
+      const char driver_read_error_cmd[8] = {(char)0x01,(char)0x43,(char)0x50,(char)0x12,(char)0x51,(char)0x12,(char)0x48,(char)0x9d}; //模式
+      const char driver_read_odom_cmd[8] = {(char)0x01,(char)0x43,(char)0x50,(char)0x04,(char)0x51,(char)0x04,(char)0x28,(char)0x97}; //模式
+      const char driver_read_enable_cmd[8] = {(char)0x01,(char)0x43,(char)0x21,(char)0x00,(char)0x31,(char)0x00,(char)0x5b,(char)0xa9}; //模式
+      ros::Rate r(50);//发布周期为50hz
+      ros::WallTime last_movetime=ros::WallTime::now();
+      static int i = 0;
+      static int clear_try = 0;
+      while (ros::ok())
+      {
+        if(serial_car.errorStatus() || serial_car.isOpen()==false)
         {
-            if(serial.errorStatus() || serial.isOpen()==false)
-            {
-                cerr<<"Error: serial port closed unexpectedly"<<endl;
-                break;
-            }
-            xq_status.Refresh();//定时发布状态
-
-            if(i%50==0 && xq_diffdriver.DetectFlag_)
-            {
-              //下发底层红外开启命令
-              char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x01};
-              serial.write(cmd_str,6);
-            }
-            if(i%100 == 0)
-            {
-              //每隔2秒下发心跳包
-              xq_diffdriver.sendHeartbag();
-            }
-            if(i%5==0)
-            {
-              if(!xq_diffdriver.checkStop())
-              {
-                last_movetime=ros::WallTime::now();
-                if(speak_triger)
-                {
-                  //感谢合作
-                  speak_triger = false;
-                  std_msgs::String audio_msg;
-                  audio_msg.data = "谢谢！";
-                  //audio_pub.publish(audio_msg);
-                }
-                speak_flag = 42;
-              }
-              else
-              {
-                ros::WallDuration t_diff = ros::WallTime::now() - last_movetime;
-                if(t_diff.toSec()>0.1 && t_diff.toSec()<7 )
-                {
-                  //提示障碍物
-                  speak_flag --;
-                  if(speak_flag==41)
-                  {
-                    std_msgs::String audio_msg;
-                    //audio_msg.data = "请让开一下，谢谢！";
-                    //audio_pub.publish(audio_msg);
-
-                    speak_triger = true;
-                  }
-                  if(speak_flag<1) speak_flag = 42;
-                }
-                else if(t_diff.toSec()>7)
-                {
-                  last_movetime=ros::WallTime::now();
-                }
-              }
-            }
-
-            //更新按钮
-            if(xq_diffdriver.dealBackSwitch())
-            {
-              //告诉用户回去了
-              std_msgs::String audio_msg;
-              audio_msg.data = "好的，我回去了，您慢用！";
-              audio_pub.publish(audio_msg);
-            }
-
-            i++;
-            r.sleep();
-            //cout<<"run"<<endl;
+            cerr<<"Error: serial port closed unexpectedly"<<endl;
+            break;
         }
 
-        quit:
-        serial.close();
+        if(i%100 == 0)
+        {
+          //每隔2秒下发心跳包
+          xq_diffdriver.sendHeartbag();
+        }
+        
+        serial_car.write(driver_read_odom_cmd,8);
+        usleep(5000);//延时5MS，等待数据上传
+        xq_status.Refresh();//定时发布状态
+        if(i%2==0)
+        {
+          xq_diffdriver.Refresh();//更新驱动速度 25hz
+        }
+        //如果驱动器有报警，需要清除报警，清除报警3次后都恢复不了，就重启驱动器
+        if(xq_status.car_status.driver_error != 0 && i%10==0)
+        {
+          if(clear_try<3)
+          {
+            //清除错误
+            ROS_ERROR("clear motor driver error! %d %d ",xq_status.car_status.driver_error1, xq_status.car_status.driver_error2);
+            serial_car.write(driver_clear_cmd,8);
+            usleep(2000);//延时2MS
+            serial_car.write(driver_read_error_cmd,8);
+            clear_try ++;
+          }
+          else
+          {
+            //复位，需要重置一些状态
+            ROS_ERROR("reset motor driver ! %d %d ",xq_status.car_status.driver_error1, xq_status.car_status.driver_error2);
+            serial_car.write(driver_reset_cmd,8);
+            xq_status.ResetDriver();
+            xq_diffdriver.ResetDriver();
+            clear_try = 0;
+          }
+        }
+        else
+        {
+          clear_try = 0;
+        }
+
+        if(i%25==0)
+        {
+          //读取驱动器状态
+          serial_car.write(driver_read_enable_cmd,8);
+          usleep(2000);//延时2MS
+          serial_car.write(driver_read_error_cmd,8);
+        }
+
+        //更新按钮
+        if(xq_diffdriver.dealBackSwitch())
+        {
+          //告诉用户回去了
+          std_msgs::String audio_msg;
+          audio_msg.data = "好的，我回去了，您慢用！";
+          audio_pub.publish(audio_msg);
+        }
+        i++;
+        r.sleep();
+      }
+      quit:
+        serial_car.close();
+        serial_imu.close();
 
     } catch (std::exception& e) {
-      ROS_ERROR_STREAM("Open " << port << " failed.");
+      ROS_ERROR_STREAM("Open " << port_car << " or "<< port_imu << " failed.");
       ROS_ERROR_STREAM("Exception: " << e.what());
       // 检查串口设备是否存在
-      if (!exists(port))
+      if (!exists(port_car))
       {
           // 发送语音提示消息
           std_msgs::String audio_msg;
-          audio_msg.data = "未发现底盘串口，请检查串口连接";
+          audio_msg.data = "未发现电机串口，请检查串口连接";
           audio_pub.publish(audio_msg);
           xiaoqiang_log::LogRecord log_record;
           log_record.collection_name = "exception";
           log_record.stamp = ros::Time::now();
           Json::Value record;
           record["type"] = "HARDWARE_ERROR";
-          record["info"] = "底盘串口设备未找到: " + port;
+          record["info"] = "电机串口设备未找到: " + port_car;
+          Json::FastWriter fastWriter;
+          log_record.record = fastWriter.write(record);
+          // 发送日志消息
+          log_pub.publish(log_record);
+      }
+      if (!exists(port_imu))
+      {
+          // 发送语音提示消息
+          std_msgs::String audio_msg;
+          audio_msg.data = "未发现传感器串口，请检查串口连接";
+          audio_pub.publish(audio_msg);
+          xiaoqiang_log::LogRecord log_record;
+          log_record.collection_name = "exception";
+          log_record.stamp = ros::Time::now();
+          Json::Value record;
+          record["type"] = "HARDWARE_ERROR";
+          record["info"] = "传感器串口设备未找到: " + port_imu;
           Json::FastWriter fastWriter;
           log_record.record = fastWriter.write(record);
           // 发送日志消息
