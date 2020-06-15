@@ -107,7 +107,7 @@ int main(int argc, char **argv)
           //每隔2秒下发心跳包
           xq_diffdriver.sendHeartbag();
         }
-        
+
         serial_car.write(driver_read_odom_cmd,8);
         usleep(5000);//延时5MS，等待数据上传
         xq_status.Refresh();//定时发布状态
@@ -161,6 +161,8 @@ int main(int argc, char **argv)
         i++;
         r.sleep();
       }
+      xq_diffdriver.send_release();
+      usleep(2000);//延时2MS
       quit:
         serial_car.close();
         serial_imu.close();
@@ -206,7 +208,6 @@ int main(int argc, char **argv)
       ros::shutdown();
       return 1;
     }
-
     ros::shutdown();
     return 0;
 }

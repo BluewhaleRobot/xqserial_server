@@ -145,7 +145,7 @@ void StatusPublisher::Update_car(const char data[], unsigned int len)
         {
           continue;
         }
-        ROS_ERROR("receive one package!");
+        //ROS_ERROR("receive one package!");
         //有效包，开始提取数据
         {
           //右1 左2
@@ -273,7 +273,7 @@ void StatusPublisher::Update_imu(const char data[], unsigned int len)
                           }
                       }
                     }
-
+                    //ROS_ERROR("status %d",car_status.status);
                     // if (mbUpdated_imu)
                     // {
                     //   base_time_ = ros::Time::now().toSec();
@@ -296,6 +296,7 @@ void StatusPublisher::Refresh()
     ii++;
     int delta_encoder_r = 0;
     int delta_encoder_l = 0;
+    //ROS_ERROR("car imu %d %d",mbUpdated_imu, mbUpdated_car);
     //先处理驱动器
     {
       boost::mutex::scoped_lock lock(mMutex_car);
@@ -321,8 +322,6 @@ void StatusPublisher::Refresh()
         delta_encoder_r = delta_encoder_r + car_status.encoder_ppr;
       }
 
-      delta_encoder_r = -delta_encoder_r; //右侧电机反向
-
       if(delta_encoder_l>2000)
       {
         delta_encoder_l = delta_encoder_l - car_status.encoder_ppr;
@@ -331,6 +330,10 @@ void StatusPublisher::Refresh()
       {
         delta_encoder_l = delta_encoder_l + car_status.encoder_ppr;
       }
+
+      delta_encoder_l = -delta_encoder_l; //左侧电机反向
+
+      //ROS_ERROR("delta_encoder_r delta_encoder_l %d %d, car_status.encoder_r_current car_status.encoder_l_current %d %d",delta_encoder_r, delta_encoder_l,car_status.encoder_r_current,car_status.encoder_l_current);
       mbUpdated_car = false;
     }
 
@@ -358,12 +361,14 @@ void StatusPublisher::Refresh()
           yaw_index = 0;
           yaw_omega_ready = false;
           delta_theta = 0;
+          delta_encoder_r = 0;
+          delta_encoder_l = 0;
         }
         else
         {
           delta_theta = car_status.theta_imu - theta_last - yaw_omega;
-
-          if( std::fabs(car_status.theta_imu - theta_last)<0.01 && car_status.encoder_delta_r == 0 && car_status.encoder_delta_l == 0)
+          //ROS_ERROR("delta %f , theta_raw %f, yaw_omega %f", delta_theta, car_status.theta_imu,yaw_omega);
+          if( std::fabs(car_status.theta_imu - theta_last)<0.01 && std::fabs(delta_encoder_r) < 2 && std::fabs(delta_encoder_l) < 2)
           {
             if(update_nums>50)
             {
@@ -381,6 +386,8 @@ void StatusPublisher::Refresh()
               }
 
               if(yaw_omega_ready) yaw_omega = yaw_sum/100.0;
+
+              //ROS_ERROR("delta_yaw %f ,  yaw_omega %f", car_status.theta_imu - theta_last,yaw_omega);
             }
             else
             {
@@ -433,10 +440,10 @@ void StatusPublisher::Refresh()
         std_msgs::Int32 flag;
         flag.data=car_status.status;
         //底层障碍物信息
-        if(car_status.hbz_status>0)
+        if(car_status.hbz_status>0 && car_status.status > 0)
         {
           //有障碍物
-          flag.data=car_status.hbz_status;
+          flag.data=car_status.hbz_status + 1;
         }
         mStatusFlagPub.publish(flag);
 
@@ -561,10 +568,10 @@ void StatusPublisher::Refresh()
         mIMUPub.publish(CarIMU);
 
         //超声波测距
-        static float distance1_sums[8]={0,0,0,0,0,0,0,0},distance1_sum=0;
-        static float distance2_sums[8]={0,0,0,0,0,0,0,0},distance2_sum=0;
-        static float distance3_sums[8]={0,0,0,0,0,0,0,0},distance3_sum=0;
-        static float distance4_sums[8]={0,0,0,0,0,0,0,0},distance4_sum=0;
+        static float distance1_sums[8]={4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0},distance1_sum=8.0;
+        static float distance2_sums[8]={4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0},distance2_sum=8.0;
+        static float distance3_sums[8]={4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0},distance3_sum=8.0;
+        static float distance4_sums[8]={4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0},distance4_sum=8.0;
         static int distance_sum_index=0,distance_sum_i=0;
 
         if(distance_sum_i%5==0)
@@ -602,7 +609,11 @@ void StatusPublisher::Refresh()
            CarSonar1.header.stamp = current_time;
            CarSonar1.range = distances_[0];
            mSonar1Pub.publish(CarSonar1);
-           if(distances_[0]<tran_dist_ && forward_flag_) forward_flag_ = false;
+           if(distances_[0]<tran_dist_ && forward_flag_)
+           {
+             forward_flag_ = false;
+             ROS_DEBUG("sonar1 %f",distances_[0]);
+           }
           }
 
           if(distances_[1]>0.1)
@@ -610,7 +621,11 @@ void StatusPublisher::Refresh()
            CarSonar2.header.stamp = current_time;
            CarSonar2.range = distances_[1];
            mSonar2Pub.publish(CarSonar2);
-           if(distances_[1]<tran_dist_ && forward_flag_) forward_flag_ = false;
+           if(distances_[1]<tran_dist_ && forward_flag_)
+           {
+             forward_flag_ = false;
+             ROS_DEBUG("sonar2 %f",distances_[1]);
+           }
           }
 
           if(distances_[2]>0.1)
@@ -618,7 +633,11 @@ void StatusPublisher::Refresh()
            CarSonar3.header.stamp = current_time;
            CarSonar3.range = distances_[2];
            mSonar3Pub.publish(CarSonar3);
-           if(distances_[3]<tran_dist_ && forward_flag_) forward_flag_ = false;
+           if(distances_[2]<tran_dist_ && forward_flag_)
+           {
+             forward_flag_ = false;
+             ROS_DEBUG("sonar3 %f",distances_[2]);
+           }
           }
 
           if(distances_[3]>0.1)
@@ -626,7 +645,11 @@ void StatusPublisher::Refresh()
            CarSonar4.header.stamp = current_time;
            CarSonar4.range = distances_[3];
            mSonar4Pub.publish(CarSonar4);
-           if(distances_[4]<tran_dist_ && forward_flag_) forward_flag_ = false;
+           if(distances_[3]<tran_dist_ && forward_flag_)
+           {
+             forward_flag_ = false;
+             ROS_DEBUG("sonar4 %f",distances_[3]);
+           }
           }
         }
         distance_sum_i++;

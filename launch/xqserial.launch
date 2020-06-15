@@ -6,7 +6,7 @@
     <param name="max_speed" value="1.66"/>
     <param name="port_car" value="/dev/stm32Car"/>
     <param name="port_imu" value="/dev/stm32Imu"/>
-    <param name="power_scale" value="1.0"/>
+    <param name="power_scale" value="1.024"/>
     <param name="tran_dist" value="0.4"/>
     <param name="r_min" value="1.0"/>
     <param name="cmd_topic" value="/cmd_vel" />

@@ -181,6 +181,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     boost::mutex::scoped_lock lock(mMutex);
     linear_x_goal_ = command.linear.x ;
     theta_z_goal_ = command.angular.z;
+
     last_ordertime=ros::WallTime::now();
     if(std::fabs(linear_x_goal_)<=0.01 || std::fabs(theta_z_goal_)<=0.01)
     {
@@ -190,7 +191,6 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     {
       R_goal_ = linear_x_goal_/theta_z_goal_;
     }
-
     {
       //建图时过滤转弯半径
       boost::mutex::scoped_lock lock(mStausMutex_);
@@ -208,7 +208,10 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
         }
       }
     }
+    //ROS_ERROR("speed3 %f %f, %f",linear_x_goal_,theta_z_goal_,R_goal_);
+
     this->filterGoal();
+    //ROS_ERROR("speed4 %f %f, %f",linear_x_goal_,theta_z_goal_,R_goal_);
 }
 
 void DiffDriverController::send_speed()
@@ -245,7 +248,7 @@ void DiffDriverController::send_speed()
   int16_t left_speed_;
   int16_t right_speed_;
 
-  right_speed_ = -(int16_t)(speed_temp[0]*max_wheelspeed*60/100.0f); //右侧电机反向
+  right_speed_ = -(int16_t)(speed_temp[0]*max_wheelspeed*60/100.0f);
   left_speed_ = (int16_t)(speed_temp[1]*max_wheelspeed*60/100.0f);
 
   if(NULL!=cmd_serial_car)
@@ -264,6 +267,8 @@ void DiffDriverController::send_speed()
     xqserial_server::CRC16CheckSum((unsigned char *)speed_cmd, 10, crc_hl);
     speed_cmd[10] = crc_hl[0];
     speed_cmd[11] = crc_hl[1];
+    //ROS_ERROR("speed %f %f %d %d",linear_x_current_,theta_z_current_,right_speed_,left_speed_);
+    //ROS_ERROR("one package %d %d %d %d %d %d",speed_cmd[6],speed_cmd[7],speed_cmd[8],speed_cmd[9],speed_cmd[10],speed_cmd[11] );
     cmd_serial_car->write(speed_cmd,12);
   }
 
@@ -356,17 +361,19 @@ void DiffDriverController::filterGoal()
   //超声波减速
   float bar_distance = xq_status->get_ultrasonic_min_distance();
   if(!DetectFlag_) bar_distance = 4.2;
-
+  //ROS_ERROR("speed1.0.0 %f %f",linear_x_goal_,theta_z_goal_);
   if(bar_distance<=2.2 && linear_x_goal_ > 0)
   {
     //负值不用限制,正值不能超过安全刹车距离
     vx_temp = std::min(vx_temp,(float)std::sqrt((bar_distance-0.2)*acc_vx_set_*2));
+    //ROS_ERROR("speed1.0 %f ",vx_temp);
   }
 
   if (!MoveFlag || stopFlag_)
   {
     vx_temp = 0.;
     //vtheta_temp = 0.;
+    //ROS_ERROR("speed1.1 ");
   }
 
   //超声波避障
@@ -377,6 +384,7 @@ void DiffDriverController::filterGoal()
     if(!forward_flag && vx_temp>0.01)
     {
       vx_temp = 0.;
+      //ROS_ERROR("speed1.2");
     }
     if(!rot_flag)
     {
@@ -387,12 +395,12 @@ void DiffDriverController::filterGoal()
   linear_x_goal_ = vx_temp;
   if(std::fabs(R_goal_)>0.001)
   {
-    theta_z_goal_ = linear_x_goal_ * R_goal_; //确保运动半径不变
+    theta_z_goal_ = linear_x_goal_/R_goal_; //确保运动半径不变
   }
   else{
     theta_z_goal_ = vtheta_temp;
   }
-
+  //ROS_ERROR("speed1.3 %f %f",linear_x_goal_,theta_z_goal_);
 }
 
 void DiffDriverController::UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status)
