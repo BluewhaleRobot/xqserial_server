@@ -162,7 +162,7 @@ int main(int argc, char **argv)
         r.sleep();
       }
       xq_diffdriver.send_release();
-      usleep(2000);//延时2MS
+      usleep(10000);//延时10MS
       quit:
         serial_car.close();
         serial_imu.close();

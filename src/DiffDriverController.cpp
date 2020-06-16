@@ -52,10 +52,10 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
     acc_vx_max_ = 5.0;
     acc_wz_max_ = 21.0;
 
-    acc_vx_ = 1.0;
-    acc_wz_ = 6.0;
-    acc_vx_set_ = 1.0;
-    acc_wz_set_ = 6.0;
+    acc_vx_ = 0.7;
+    acc_wz_ = 3.0;
+    acc_vx_set_ = 0.7; //1.0
+    acc_wz_set_ = 3.0; //6.0
 
 }
 
@@ -109,6 +109,7 @@ bool DiffDriverController::UpdateC4Flag(ShutdownRequest &req, ShutdownResponse &
     {
         cmd_serial_imu->write(cmd_str,6);
     }
+    this->send_release();
     ROS_WARN_STREAM("Send shutdown command to driver");
     res.result = true;
   }
@@ -318,7 +319,7 @@ void DiffDriverController::UpdateSpeed()
   if(bar_distance<=2.2 && bar_distance>0.1 && linear_x_goal_ < linear_x_last_ && linear_x_last_>0)
   {
     //减速过程中，如果速度还是正值，需要确保在障碍物之前减速完成。
-    acc_vx_min_temp = std::min(acc_vx_max_, (float)std::sqrt(linear_x_last_*linear_x_last_/2.0/bar_distance));
+    acc_vx_min_temp = std::min(acc_vx_max_, (float)(linear_x_last_*linear_x_last_/2.0/std::max(bar_distance-0.2,0.1)));
   }
 
   acc_vx_ = std::max(acc_vx_set_,acc_vx_min_temp); //当前需要的加速度
@@ -365,8 +366,8 @@ void DiffDriverController::filterGoal()
   if(bar_distance<=2.2 && linear_x_goal_ > 0)
   {
     //负值不用限制,正值不能超过安全刹车距离
-    vx_temp = std::min(vx_temp,(float)std::sqrt((bar_distance-0.2)*acc_vx_set_*2));
-    //ROS_ERROR("speed1.0 %f ",vx_temp);
+    vx_temp = std::min(vx_temp,(float)std::sqrt(std::max(bar_distance-0.3,0.0)*acc_vx_set_*2));
+    //ROS_ERROR("speed1.0 %f ,%f %f",bar_distance,vx_temp, linear_x_goal_);
   }
 
   if (!MoveFlag || stopFlag_)

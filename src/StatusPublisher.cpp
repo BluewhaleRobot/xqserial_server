@@ -574,33 +574,37 @@ void StatusPublisher::Refresh()
         static float distance4_sums[8]={4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0},distance4_sum=8.0;
         static int distance_sum_index=0,distance_sum_i=0;
 
-        if(distance_sum_i%5==0)
+        if(distance_sum_i%10==0)
         {
           //平滑
           forward_flag_ = true;
-          distance1_sum -=distance1_sums[distance_sum_index];
-          distance1_sums[distance_sum_index] = car_status.sonar_distance[0];
-          distance1_sum +=distance1_sums[distance_sum_index];
+          // distance1_sum -=distance1_sums[distance_sum_index];
+          // distance1_sums[distance_sum_index] = car_status.sonar_distance[0];
+          // distance1_sum +=distance1_sums[distance_sum_index];
+          //
+          // distance2_sum -=distance2_sums[distance_sum_index];
+          // distance2_sums[distance_sum_index] = car_status.sonar_distance[1];
+          // distance2_sum +=distance2_sums[distance_sum_index];
+          //
+          // distance3_sum -=distance3_sums[distance_sum_index];
+          // distance3_sums[distance_sum_index] = car_status.sonar_distance[2];
+          // distance3_sum +=distance3_sums[distance_sum_index];
+          //
+          // distance4_sum -=distance4_sums[distance_sum_index];
+          // distance4_sums[distance_sum_index] = car_status.sonar_distance[3];
+          // distance4_sum +=distance4_sums[distance_sum_index];
+          //
+          // distance_sum_index++;
+          // if(distance_sum_index>1) distance_sum_index = 0;
 
-          distance2_sum -=distance2_sums[distance_sum_index];
-          distance2_sums[distance_sum_index] = car_status.sonar_distance[1];
-          distance2_sum +=distance2_sums[distance_sum_index];
-
-          distance3_sum -=distance3_sums[distance_sum_index];
-          distance3_sums[distance_sum_index] = car_status.sonar_distance[2];
-          distance3_sum +=distance3_sums[distance_sum_index];
-
-          distance4_sum -=distance4_sums[distance_sum_index];
-          distance4_sums[distance_sum_index] = car_status.sonar_distance[3];
-          distance4_sum +=distance4_sums[distance_sum_index];
-
-          distance_sum_index++;
-          if(distance_sum_index>1) distance_sum_index = 0;
-
-          distances_[0] = distance1_sum/2.0f;
-          distances_[1] = distance2_sum/2.0f;
-          distances_[2] = distance3_sum/2.0f;
-          distances_[3] = distance4_sum/2.0f;
+          // distances_[0] = distance1_sum/2.0f;
+          // distances_[1] = distance2_sum/2.0f;
+          // distances_[2] = distance3_sum/2.0f;
+          // distances_[3] = distance4_sum/2.0f;
+          distances_[0] = car_status.sonar_distance[0];
+          distances_[1] = car_status.sonar_distance[1];
+          distances_[2] = car_status.sonar_distance[2];
+          distances_[3] = car_status.sonar_distance[3];
 
           //std::cout<<" " << car_status.distance1 << " " << car_status.distance2<<std::endl;
            //发布超声波topic
@@ -612,7 +616,7 @@ void StatusPublisher::Refresh()
            if(distances_[0]<tran_dist_ && forward_flag_)
            {
              forward_flag_ = false;
-             ROS_DEBUG("sonar1 %f",distances_[0]);
+             //ROS_ERROR("sonar1 %f",distances_[0]);
            }
           }
 
@@ -624,7 +628,7 @@ void StatusPublisher::Refresh()
            if(distances_[1]<tran_dist_ && forward_flag_)
            {
              forward_flag_ = false;
-             ROS_DEBUG("sonar2 %f",distances_[1]);
+             //ROS_ERROR("sonar2 %f",distances_[1]);
            }
           }
 
@@ -636,7 +640,7 @@ void StatusPublisher::Refresh()
            if(distances_[2]<tran_dist_ && forward_flag_)
            {
              forward_flag_ = false;
-             ROS_DEBUG("sonar3 %f",distances_[2]);
+             //ROS_ERROR("sonar3 %f",distances_[2]);
            }
           }
 
@@ -648,9 +652,19 @@ void StatusPublisher::Refresh()
            if(distances_[3]<tran_dist_ && forward_flag_)
            {
              forward_flag_ = false;
-             ROS_DEBUG("sonar4 %f",distances_[3]);
+             //ROS_ERROR("sonar4 %f",distances_[3]);
            }
           }
+           //ROS_ERROR("forward_flag_ %d %f %f",(int)forward_flag_,distances_[1],car_status.sonar_distance[1]);
+        }
+        else
+        {
+          //匀减速模型
+          const float dt = 0.02;
+          distances_[0] = distances_[0] - CarTwist.linear.x*dt;
+          distances_[1] = distances_[1] - CarTwist.linear.x*dt;
+          distances_[2] = distances_[2] - CarTwist.linear.x*dt;
+          distances_[3] = distances_[3] - CarTwist.linear.x*dt;
         }
         distance_sum_i++;
 
@@ -699,7 +713,7 @@ void StatusPublisher::Refresh()
           {
             for(int k=0;k<5;k++,++bariter_x, ++bariter_y,++bariter_z)
             {
-              *bariter_x=0.2+0.2;
+              *bariter_x=0.1+0.2;
               *bariter_y=k*0.04;
               *bariter_z=0.15;
             }
@@ -709,7 +723,7 @@ void StatusPublisher::Refresh()
           {
             for(int k=0;k<5;k++,++bariter_x, ++bariter_y,++bariter_z)
             {
-              *bariter_x=0.2+0.2;
+              *bariter_x=0.1+0.2;
               *bariter_y=-k*0.04;
               *bariter_z=0.15;
             }
@@ -738,13 +752,13 @@ void StatusPublisher::Refresh()
           {
             for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.2+0.2;
+              *cleariter_x=0.1+0.2;
               *cleariter_y=k*0.04;
               *cleariter_z=0.0;
             }
             for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.15+0.2;
+              *cleariter_x=0.05+0.2;
               *cleariter_y=k*0.04;
               *cleariter_z=0.0;
             }
@@ -753,13 +767,13 @@ void StatusPublisher::Refresh()
           {
             for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.2+0.2;
+              *cleariter_x=0.1+0.2;
               *cleariter_y=-k*0.04;
               *cleariter_z=0.0;
             }
             for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.15+0.2;
+              *cleariter_x=0.05+0.2;
               *cleariter_y=-k*0.04;
               *cleariter_z=0.0;
             }
