@@ -714,7 +714,7 @@ void StatusPublisher::Refresh()
             for(int k=0;k<5;k++,++bariter_x, ++bariter_y,++bariter_z)
             {
               *bariter_x=0.1+0.2;
-              *bariter_y=k*0.04;
+              *bariter_y=k*0.04+0.15;
               *bariter_z=0.15;
             }
           }
@@ -724,7 +724,7 @@ void StatusPublisher::Refresh()
             for(int k=0;k<5;k++,++bariter_x, ++bariter_y,++bariter_z)
             {
               *bariter_x=0.1+0.2;
-              *bariter_y=-k*0.04;
+              *bariter_y=-k*0.04-0.15;
               *bariter_z=0.15;
             }
           }
@@ -753,13 +753,13 @@ void StatusPublisher::Refresh()
             for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
               *cleariter_x=0.1+0.2;
-              *cleariter_y=k*0.04;
+              *cleariter_y=k*0.04+0.15;
               *cleariter_z=0.0;
             }
             for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
               *cleariter_x=0.05+0.2;
-              *cleariter_y=k*0.04;
+              *cleariter_y=k*0.04+0.15;
               *cleariter_z=0.0;
             }
           }
@@ -768,13 +768,13 @@ void StatusPublisher::Refresh()
             for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
               *cleariter_x=0.1+0.2;
-              *cleariter_y=-k*0.04;
+              *cleariter_y=-k*0.04-0.15;
               *cleariter_z=0.0;
             }
             for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
               *cleariter_x=0.05+0.2;
-              *cleariter_y=-k*0.04;
+              *cleariter_y=-k*0.04-0.15;
               *cleariter_z=0.0;
             }
           }

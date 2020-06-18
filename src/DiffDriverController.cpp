@@ -370,7 +370,7 @@ void DiffDriverController::filterGoal()
     //ROS_ERROR("speed1.0 %f ,%f %f",bar_distance,vx_temp, linear_x_goal_);
   }
 
-  if (!MoveFlag || stopFlag_)
+  if ((!MoveFlag || stopFlag_) && vx_temp>0.01)
   {
     vx_temp = 0.;
     //vtheta_temp = 0.;
