@@ -42,6 +42,6 @@ if __name__ == "__main__":
         mPose = Pose2D()
         pose_pub.publish(mPose)
         mPower = Float64()
-        mPower.data = 11.0
+        mPower.data = 38.0
         power_pub.publish(mPower)
         rate.sleep()
