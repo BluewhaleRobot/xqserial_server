@@ -56,6 +56,10 @@ int main(int argc, char **argv)
     ros::param::param<double>("~r_min", r_min, 0.5);
     ros::param::param<std::string>("~cmd_topic", cmd_topic, "cmd_vel");
 
+    double angle_limit,x_limit,y_limit;
+    ros::param::param<double>("~angle_limit", angle_limit, 1.6);
+    ros::param::param<double>("~x_limit", x_limit, 1.2);
+    ros::param::param<double>("~y_limit", y_limit, 0.5);
     // 初始化log发布者和语音发布者
     ros::NodeHandle mNH;
     ros::Publisher log_pub = mNH.advertise<xiaoqiang_log::LogRecord>("/xiaoqiang_log", 1, true);
@@ -65,6 +69,7 @@ int main(int argc, char **argv)
         CallbackAsyncSerial serial(port,baud);
         serial.setCallback(boost::bind(&xqserial_server::StatusPublisher::Update,&xq_status,_1,_2));
         xqserial_server::DiffDriverController xq_diffdriver(max_speed,cmd_topic,&xq_status,&serial,r_min);
+        xq_diffdriver.setBarParams(angle_limit,tran_dist,x_limit,y_limit);
         boost::thread cmd2serialThread(& xqserial_server::DiffDriverController::run,&xq_diffdriver);
         // send test flag
         char debugFlagCmd[] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x01, 'T'};
@@ -76,16 +81,11 @@ int main(int argc, char **argv)
         char resetCmd[] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x01, 'I'};
         serial.write(resetCmd, 5);
 
-        //下发底层红外开启命令
-        char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x01};
-        serial.write(cmd_str,6);
         ros::Duration(5).sleep();
 
         ros::Rate r(50);//发布周期为50hz
         ros::WallTime last_movetime=ros::WallTime::now();
         static int i=0;
-        int  speak_flag =42;
-        bool speak_triger = false;
         while (ros::ok())
         {
             if(serial.errorStatus() || serial.isOpen()==false)
@@ -95,54 +95,15 @@ int main(int argc, char **argv)
             }
             xq_status.Refresh();//定时发布状态
 
-            if(i%50==0 && xq_diffdriver.DetectFlag_)
+            if(i%2==0)
             {
-              //下发底层红外开启命令
-              char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x01};
-              serial.write(cmd_str,6);
+              xq_diffdriver.Refresh();//更新驱动速度 25hz
             }
+
             if(i%100 == 0)
             {
               //每隔2秒下发心跳包
               xq_diffdriver.sendHeartbag();
-            }
-            if(i%5==0)
-            {
-              if(!xq_diffdriver.checkStop())
-              {
-                last_movetime=ros::WallTime::now();
-                if(speak_triger)
-                {
-                  //感谢合作
-                  speak_triger = false;
-                  std_msgs::String audio_msg;
-                  audio_msg.data = "谢谢！";
-                  //audio_pub.publish(audio_msg);
-                }
-                speak_flag = 42;
-              }
-              else
-              {
-                ros::WallDuration t_diff = ros::WallTime::now() - last_movetime;
-                if(t_diff.toSec()>0.1 && t_diff.toSec()<7 )
-                {
-                  //提示障碍物
-                  speak_flag --;
-                  if(speak_flag==41)
-                  {
-                    std_msgs::String audio_msg;
-                    //audio_msg.data = "请让开一下，谢谢！";
-                    //audio_pub.publish(audio_msg);
-
-                    speak_triger = true;
-                  }
-                  if(speak_flag<1) speak_flag = 42;
-                }
-                else if(t_diff.toSec()>7)
-                {
-                  last_movetime=ros::WallTime::now();
-                }
-              }
             }
 
             //更新按钮
@@ -153,10 +114,8 @@ int main(int argc, char **argv)
               audio_msg.data = "好的，我回去了，您慢用！";
               audio_pub.publish(audio_msg);
             }
-
             i++;
             r.sleep();
-            //cout<<"run"<<endl;
         }
 
         quit:
