@@ -81,6 +81,8 @@ public:
       tran_dist_ = tran_dist;
       x_limit_ = x_limit;
       y_limit_ = y_limit;
+      scan_min_dist_ = x_limit_*2;
+      move_forward_flag_ = true;
     }
 
     int speed_debug[2];

@@ -46,8 +46,8 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
     theta_z_goal_ = 0;
     R_goal_ = 0;
 
-    acc_vx_max_ = 2.0;
-    acc_wz_max_ = 10.0;
+    acc_vx_max_ = 4.0;
+    acc_wz_max_ = 20.0;
 
     acc_vx_ = 0.4;
     acc_wz_ = 1.7;
@@ -85,6 +85,9 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
       T_laserscan_.push_back(0.0);
     }
     last_scantime_ = ros::WallTime::now();
+
+    scan_min_dist_ = x_limit_*2;
+    move_forward_flag_ = true;
 }
 
 void DiffDriverController::run()
@@ -104,10 +107,12 @@ void DiffDriverController::run()
 void DiffDriverController::Refresh()
 {
   ros::WallDuration t_diff = ros::WallTime::now() - last_ordertime;
-  if(t_diff.toSec()<10.0 && xq_status->car_status.hbz2 ==0)
+  if(t_diff.toSec()<6.0)
   {
-    if(t_diff.toSec()>3.0 || xq_status->get_status()<=0)
+    //ROS_ERROR("oups1");
+    if(t_diff.toSec()>3.0 || xq_status->get_status()<=0 || xq_status->car_status.hbz2 ==1)
     {
+      //ROS_ERROR("oups2 %f %d %d",t_diff.toSec(),xq_status->get_status(),xq_status->car_status.hbz2);
       boost::mutex::scoped_lock lock(mMutex);
       //命令超时3秒，或者imu还在初始化
       linear_x_goal_ = 0;
@@ -117,8 +122,16 @@ void DiffDriverController::Refresh()
       acc_vx_ = acc_vx_set_;
       acc_wz_ = acc_wz_set_;
     }
+    //ROS_ERROR("oups3 %f %f, %f %f",linear_x_goal_,theta_z_goal_, linear_x_current_, theta_z_current_);
     UpdateSpeed();
+    //ROS_ERROR("oups4 %f %f, %f %f",linear_x_goal_,theta_z_goal_, linear_x_current_, theta_z_current_);
     send_speed();
+  }
+  else
+  {
+    boost::mutex::scoped_lock lock(mScanMutex_);
+    scan_min_dist_ = x_limit_*2;
+    move_forward_flag_ = true;
   }
 }
 
@@ -217,7 +230,6 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
   boost::mutex::scoped_lock lock(mMutex);
   linear_x_goal_ = command.linear.x ;
   theta_z_goal_ = command.angular.z;
-
   last_ordertime=ros::WallTime::now();
   if(std::fabs(linear_x_goal_)<=0.01 || std::fabs(theta_z_goal_)<=0.01)
   {
@@ -292,7 +304,7 @@ void DiffDriverController::send_speed()
   speed_temp[1]=scale*(speed_lin-speed_ang/2)/max_speed*100.0;
   speed_temp[1]=std::min(speed_temp[1],100.0);
   speed_temp[1]=std::max(-100.0,speed_temp[1]);
-
+  //ROS_ERROR("speed %f %f", speed_temp[0],speed_temp[1]);
   for(i=0;i<2;i++)
   {
    speed[i]=(int8_t)speed_temp[i];
@@ -318,6 +330,9 @@ void DiffDriverController::send_speed()
   {
       cmd_serial->write(cmd_str,13);
   }
+  boost::mutex::scoped_lock lock(mMutex);
+  linear_x_last_ = linear_x_current_;
+  theta_z_last_ = theta_z_current_;
 }
 
 void DiffDriverController::UpdateSpeed()
@@ -338,6 +353,7 @@ void DiffDriverController::UpdateSpeed()
   }
 
   this->filterGoal(); //过滤目标速度
+  //ROS_ERROR("linear_x_goal_ %f , %f, %f",linear_x_goal_,linear_x_last_,car_twist_now.linear.x);
   float acc_vx_min_temp = acc_vx_set_;
 
   float bar_distance = scan_min_dist_;
@@ -346,12 +362,19 @@ void DiffDriverController::UpdateSpeed()
   if(bar_distance<=2.2 && bar_distance>0.1 && linear_x_goal_ < linear_x_last_ && linear_x_last_>0)
   {
     //减速过程中，如果速度还是正值，需要确保在障碍物之前减速完成。
-    acc_vx_min_temp = std::min(acc_vx_max_, (float)(linear_x_last_*linear_x_last_/2.0/std::max(bar_distance - tran_dist_,0.1f)));
+    if((bar_distance - tran_dist_)<0.3)
+    {
+      acc_vx_min_temp = std::min(acc_vx_max_, (float)(2*car_twist_now.linear.x*car_twist_now.linear.x/2.0/std::max(bar_distance - tran_dist_,0.05f)));
+    }
+    else
+    {
+      acc_vx_min_temp = std::min(acc_vx_max_, (float)(4*car_twist_now.linear.x*car_twist_now.linear.x/2.0/std::max(bar_distance - tran_dist_,0.05f)));
+    }
   }
 
   acc_vx_ = std::max(acc_vx_set_,acc_vx_min_temp); //当前需要的加速度
   acc_wz_ = acc_wz_set_;
-
+  //ROS_ERROR("acc_vx_ %f %f %f, %f",acc_vx_,acc_vx_set_,acc_vx_max_, bar_distance);
   //确定是加速还是减速
   if(linear_x_goal_ < linear_x_last_) acc_vx_ = -acc_vx_;
   if(theta_z_goal_ < theta_z_last_) acc_wz_ = -acc_wz_;
@@ -386,6 +409,8 @@ void DiffDriverController::filterGoal()
   vx_temp = linear_x_goal_;
   vtheta_temp = theta_z_goal_;
 
+  //ROS_ERROR("oups1 %f %f, %f %f, %f",linear_x_goal_,theta_z_goal_, linear_x_current_, theta_z_current_,scan_min_dist_);
+
   //超声波减速
   float bar_distance = scan_min_dist_;
   if(!DetectFlag_) bar_distance = 4.2;
@@ -393,7 +418,14 @@ void DiffDriverController::filterGoal()
   if(bar_distance<=2.2 && linear_x_goal_ > 0)
   {
     //负值不用限制,正值不能超过安全刹车距离
-    vx_temp = std::min(vx_temp,(float)std::sqrt(std::max(bar_distance - tran_dist_,0.0f)*acc_vx_set_*2));
+    if((bar_distance - tran_dist_)<0.5)
+    {
+      vx_temp = std::min(vx_temp,(float)std::sqrt(std::max(bar_distance - tran_dist_,0.0f)*0.5*acc_vx_set_*2));
+    }
+    else
+    {
+      vx_temp = std::min(vx_temp,(float)std::sqrt(std::max(bar_distance - tran_dist_,0.0f)*0.8*acc_vx_set_*2));
+    }
     //ROS_ERROR("speed1.0 %f ,%f %f",bar_distance,vx_temp, linear_x_goal_);
   }
 
@@ -421,12 +453,22 @@ void DiffDriverController::filterGoal()
   }
 
   linear_x_goal_ = vx_temp;
-  if(std::fabs(R_goal_)>0.001)
+
+  if(std::fabs(R_goal_)>0.001 && linear_x_goal_>0.1)
   {
     theta_z_goal_ = linear_x_goal_/R_goal_; //确保运动半径不变
   }
   else{
     theta_z_goal_ = vtheta_temp;
+  }
+
+  {
+    //建图时过滤转弯半径
+    boost::mutex::scoped_lock lock(mStausMutex_);
+    if(galileoStatus_.map_status == 1 && std::fabs(R_goal_)>0.001)
+    {
+      theta_z_goal_ = linear_x_goal_/R_goal_; //确保运动半径不变
+    }
   }
   //ROS_ERROR("speed1.3 %f %f",linear_x_goal_,theta_z_goal_);
 }
@@ -509,6 +551,7 @@ bool DiffDriverController::dealBackSwitch()
 
 void DiffDriverController::updateScan(const sensor_msgs::LaserScan& scan_in)
 {
+  static ros::WallTime last_bartime_ = ros::WallTime::now();
   size_t n_pts = scan_in.ranges.size ();
   Eigen::ArrayXXd ranges (n_pts, 2);
   Eigen::ArrayXXd output (n_pts, 2);
@@ -558,7 +601,7 @@ void DiffDriverController::updateScan(const sensor_msgs::LaserScan& scan_in)
       if(std::fabs(range_k)<=x_limit_ && std::fabs(range_angle)>=angle_limit_)
       {
         //需要在之前角度和距离内
-        ROS_ERROR("x y angle : %f %f %f",x1,y1,range_angle);
+        //ROS_ERROR("x y angle : %f %f %f",x1,y1,range_angle);
         if(x1<x_limit_ && std::fabs(y1)<y_limit_)
         {
           //点在车前方观测区域
@@ -572,6 +615,18 @@ void DiffDriverController::updateScan(const sensor_msgs::LaserScan& scan_in)
     range_k_2 = range_k_1;
     range_k_1 = range_k;
   }
+  ros::WallDuration bar_time_diff = ros::WallTime::now() - last_bartime_;
+  if(scan_min_dist_<=(tran_dist_+0.1) && bar_time_diff.toSec()>0.2)
+  {
+    //ROS_ERROR("first %f %f", scan_min_dist_,bar_time_diff.toSec());
+    scan_min_dist_ = tran_dist_ + 0.1;
+  }
+
+  if(scan_min_dist_<=x_limit_)
+  {
+    last_bartime_ = ros::WallTime::now();
+  }
+  //ROS_ERROR("scan_min_dist_: %f",scan_min_dist_);
   if(scan_min_dist_<tran_dist_)
   {
     move_forward_flag_ = false;
