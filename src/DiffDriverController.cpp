@@ -52,10 +52,10 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
     acc_vx_max_ = 5.0;
     acc_wz_max_ = 21.0;
 
-    acc_vx_ = 0.7;
-    acc_wz_ = 3.0;
-    acc_vx_set_ = 0.7; //1.0
-    acc_wz_set_ = 3.0; //6.0
+    acc_vx_ = 0.4;
+    acc_wz_ = 2.0;
+    acc_vx_set_ = 0.4; //1.0
+    acc_wz_set_ = 2.0; //6.0
 
 }
 
