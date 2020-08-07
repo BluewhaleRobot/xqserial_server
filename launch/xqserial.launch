@@ -1,8 +1,8 @@
 <launch>
   <node pkg="xqserial_server" type="xqserial_server" name="motor_driver" respawn="true" respawn_delay="10" output="screen">
     <param name="debug_flag" value="false"/>
-    <param name="wheel_separation" value="0.40"/>
-    <param name="wheel_radius" value="0.051"/>
+    <param name="wheel_separation" value="0.342"/>
+    <param name="wheel_radius" value="0.065"/>
     <param name="max_speed" value="2.0"/>
     <param name="port" value="/dev/ttyUSB001"/>
     <param name="power_scale" value="1.0"/>
