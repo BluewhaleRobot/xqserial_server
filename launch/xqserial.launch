@@ -6,8 +6,8 @@
     <param name="max_speed" value="2.0"/>
     <param name="port" value="/dev/ttyUSB001"/>
     <param name="power_scale" value="1.0"/>
-    <param name="tran_dist" value="0.5"/> 
-    <param name="r_min" value="1.0"/>
+    <param name="tran_dist" value="0.25"/> 
+    <param name="r_min" value="0.7"/>
     <param name="cmd_topic" value="/cmd_vel" />
   </node>
   <node pkg="tf" type="static_transform_publisher" name="baselink_broadcaster" args="0 0 0.15 0 0 0 1 base_footprint base_link 50">
