@@ -364,7 +364,7 @@ void DiffDriverController::filterGoal()
   //超声波减速
   float bar_distance = xq_status->get_ultrasonic_min_distance();
   if(!DetectFlag_) bar_distance = 4.2;
-
+  //ROS_ERROR("bar_distance %f", bar_distance);
   if(bar_distance<=2.2 && linear_x_goal_ > 0)
   {
     //负值不用限制,正值不能超过安全刹车距离
