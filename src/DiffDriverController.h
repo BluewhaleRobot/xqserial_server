@@ -46,13 +46,18 @@ public:
     void updateMoveFlag(const std_msgs::Bool& moveFlag);
     void updateBarDetectFlag(const std_msgs::Bool& DetectFlag);
     void updateStopFlag(const std_msgs::Int32& fastStopmsg);
-    bool checkStop();
     void UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status);
     bool dealBackSwitch();
     void send_speed();
-    void filterSpeed();
+    void UpdateSpeed();
+    void filterGoal();
     bool UpdateC4Flag(ShutdownRequest &req, ShutdownResponse &res);
     void sendHeartbag();
+    void Refresh();
+    void setBarParams(double tran_dist)
+    {
+      tran_dist_ = tran_dist;
+    }
     int speed_debug[2];
     ros::WallTime last_ordertime;
     bool DetectFlag_;
@@ -72,9 +77,28 @@ private:
     ros::Publisher mgalileoCmdsPub_;
     boost::mutex mStausMutex_;
     bool back_touch_falg_;
-    float linear_x_;
-    float theta_z_;
+
     float R_min_;
+
+    float linear_x_current_;
+    float theta_z_current_;
+
+    float linear_x_last_;
+    float theta_z_last_;
+
+    float linear_x_goal_;
+    float theta_z_goal_;
+    float R_goal_;
+
+    float acc_vx_max_;
+    float acc_wz_max_;
+
+    float acc_vx_;
+    float acc_wz_;
+    float acc_vx_set_;
+    float acc_wz_set_;
+
+    float tran_dist_; //安全距离
 };
 
 }
