@@ -251,7 +251,7 @@ void DiffDriverController::send_speed()
   //speed_ang=command.angular.z*separation/(2.0*PI*radius);
   speed_ang=vtheta_temp*separation/(2.0*PI*radius);
 
-  float scale=std::max(std::abs(speed_lin+speed_ang/2.0),std::abs(speed_lin-speed_ang/2.0))/max_wheelspeed;
+  float scale=std::max(std::abs(speed_lin+speed_ang/2.0),std::abs(speed_lin-speed_ang/2.0))/max_speed;
   if(scale>1.0)
   {
     scale=1.0/scale;
@@ -261,11 +261,11 @@ void DiffDriverController::send_speed()
     scale=1.0;
   }
   //转出最大速度百分比,并进行限幅
-  speed_temp[0]=scale*(speed_lin+speed_ang/2)/max_wheelspeed*100.0;
+  speed_temp[0]=scale*(speed_lin+speed_ang/2)/max_speed*100.0;
   speed_temp[0]=std::min(speed_temp[0],100.0);
   speed_temp[0]=std::max(-100.0,speed_temp[0]);
 
-  speed_temp[1]=scale*(speed_lin-speed_ang/2)/max_wheelspeed*100.0;
+  speed_temp[1]=scale*(speed_lin-speed_ang/2)/max_speed*100.0;
   speed_temp[1]=std::min(speed_temp[1],100.0);
   speed_temp[1]=std::max(-100.0,speed_temp[1]);
 
@@ -378,7 +378,7 @@ void DiffDriverController::filterGoal()
     }
   }
 
-  if (!MoveFlag || stopFlag_)
+  if ((!MoveFlag || stopFlag_) && vx_temp>0.01)
   {
     vx_temp = 0.;
     //vtheta_temp = 0.;
