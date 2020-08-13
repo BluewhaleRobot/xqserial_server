@@ -24,6 +24,8 @@ find_package(catkin REQUIRED COMPONENTS
   galileo_serial_server
 )
 
+find_package(Eigen3 REQUIRED)
+
 add_service_files(
   FILES
   Shutdown.srv
@@ -51,7 +53,9 @@ include_directories(
   ${Boost_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
   ${JSONCPP_INCLUDE_DIRS}
+  ${EIGEN_INCLUDE_DIRS}
 )
+add_definitions(${EIGEN_DEFINITIONS})
 
 set(SRCS src/main.cpp src/AsyncSerial.cpp src/DiffDriverController.cpp src/StatusPublisher.cpp)
 add_executable(${PROJECT_NAME} ${SRCS})
