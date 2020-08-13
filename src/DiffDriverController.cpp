@@ -348,10 +348,10 @@ void DiffDriverController::UpdateSpeed()
 
   if(scan_min_dist_<=x_limit_)
   {
-    scan_min_dist_ = scan_min_dist_ +  car_twist_now.linear.x * dt1; //利用速度对当前测量距离进行更新
+    scan_min_dist_ = scan_min_dist_ -  car_twist_now.linear.x * dt1; //利用速度对当前测量距离进行更新
     last_scantime_ = ros::WallTime::now();
   }
-
+  //ROS_ERROR("dt1 %f vx %f scan_dist %f",dt1,car_twist_now.linear.x,scan_min_dist_);
   this->filterGoal(); //过滤目标速度
   //ROS_ERROR("linear_x_goal_ %f , %f, %f",linear_x_goal_,linear_x_last_,car_twist_now.linear.x);
   float acc_vx_min_temp = acc_vx_set_;
@@ -616,9 +616,10 @@ void DiffDriverController::updateScan(const sensor_msgs::LaserScan& scan_in)
       x1 = R_laserscan_[0]*output(i, 0)+R_laserscan_[1]*output(i,1) + T_laserscan_[0];
       y1 = R_laserscan_[2]*output(i, 0)+R_laserscan_[3]*output(i,1) + T_laserscan_[1];
     }
-
-    if(std::fabs(range_k - range_k_1)<0.05 && std::fabs(range_k_1 - range_k_2)<0.05)
+    //ROS_ERROR("range_k  %f range_angle %f",range_k, range_angle);
+    //if(std::fabs(range_k - range_k_1)<0.05 && std::fabs(range_k_1 - range_k_2)<0.05)
     {
+      //ROS_ERROR("ousp1");
       //3个点之间的距离小于一定值才有效
       if(std::fabs(range_k)<=x_limit_ && std::fabs(range_angle)>=angle_limit_ && std::fabs(range_angle)<=(3.1415926*2 - angle_limit_)) //雷达原始角度范围 0 to 2*pi
       {
