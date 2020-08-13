@@ -356,7 +356,17 @@ void DiffDriverController::UpdateSpeed()
   //ROS_ERROR("linear_x_goal_ %f , %f, %f",linear_x_goal_,linear_x_last_,car_twist_now.linear.x);
   float acc_vx_min_temp = acc_vx_set_;
 
-  float bar_distance = scan_min_dist_;
+  float bar_distance = xq_status->get_ultrasonic_min_distance();
+
+  if(bar_distance<0.4 && bar_distance>0.05)
+  {
+    bar_distance = std::min(bar_distance,scan_min_dist_);
+  }
+  else
+  {
+    bar_distance = scan_min_dist_;
+  }
+
   if(!DetectFlag_) bar_distance = 4.2;
 
   if(bar_distance<=2.2 && bar_distance>0.1 && linear_x_goal_ < linear_x_last_ && linear_x_last_>0)
@@ -412,7 +422,17 @@ void DiffDriverController::filterGoal()
   //ROS_ERROR("oups1 %f %f, %f %f, %f",linear_x_goal_,theta_z_goal_, linear_x_current_, theta_z_current_,scan_min_dist_);
 
   //超声波减速
-  float bar_distance = scan_min_dist_;
+  float bar_distance = xq_status->get_ultrasonic_min_distance();
+
+  if(bar_distance<0.4 && bar_distance>0.05)
+  {
+    bar_distance = std::min(bar_distance,scan_min_dist_);
+  }
+  else
+  {
+    bar_distance = scan_min_dist_;
+  }
+
   if(!DetectFlag_) bar_distance = 4.2;
   //ROS_ERROR("speed1.0.0 %f %f",linear_x_goal_,theta_z_goal_);
   if(bar_distance<=2.2 && linear_x_goal_ > 0)
@@ -440,7 +460,9 @@ void DiffDriverController::filterGoal()
   if(DetectFlag_)
   {
     bool forward_flag=true,rot_flag=true;
-    forward_flag = move_forward_flag_;
+    xq_status->get_canmove_flag(forward_flag,rot_flag);
+
+    if(forward_flag) forward_flag = move_forward_flag_;    
     if(!forward_flag && vx_temp>0.01)
     {
       vx_temp = 0.;
@@ -598,7 +620,7 @@ void DiffDriverController::updateScan(const sensor_msgs::LaserScan& scan_in)
     if(std::fabs(range_k - range_k_1)<0.05 && std::fabs(range_k_1 - range_k_2)<0.05)
     {
       //3个点之间的距离小于一定值才有效
-      if(std::fabs(range_k)<=x_limit_ && std::fabs(range_angle)>=angle_limit_)
+      if(std::fabs(range_k)<=x_limit_ && std::fabs(range_angle)>=angle_limit_ && std::fabs(range_angle)<=(3.1415926*2 - angle_limit_)) //雷达原始角度范围 0 to 2*pi
       {
         //需要在之前角度和距离内
         //ROS_ERROR("x y angle : %f %f %f",x1,y1,range_angle);

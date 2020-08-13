@@ -108,6 +108,8 @@ private:
 
     bool forward_flag_;
     bool rot_flag_;
+    ros::WallTime last_sonartime_;
+    float min_sonardist_;
 };
 
 } //namespace xqserial_server

@@ -87,6 +87,8 @@ StatusPublisher::StatusPublisher(double separation,double radius,double power_sc
     wheel_separation=separation;
     wheel_radius=radius;
     power_scale_ = power_scale;
+    last_sonartime_ = ros::WallTime::now();
+    min_sonardist_ = 0.0;
 }
 
 void StatusPublisher::Update(const char data[], unsigned int len)
@@ -459,23 +461,25 @@ void StatusPublisher::Refresh()
 
           distances_[0] = distance1_sum/2.0f;
           distances_[1] = distance2_sum/2.0f;
-         //std::cout<<" " << car_status.distance1 << " " << car_status.distance2<<std::endl;
-           //发布超声波topic
-           if(distances_[0]>0.1)
-           {
-             CarSonar1.header.stamp = current_time;
-             CarSonar1.range = distances_[0];
-             mSonar1Pub.publish(CarSonar1);
-             if(distances_[0]<tran_dist_ && forward_flag_) forward_flag_ = false;
-           }
+          //std::cout<<" " << car_status.distance1 << " " << car_status.distance2<<std::endl;
+          //发布超声波topic
+          if(distances_[0]>0.1)
+          {
+            CarSonar1.header.stamp = current_time;
+            CarSonar1.range = distances_[0];
+            mSonar1Pub.publish(CarSonar1);
+            if(distances_[0]<tran_dist_ && forward_flag_) forward_flag_ = false;
+          }
 
-           if(distances_[1]>0.1)
-           {
-             CarSonar2.header.stamp = current_time;
-             CarSonar2.range = distances_[1];
-             mSonar2Pub.publish(CarSonar2);
-             if(distances_[1]<tran_dist_ && forward_flag_) forward_flag_ = false;
-           }
+          if(distances_[1]>0.1)
+          {
+            CarSonar2.header.stamp = current_time;
+            CarSonar2.range = distances_[1];
+            mSonar2Pub.publish(CarSonar2);
+            if(distances_[1]<tran_dist_ && forward_flag_) forward_flag_ = false;
+          }
+          min_sonardist_ = std::min(distances_[0],distances_[1]);
+          last_sonartime_ = ros::WallTime::now();
         }
         distance_sum_i++;
 
@@ -646,7 +650,18 @@ void StatusPublisher::get_canmove_flag(bool &forward_flag,bool &rot_flag)
 
 float StatusPublisher::get_ultrasonic_min_distance()
 {
-  return std::min(distances_[0],distances_[1]);
+  boost::mutex::scoped_lock lock(mMutex);
+  
+  ros::WallDuration t_diff = ros::WallTime::now() - last_sonartime_;
+  float dt1 = t_diff.toSec();
+
+  min_sonardist_ = min_sonardist_ -  CarTwist.linear.x * dt1; //利用速度对当前测量距离进行更新
+  
+  if(min_sonardist_ < 0 ) min_sonardist_ = 0;
+
+  last_sonartime_ = ros::WallTime::now();
+
+  return min_sonardist_;
 }
 
 } //namespace xqserial_server

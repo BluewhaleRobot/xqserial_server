@@ -1,16 +1,16 @@
 <launch>
   <node pkg="xqserial_server" type="xqserial_server" name="motor_driver" respawn="true" respawn_delay="10" output="screen">
     <param name="debug_flag" value="false"/>
-    <param name="wheel_separation" value="0.42"/>
-    <param name="wheel_radius" value="0.0638"/>
+    <param name="wheel_separation" value="0.40"/>
+    <param name="wheel_radius" value="0.0625"/>
     <param name="max_speed" value="2.0"/>
     <param name="port" value="/dev/ttyUSB001"/>
     <param name="power_scale" value="1.0"/>
-    <param name="tran_dist" value="0.5"/>
+    <param name="tran_dist" value="0.3"/>
     <param name="angle_limit" value="1.6"/>
     <param name="x_limit" value="1.5"/>
     <param name="y_limit" value="0.27"/>
-    <param name="r_min" value="1.0"/>
+    <param name="r_min" value="0.7"/>
     <param name="cmd_topic" value="/cmd_vel" />
     <remap from="/scan" to="/scan_filtered" />
   </node>

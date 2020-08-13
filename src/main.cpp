@@ -59,7 +59,7 @@ int main(int argc, char **argv)
     double angle_limit,x_limit,y_limit;
     ros::param::param<double>("~angle_limit", angle_limit, 1.6);
     ros::param::param<double>("~x_limit", x_limit, 1.2);
-    ros::param::param<double>("~y_limit", y_limit, 0.5);
+    ros::param::param<double>("~y_limit", y_limit, 0.2);
     // 初始化log发布者和语音发布者
     ros::NodeHandle mNH;
     ros::Publisher log_pub = mNH.advertise<xiaoqiang_log::LogRecord>("/xiaoqiang_log", 1, true);
