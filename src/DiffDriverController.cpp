@@ -408,6 +408,15 @@ int DiffDriverController::dealBackSwitch()
         if(back_touch_flag_ && t_diff.toSec()>=0.1)
         {
           //开关松开
+          if(galileoStatus_.navStatus !=  0 || galileoStatus_.loopStatus == 1 ) {
+            // 停止循环
+            galileo_serial_server::GalileoNativeCmds cmd;
+            cmd.data = {'m', 0x04};
+            mgalileoCmdsPub_.publish(cmd);
+            // 停止导航任务
+            cmd.data = {'i', 0x02};
+            mgalileoCmdsPub_.publish(cmd);
+          }
           back_touch_flag_ = false;
           static std::string previousChargeTaskId = "";
           std::string previousTaskStatus = "";

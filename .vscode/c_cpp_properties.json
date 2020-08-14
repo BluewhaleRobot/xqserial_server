@@ -5,8 +5,8 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/include/xqserial_server",
-                "/home/xiaoqiang/Documents/ros/devel/include",
-                "/opt/ros/kinetic/include"
+                "/home/randoms/Documents/ros/devel/include",
+                "/opt/ros/noetic/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
