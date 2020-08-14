@@ -348,7 +348,7 @@ void DiffDriverController::UpdateSpeed()
 
   if(scan_min_dist_<=x_limit_)
   {
-    scan_min_dist_ = scan_min_dist_ +  car_twist_now.linear.x * dt1; //利用速度对当前测量距离进行更新
+    scan_min_dist_ = scan_min_dist_ -  car_twist_now.linear.x * dt1; //利用速度对当前测量距离进行更新
     last_scantime_ = ros::WallTime::now();
   }
 
