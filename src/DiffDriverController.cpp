@@ -411,7 +411,7 @@ int DiffDriverController::dealBackSwitch()
           if(galileoStatus_.navStatus !=  0 || galileoStatus_.loopStatus == 1 ) {
             // 停止循环
             galileo_serial_server::GalileoNativeCmds cmd;
-            cmd.data = {'m', 0x04};
+            cmd.data = {'m', 0x06};
             mgalileoCmdsPub_.publish(cmd);
             // 停止导航任务
             cmd.data = {'i', 0x02};
