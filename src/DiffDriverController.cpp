@@ -422,6 +422,7 @@ int DiffDriverController::dealBackSwitch()
           std::string previousTaskStatus = "";
           if(previousChargeTaskId != "")
           {
+            ROS_ERROR("oups -1");
             http::Request request("http://127.0.0.1:3546/api/v1/task?id=" + previousChargeTaskId);
             const http::Response response = request.send("GET");
             if(response.status == 200){
@@ -432,6 +433,7 @@ int DiffDriverController::dealBackSwitch()
           // 处于充电状态下按下开关则取消充电
           if(galileoStatus_.chargeStatus != 0)
           {
+            ROS_ERROR("oups 0");
             galileo_serial_server::GalileoNativeCmds cmd;
             cmd.data = {'j', 0x01};
             mgalileoCmdsPub_.publish(cmd);
@@ -440,16 +442,19 @@ int DiffDriverController::dealBackSwitch()
           // 若之前充电任务未完成则先取消任务
           if(previousChargeTaskId == "" || previousTaskStatus == "ERROR" || previousTaskStatus == "COMPLETE" || previousTaskStatus == "CANCELLED")
           {
+            ROS_ERROR("oups1");
             // 没有当前任务在执行， 发布充电任务
             http::Request request("http://127.0.0.1:3546/api/v1/navigation/go_charge");
             const http::Response response = request.send("GET");
             if(response.status == 200){
               auto res_json = nlohmann::json::parse(std::string(response.body.begin(), response.body.end()));
               previousChargeTaskId = res_json["id"];
+              ROS_ERROR("id %s",previousChargeTaskId.c_str());
               return 1;
             }
           }
           else{
+            ROS_ERROR("oups2 id %s",previousChargeTaskId.c_str());
             // 有导航任务在执行，取消充电任务
             http::Request request("http://127.0.0.1:3546/api/v1/navigation/stop_charge");
             const http::Response response = request.send("GET");
