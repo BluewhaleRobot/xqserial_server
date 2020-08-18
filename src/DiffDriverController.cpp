@@ -429,6 +429,11 @@ int DiffDriverController::dealBackSwitch()
               auto res_json = nlohmann::json::parse(std::string(response.body.begin(), response.body.end()));
               previousTaskStatus = res_json["state"];
             }
+            else
+            {
+              ROS_ERROR("oups -1.1 %d",response.status);
+            }
+            
           }
           // 处于充电状态下按下开关则取消充电
           if(galileoStatus_.chargeStatus != 0)
@@ -454,7 +459,7 @@ int DiffDriverController::dealBackSwitch()
             }
           }
           else{
-            ROS_ERROR("oups2 id %s",previousChargeTaskId.c_str());
+            ROS_ERROR("oups2 id %s %s",previousChargeTaskId.c_str(),previousTaskStatus.c_str());
             // 有导航任务在执行，取消充电任务
             http::Request request("http://127.0.0.1:3546/api/v1/navigation/stop_charge");
             const http::Response response = request.send("GET");
