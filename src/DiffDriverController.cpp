@@ -109,6 +109,14 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
         }
       }
     }
+
+    if(std::fabs(x_filter)<0.1)
+    {
+      if(z_filter>0.0002&&z_filter<0.15) z_filter=0.15;
+      if(z_filter<-0.0002&&z_filter>-0.15) z_filter=-0.15;
+    }
+    if(x_filter>0 && x_filter<0.05) x_filter=0.05;
+    if(x_filter<0 && x_filter>-0.05) x_filter=-0.05;
     //转换速度单位，由米转换成转
     speed_lin = x_filter / (2.0 * PI * radius);
     speed_ang = z_filter * separation / (2.0 * PI * radius);
