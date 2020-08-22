@@ -75,15 +75,15 @@ StatusPublisher::StatusPublisher()
    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "base_footprint", "base_link"));
    */
    base_time_ = ros::Time::now().toSec();
-   crash_distance_= 0.2;
+   tran_dist_= 0.2;
 }
 
-StatusPublisher::StatusPublisher(double separation,double radius,double crash_distance)
+StatusPublisher::StatusPublisher(double separation,double radius,double power_scale)
 {
     new (this)StatusPublisher();
     wheel_separation=separation;
     wheel_radius=radius;
-    crash_distance_ = crash_distance;
+    power_scale_ = power_scale;
 }
 
 void StatusPublisher::Update(const char data[], unsigned int len)
@@ -505,7 +505,7 @@ void StatusPublisher::Refresh()
 
         mTwistPub.publish(CarTwist);
 
-        CarPower.data = car_status.power;
+        CarPower.data = car_status.power*power_scale_;
         mPowerPub.publish(CarPower);
 
         CarOdom.header.stamp = current_time.fromSec(base_time_);
@@ -584,16 +584,6 @@ void StatusPublisher::Refresh()
 
         if(distance_sum_i%5==0)
         {
-          if((car_status.hbz1+car_status.hbz2+car_status.hbz4)>0.1&&(car_status.hbz1+car_status.hbz2+car_status.hbz4)<4.0)
-          {
-            move_forward_flag = false;
-          }
-          else{
-            if(!move_forward_flag)
-            {
-              if((delta_car*50.0f)>=0) move_forward_flag = true;
-            }
-          }
           if(car_status.hbz3>0.1&&car_status.hbz3<2.0)
           {
             move_backward_flag = false;
@@ -641,15 +631,29 @@ void StatusPublisher::Refresh()
         {
           distances_[1] = 4.2;
         }
-        if(distances_[0]<crash_distance_||distances_[1]<crash_distance_)
+        move_forward_flag = true;
+        rot_flag_ = true;
+
+        if(distances_[0]<tran_dist_||distances_[1]<tran_dist_)
         {
           move_forward_flag = false;
+        }
+        else
+        {
+          if((car_status.hbz1+car_status.hbz2+car_status.hbz4)>0.1&&(car_status.hbz1+car_status.hbz2+car_status.hbz4)<4.0)
+          {
+            move_forward_flag = false;
+          }
+          // else{
+          //   if(!move_forward_flag)
+          //   {
+          //     if((delta_car*50.0f)>=0) move_forward_flag = true;
+          //   }
+          // }
         }
 
         }
         distance_sum_i++;
-
-        ros::spinOnce();
 
         mbUpdated = false;
     }

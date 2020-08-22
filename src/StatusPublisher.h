@@ -46,7 +46,7 @@ class StatusPublisher
 
 public:
     StatusPublisher();
-    StatusPublisher(double separation,double radius,double crash_distance);
+    StatusPublisher(double separation,double radius,double power_scale);
     void Refresh();
     void Update(const char *data, unsigned int len);
     double get_wheel_separation();
@@ -63,6 +63,11 @@ public:
     bool can_movefoward();
     float get_ultrasonic_min_distance();
     float get_wheel_v_theta();
+    void setBarParams(double rot_dist,double tran_dist)
+    {
+      rot_dist_ = rot_dist;
+      tran_dist_ = tran_dist;
+    }
 private:
 
 
@@ -99,7 +104,11 @@ private:
     bool move_forward_flag;
     bool move_backward_flag;
     double base_time_;
-    double crash_distance_;
+    double rot_dist_;
+    double tran_dist_;
+
+    bool rot_flag_;
+    double power_scale_;
 };
 
 } //namespace xqserial_server
