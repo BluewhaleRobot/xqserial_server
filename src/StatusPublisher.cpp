@@ -84,6 +84,8 @@ StatusPublisher::StatusPublisher(double separation,double radius,double power_sc
     wheel_separation=separation;
     wheel_radius=radius;
     power_scale_ = power_scale;
+    last_sonartime_ = ros::WallTime::now();
+    min_sonardist_ = 0.0;
 }
 
 void StatusPublisher::Update(const char data[], unsigned int len)
@@ -240,6 +242,7 @@ void StatusPublisher::Refresh()
      static bool theta_updateflag = false;
      static bool theta_update_first = true;
      static int hbz1_num=0,hbz2_num=0,hbz4_num=0;
+
     //std::cout<<"runR"<< mbUpdated<<std::endl;
     if(mbUpdated)
     {
@@ -324,7 +327,7 @@ void StatusPublisher::Refresh()
           v_sums[v_sum_index] = delta_car*50.0f;
           v_sum +=v_sums[v_sum_index];
 
-          CarTwist.linear.x=v_sum/8.0f;
+          CarTwist.linear.x = delta_car*50.0f; //v_sum/8.0f;
           v_sum_index++;
           if(v_sum_index>7) v_sum_index=0;
 
@@ -338,7 +341,7 @@ void StatusPublisher::Refresh()
             angle_speed=car_status.IMU[5];
           }
           static float angle_speed_last=0;
-          if(isnan(angle_speed)|| std::fabs(angle_speed)>500)
+          if(std::isnan(angle_speed)|| std::fabs(angle_speed)>500)
           {
             angle_speed = angle_speed_last;
           }
@@ -346,18 +349,15 @@ void StatusPublisher::Refresh()
           {
             angle_speed_last = angle_speed;
           }
-
-          theta_sum -=theta_sums[theta_sum_index];
-          theta_sums[theta_sum_index] = angle_speed * PI /180.0f;
-          theta_sum +=theta_sums[theta_sum_index];
-          CarTwist.angular.z=theta_sum/8.0f;
+          theta_sums[theta_sum_index] = angle_speed * PI / 180.0f;
+          theta_sum = 0;
+          for(int j =0; j<8;j++)
+          {
+            theta_sum += theta_sums[j];
+          }
+          CarTwist.angular.z = theta_sum / 8.0f;//angle_speed*PI / 180.0f;
           theta_sum_index++;
-          if(theta_sum_index>7) theta_sum_index=0;
-          //std::cout<<" " << angle_speed * PI /180.0f<<std::endl;
-         //ROS_ERROR("%d %f,%f,%f,%f,%f,%f,%f,%f,%f",theta_sum_index,theta_sum,theta_sums[0],theta_sums[1],theta_sums[2],theta_sums[3],theta_sums[4],theta_sums[5],theta_sums[6],theta_sums[7]);
-          // CarTwist.linear.x=delta_car*50.0f;
-          // CarTwist.angular.z=angle_speed * PI /180.0f;
-
+          if (theta_sum_index>7) theta_sum_index = 0;
         }
 
         mTwistPub.publish(CarTwist);
@@ -505,6 +505,8 @@ void StatusPublisher::Refresh()
         {
           move_forward_flag = false;
         }
+        min_sonardist_ = std::min(distances_[0],distances_[1]);
+        last_sonartime_ = ros::WallTime::now();
 
       }
       distance_sum_i++;
@@ -675,7 +677,18 @@ bool StatusPublisher::can_movefoward()
 
 float StatusPublisher::get_ultrasonic_min_distance()
 {
-  return std::min(distances_[0],distances_[1]);
+  boost::mutex::scoped_lock lock(mMutex);
+
+  ros::WallDuration t_diff = ros::WallTime::now() - last_sonartime_;
+  float dt1 = t_diff.toSec();
+
+  min_sonardist_ = min_sonardist_ -  CarTwist.linear.x * dt1; //利用速度对当前测量距离进行更新
+
+  if(min_sonardist_ < 0.06 ) min_sonardist_ = 0.06;
+
+  last_sonartime_ = ros::WallTime::now();
+
+  return min_sonardist_;
 }
 
 float StatusPublisher::get_wheel_v_theta()

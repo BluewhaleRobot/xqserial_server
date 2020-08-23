@@ -55,6 +55,10 @@ int main(int argc, char **argv)
     ros::param::param<std::string>("~cmd_topic", cmd_topic, "cmd_vel");
     ros::param::param<double>("~r_min", r_min, 0.25);
 
+    double angle_limit,x_limit,y_limit;
+    ros::param::param<double>("~angle_limit", angle_limit, 1.6);
+    ros::param::param<double>("~x_limit", x_limit, 1.2);
+    ros::param::param<double>("~y_limit", y_limit, 0.2);
     // 初始化语音发布者
     ros::NodeHandle mNH;
     ros::Publisher audio_pub = mNH.advertise<std_msgs::String>("/xiaoqiang_tts/text", 1, true);
@@ -67,6 +71,7 @@ int main(int argc, char **argv)
         CallbackAsyncSerial serial(port,baud);
         serial.setCallback(boost::bind(&xqserial_server::StatusPublisher::Update,&xq_status,_1,_2));
         xqserial_server::DiffDriverController xq_diffdriver(max_speed,cmd_topic,&xq_status,&serial,r_min);
+        xq_diffdriver.setBarParams(angle_limit,tran_dist,x_limit,y_limit);
         boost::thread cmd2serialThread(& xqserial_server::DiffDriverController::run,&xq_diffdriver);
         // send test flag
         char debugFlagCmd[] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x01, 'T'};
@@ -78,39 +83,22 @@ int main(int argc, char **argv)
         char resetCmd[] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x01, 'I'};
         serial.write(resetCmd, 5);
 
-        ros::Duration(0.5).sleep();
-        //下发底层红外开启命令
-        char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x01};
-        //serial.write(cmd_str,6);
+        ros::Duration(1).sleep();
 
         ros::Rate r(100);//发布周期为50hz
+        static int i=0;
         while (ros::ok())
-        {
-            static int i=0;
+        {           
             if(serial.errorStatus() || serial.isOpen()==false)
             {
                 cerr<<"Error: serial port closed unexpectedly"<<endl;
                 break;
             }
             xq_status.Refresh();//定时发布状态
-            ros::WallDuration t_diff = ros::WallTime::now() - xq_diffdriver.last_ordertime;
-            if(t_diff.toSec()>1.5 && t_diff.toSec()<1.7)
+
+            if(i%4 == 0)
             {
-              //safety security
-              // char cmd_str[13]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x09,(char)0x74,(char)0x53,(char)0x53,(char)0x53,(char)0x53,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
-              // serial.write(cmd_str, 13);
-              // std::cout << "oups!" << std::endl;
-              //xq_diffdriver.last_ordertime=ros::WallTime::now();
-            }
-            if(i%100==0 && xq_diffdriver.DetectFlag_)
-            {
-              //下发底层红外开启命令
-              char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x01};
-              serial.write(cmd_str,6);
-            }
-            if(i%1 == 0)
-            {
-              xq_diffdriver.check_faster_stop();
+              xq_diffdriver.Refresh();//更新驱动速度 25hz
             }
 
             //更新按钮
@@ -129,7 +117,6 @@ int main(int argc, char **argv)
 
             i++;
             r.sleep();
-            //cout<<"run"<<endl;
         }
 
         quit:

@@ -48,6 +48,8 @@
   <build_depend>geometry_msgs</build_depend>
   <build_depend>tf</build_depend>
   <build_depend>galileo_serial_server</build_depend>
+  <build_depend>message_generation</build_depend>
+  <build_depend>eigen</build_depend>
 
   <run_depend>nav_msgs</run_depend>
   <run_depend>roscpp</run_depend>
@@ -57,6 +59,7 @@
   <run_depend>geometry_msgs</run_depend>
   <run_depend>tf</run_depend>
   <run_depend>galileo_serial_server</run_depend>
+  <run_depend>eigen</run_depend>
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <!-- Other tools can request additional information be placed here -->

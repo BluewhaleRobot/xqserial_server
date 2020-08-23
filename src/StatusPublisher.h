@@ -60,14 +60,14 @@ public:
     nav_msgs::Odometry get_odom();
     UPLOAD_STATUS car_status;
     void get_distances(double distances[2]);
-    bool can_movefoward();
-    float get_ultrasonic_min_distance();
     float get_wheel_v_theta();
     void setBarParams(double rot_dist,double tran_dist)
     {
       rot_dist_ = rot_dist;
       tran_dist_ = tran_dist;
     }
+    bool can_movefoward();
+    float get_ultrasonic_min_distance();
 private:
 
 
@@ -109,6 +109,8 @@ private:
 
     bool rot_flag_;
     double power_scale_;
+    ros::WallTime last_sonartime_;
+    float min_sonardist_;
 };
 
 } //namespace xqserial_server
