@@ -327,7 +327,7 @@ void StatusPublisher::Refresh()
           v_sums[v_sum_index] = delta_car*50.0f;
           v_sum +=v_sums[v_sum_index];
 
-          CarTwist.linear.x = delta_car*50.0f; //v_sum/8.0f;
+          CarTwist.linear.x = v_sum/8.0f; //delta_car*50.0f;
           v_sum_index++;
           if(v_sum_index>7) v_sum_index=0;
 

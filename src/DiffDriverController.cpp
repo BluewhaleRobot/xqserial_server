@@ -365,9 +365,15 @@ void DiffDriverController::UpdateSpeed()
     linear_x_current_ = std::min(v1,linear_x_goal_);
   }
 
-  if(bar_distance < tran_dist_ )
+  if(bar_distance < tran_dist_  && car_twist_now.linear.x>0.05)
   {
-    linear_x_current_ = std::min(0.f,linear_x_current_);
+    //linear_x_current_ = std::min(0.f,linear_x_current_
+    linear_x_current_ = -0.5;
+  }
+  if(bar_distance > 0.2  && car_twist_now.linear.x<0.01 && std::fabs(linear_x_goal_)<0.01)
+  {
+    //linear_x_current_ = std::min(0.f,linear_x_current_
+    linear_x_current_ = 0;
   }
 
   float w1 = theta_z_last_ + acc_wz_*dt;
