@@ -293,7 +293,7 @@ void DiffDriverController::send_speed()
     theta_z_last_ = theta_z_current_;
 
     geometry_msgs::Twist car_twist_now =  xq_status->get_CarTwist();
-    ROS_ERROR("oups %f %f %f, %d",linear_x_goal_, linear_x_current_, car_twist_now.linear.x,speed[0]);
+    //ROS_ERROR("oups %f %f %f, %d",linear_x_goal_, linear_x_current_, car_twist_now.linear.x,speed[0]);
 
 }
 
@@ -332,11 +332,10 @@ void DiffDriverController::UpdateSpeed()
   }
 
 
-
   if(bar_distance<=2.2 && bar_distance>0.1 && linear_x_goal_ < linear_x_last_ && linear_x_last_>0)
   {
     //减速过程中，如果速度还是正值，需要确保在障碍物之前减速完成。
-    if((bar_distance - tran_dist_)<0.3)
+    if((bar_distance - tran_dist_)<0.5)
     {
       acc_vx_min_temp = std::min(acc_vx_max_, (float)(2*car_twist_now.linear.x*car_twist_now.linear.x/2.0/std::max(bar_distance - tran_dist_,0.05f)));
     }
@@ -345,6 +344,8 @@ void DiffDriverController::UpdateSpeed()
       acc_vx_min_temp = std::min(acc_vx_max_, (float)(4*car_twist_now.linear.x*car_twist_now.linear.x/2.0/std::max(bar_distance - tran_dist_,0.05f)));
     }
   }
+
+  //ROS_ERROR("bar_distance %f, goal %f , %f, %f, acc %f",bar_distance, linear_x_goal_,linear_x_last_,car_twist_now.linear.x,acc_vx_min_temp);
 
   acc_vx_ = std::max(acc_vx_set_,acc_vx_min_temp); //当前需要的加速度
   acc_wz_ = acc_wz_set_;
@@ -365,15 +366,19 @@ void DiffDriverController::UpdateSpeed()
     linear_x_current_ = std::min(v1,linear_x_goal_);
   }
 
+  bool static run_back_stop = false;
   if(bar_distance < tran_dist_  && car_twist_now.linear.x>0.05)
   {
     //linear_x_current_ = std::min(0.f,linear_x_current_
-    linear_x_current_ = -0.5;
+    linear_x_current_ = -car_twist_now.linear.x;
+    run_back_stop = true;
   }
-  if(bar_distance > 0.2  && car_twist_now.linear.x<0.01 && std::fabs(linear_x_goal_)<0.01)
+
+  if(run_back_stop  && car_twist_now.linear.x<0.01 && std::fabs(linear_x_goal_)<0.01)
   {
     //linear_x_current_ = std::min(0.f,linear_x_current_
     linear_x_current_ = 0;
+    run_back_stop = false;
   }
 
   float w1 = theta_z_last_ + acc_wz_*dt;
@@ -413,13 +418,13 @@ void DiffDriverController::filterGoal()
   if(bar_distance<=2.2 && linear_x_goal_ > 0)
   {
     //负值不用限制,正值不能超过安全刹车距离
-    if((bar_distance - tran_dist_)<0.5)
+    if((bar_distance - tran_dist_)<0.8)
     {
-      vx_temp = std::min(vx_temp,(float)std::sqrt(std::max(bar_distance - tran_dist_,0.0f)*0.5*acc_vx_set_*2));
+      vx_temp = std::min(vx_temp,(float)std::sqrt(std::max(bar_distance - tran_dist_,0.0f)*0.3*acc_vx_set_*2));
     }
     else
     {
-      vx_temp = std::min(vx_temp,(float)std::sqrt(std::max(bar_distance - tran_dist_,0.0f)*0.8*acc_vx_set_*2));
+      vx_temp = std::min(vx_temp,(float)std::sqrt(std::max(bar_distance - tran_dist_,0.0f)*0.6*acc_vx_set_*2));
     }
     //ROS_ERROR("speed1.0 %f ,%f %f",bar_distance,vx_temp, linear_x_goal_);
   }
