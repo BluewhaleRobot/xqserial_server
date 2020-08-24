@@ -148,7 +148,7 @@ void StatusPublisher::Update_car(const char data[], unsigned int len)
         //ROS_ERROR("receive one package!");
         //有效包，开始提取数据
         {
-          //右1 左2
+          //右2 左1
           boost::mutex::scoped_lock lock(mMutex_car);
           unsigned short int data1_address = cmd_string_buf[2]<<8|cmd_string_buf[3];
           unsigned short int data2_address = cmd_string_buf[4]<<8|cmd_string_buf[5];
@@ -167,7 +167,7 @@ void StatusPublisher::Update_car(const char data[], unsigned int len)
               break;
             case 0x5004:
               //编码器位置
-              car_status.encoder_r_current = data1;
+              car_status.encoder_l_current = data1;
               break;
           }
 
@@ -183,7 +183,7 @@ void StatusPublisher::Update_car(const char data[], unsigned int len)
               break;
             case 0x5104:
               //编码器位置
-              car_status.encoder_l_current = data2;
+              car_status.encoder_r_current = data2;
               break;
           }
 

@@ -261,10 +261,11 @@ void DiffDriverController::send_speed()
     //下发速度指令
     char speed_cmd[12] = {(char)0x01,(char)0x44,(char)0x23,(char)0x18,(char)0x33,(char)0x18,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
     uint8_t crc_hl[2];
-    speed_cmd[6] = (right_speed_>>8)&0xff;
-    speed_cmd[7] = right_speed_&0xff;
-    speed_cmd[8] = (left_speed_>>8)&0xff;
-    speed_cmd[9] = left_speed_&0xff;
+
+    speed_cmd[6] = (left_speed_>>8)&0xff;
+    speed_cmd[7] = left_speed_&0xff;
+    speed_cmd[8] = (right_speed_>>8)&0xff;
+    speed_cmd[9] = right_speed_&0xff;
     xqserial_server::CRC16CheckSum((unsigned char *)speed_cmd, 10, crc_hl);
     speed_cmd[10] = crc_hl[0];
     speed_cmd[11] = crc_hl[1];
