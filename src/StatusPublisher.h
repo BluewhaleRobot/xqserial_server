@@ -145,6 +145,9 @@ private:
     int yaw_index;
     float yaw_sum;
     float yaw_omega;
+    
+    ros::WallTime last_sonartime_;
+    float min_sonardist_;
 };
 
 } //namespace xqserial_server

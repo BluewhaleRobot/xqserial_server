@@ -110,6 +110,8 @@ StatusPublisher::StatusPublisher(double separation,double radius,double power_sc
     wheel_separation=separation;
     wheel_radius=radius;
     power_scale_ = power_scale;
+    last_sonartime_ = ros::WallTime::now();
+    min_sonardist_ = 0.0;
 }
 
 void StatusPublisher::Update_car(const char data[], unsigned int len)
@@ -828,6 +830,7 @@ int StatusPublisher::get_status(){
 
 void StatusPublisher::get_distances(double distances[4])
 {
+  boost::mutex::scoped_lock lock(mMutex_imu);
   distances[0]=distances_[0];
   distances[1]=distances_[1];
   distances[2]=distances_[2];
@@ -842,6 +845,7 @@ void StatusPublisher::get_canmove_flag(bool &forward_flag,bool &rot_flag)
 
 float StatusPublisher::get_ultrasonic_min_distance()
 {
+  boost::mutex::scoped_lock lock(mMutex_imu);
   return std::min(std::min(distances_[0],distances_[1]),std::min(distances_[2],distances_[3]));
 }
 
