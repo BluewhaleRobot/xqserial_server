@@ -54,9 +54,9 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
     acc_wz_max_ = 21.0;
 
     acc_vx_ = 0.4;
-    acc_wz_ = 2.0;
+    acc_wz_ = 1.0;
     acc_vx_set_ = 0.4; //1.0
-    acc_wz_set_ = 2.0; //6.0
+    acc_wz_set_ = 1.0; //6.0
 
     angle_limit_ = 1.6;
     tran_dist_ = 0.3;
@@ -112,7 +112,7 @@ void DiffDriverController::run()
 void DiffDriverController::Refresh()
 {
   ros::WallDuration t_diff = ros::WallTime::now() - last_ordertime;
-  if(t_diff.toSec()<10.0 && (xq_status->car_status.hbz_status & 0x01)==0 && !shutdown_flag_)
+  if(t_diff.toSec()<10.0 && (xq_status->car_status.hbz_status & 0x01)==1 && !shutdown_flag_)
   {
     if(t_diff.toSec()>3.0 || xq_status->get_status()<=0)
     {
@@ -372,7 +372,7 @@ void DiffDriverController::UpdateSpeed()
   float bar_distance = xq_status->get_ultrasonic_min_distance();
   if(!DetectFlag_) bar_distance = 4.2;
 
-  if(bar_distance<0.4 && bar_distance>0.05)
+  if(bar_distance<0.5 && bar_distance>0.05)
   {
     bar_distance = std::min(bar_distance,scan_min_dist_);
   }
@@ -437,7 +437,7 @@ void DiffDriverController::filterGoal()
   float bar_distance = xq_status->get_ultrasonic_min_distance();
   if(!DetectFlag_) bar_distance = 4.2;
 
-  if(bar_distance<0.4 && bar_distance>0.05)
+  if(bar_distance<0.5 && bar_distance>0.05)
   {
     bar_distance = std::min(bar_distance,scan_min_dist_);
   }
@@ -450,7 +450,7 @@ void DiffDriverController::filterGoal()
   {
     //负值不用限制,正值不能超过安全刹车距离
     vx_temp = std::min(vx_temp,(float)std::sqrt(std::max(bar_distance-tran_dist_,0.0f)*acc_vx_set_*2));
-    
+
     // if((bar_distance - tran_dist_)<0.5)
     // {
     //   vx_temp = std::min(vx_temp,(float)std::sqrt(std::max(bar_distance - tran_dist_,0.0f)*0.5*acc_vx_set_*2));
@@ -630,7 +630,7 @@ void DiffDriverController::updateScan(const sensor_msgs::LaserScan& scan_in)
       y1 = R_laserscan_[2]*output(i, 0)+R_laserscan_[3]*output(i,1) + T_laserscan_[1];
     }
     //ROS_ERROR("range_k  %f range_angle %f",range_k, range_angle);
-    //if(std::fabs(range_k - range_k_1)<0.05 && std::fabs(range_k_1 - range_k_2)<0.05)
+    if(std::fabs(range_k - range_k_1)<0.05 && std::fabs(range_k_1 - range_k_2)<0.05)
     {
       //ROS_ERROR("ousp1");
       //3个点之间的距离小于一定值才有效

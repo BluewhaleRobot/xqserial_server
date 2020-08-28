@@ -442,10 +442,10 @@ void StatusPublisher::Refresh()
         std_msgs::Int32 flag;
         flag.data=car_status.status;
         //底层障碍物信息
-        if(car_status.hbz_status>0 && car_status.status > 0)
+        if((car_status.hbz_status & 0x01)==0 && car_status.status > 0)
         {
-          //有障碍物
-          flag.data=car_status.hbz_status + 1;
+          //急停被按下了
+          flag.data=2;
         }
         mStatusFlagPub.publish(flag);
 
@@ -558,12 +558,12 @@ void StatusPublisher::Refresh()
         }
         else
         {
-          CarIMU.angular_velocity.x=-car_status.IMU[4]* PI /180.0f;
-          CarIMU.angular_velocity.y=car_status.IMU[3]* PI /180.0f;
+          CarIMU.angular_velocity.x=-car_status.IMU[3]* PI /180.0f;
+          CarIMU.angular_velocity.y=-car_status.IMU[4]* PI /180.0f;
           CarIMU.angular_velocity.z=car_status.IMU[5]* PI /180.0f;
 
-          CarIMU.linear_acceleration.x=-car_status.IMU[1];
-          CarIMU.linear_acceleration.y=car_status.IMU[0];
+          CarIMU.linear_acceleration.x=-car_status.IMU[0];
+          CarIMU.linear_acceleration.y=-car_status.IMU[1];
           CarIMU.linear_acceleration.z=car_status.IMU[2];
         }
 
@@ -674,7 +674,7 @@ void StatusPublisher::Refresh()
         int clearArea_nums=0;
         static int hbz1_num=0,hbz2_num=0;
 
-        if(distances_[0]<tran_dist_ || distances_[2]<tran_dist_)
+        if(distances_[1]<tran_dist_ || distances_[3]<tran_dist_)
         {
           hbz1_num++;
           if(hbz1_num>10) barArea_nums += 5;
@@ -685,7 +685,7 @@ void StatusPublisher::Refresh()
           if(hbz1_num==0) clearArea_nums += 10;
         }
 
-        if(distances_[1]<tran_dist_ || distances_[3]<tran_dist_)
+        if(distances_[0]<tran_dist_ || distances_[2]<tran_dist_)
         {
           hbz2_num++;
           if(hbz2_num>10) barArea_nums += 5;
@@ -711,21 +711,21 @@ void StatusPublisher::Refresh()
           sensor_msgs::PointCloud2Iterator<float> bariter_x(*barcloud_msg, "x");
           sensor_msgs::PointCloud2Iterator<float> bariter_y(*barcloud_msg, "y");
           sensor_msgs::PointCloud2Iterator<float> bariter_z(*barcloud_msg, "z");
-          if((distances_[0]<tran_dist_ || distances_[2]<tran_dist_)&&hbz1_num>10)
+          if((distances_[1]<tran_dist_ || distances_[3]<tran_dist_)&&hbz1_num>10)
           {
             for(int k=0;k<5;k++,++bariter_x, ++bariter_y,++bariter_z)
             {
-              *bariter_x=0.1+0.2;
+              *bariter_x=0.1+0.3;
               *bariter_y=k*0.04+0.15;
               *bariter_z=0.15;
             }
           }
 
-          if((distances_[1]<tran_dist_ || distances_[3]<tran_dist_)&&hbz2_num>10)
+          if((distances_[0]<tran_dist_ || distances_[2]<tran_dist_)&&hbz2_num>10)
           {
             for(int k=0;k<5;k++,++bariter_x, ++bariter_y,++bariter_z)
             {
-              *bariter_x=0.1+0.2;
+              *bariter_x=0.1+0.3;
               *bariter_y=-k*0.04-0.15;
               *bariter_z=0.15;
             }
@@ -754,13 +754,13 @@ void StatusPublisher::Refresh()
           {
             for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.1+0.2;
+              *cleariter_x=0.1+0.3;
               *cleariter_y=k*0.04+0.15;
               *cleariter_z=0.0;
             }
             for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.05+0.2;
+              *cleariter_x=0.05+0.3;
               *cleariter_y=k*0.04+0.15;
               *cleariter_z=0.0;
             }
@@ -769,13 +769,13 @@ void StatusPublisher::Refresh()
           {
             for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.1+0.2;
+              *cleariter_x=0.1+0.3;
               *cleariter_y=-k*0.04-0.15;
               *cleariter_z=0.0;
             }
             for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.05+0.2;
+              *cleariter_x=0.05+0.3;
               *cleariter_y=-k*0.04-0.15;
               *cleariter_z=0.0;
             }
