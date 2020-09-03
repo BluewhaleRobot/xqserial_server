@@ -21,30 +21,25 @@
 
 namespace xqserial_server
 {
-typedef struct {
+  typedef struct {
     int status;//小车状态，0表示未初始化，1表示正常，-1表示error
-    float power;//电源电压【9 13】v
-    float theta;//方位角，【0 360）°
-    unsigned int encoder_ppr;//车轮1转对应的编码器个数
-    int encoder_delta_r;//右轮编码器增量， 个为单位
-    int encoder_delta_l;//左轮编码器增量， 个为单位
-    int encoder_delta_car;//两车轮中心位移，个为单位
-    unsigned int  upwoard;//0表示正面朝下安装，１表示正面朝上安装
-    float max_speed;//最大转速，圈每秒
-    int hbz1;//通道１红外状态，０表示正常１表示触发
-    int hbz2;//通道２红外状态，０表示正常１表示触发
-    int hbz3;//通道３红外状态，０表示正常１表示触发
-    int hbz4;//通道４红外状态，０表示正常１表示触发
-    float distance1;//第一个超声模块距离值 单位cm
-    float distance2;//第二个超声模块距离值 单位cm
-    float IMU[9];//mpu9250 9轴数据
-    unsigned int time_stamp;//时间戳
-}UPLOAD_STATUS;
+    float power;             //电源电压【9 13】v
+    float theta;             //方位角，【0 360）°
+    int encoder_ppr;         //车轮1转对应的编码器个数
+    int encoder_delta_r;     //右轮编码器增量， 个为单位
+    int encoder_delta_l;     //左轮编码器增量， 个为单位
+    unsigned int upwoard;    //1表示正向安装,0表示反向安装
+    unsigned int hbz_status; //红外模块状态，8421
+    float distance[4]; //超声模块距离值 单位m
+    float quat[4];          //IMU四元数
+    float IMU[9];           //IMU 9轴数据
+    unsigned int time_stamp_imu;//时间戳
+  }UPLOAD_STATUS;
 
-class StatusPublisher
-{
+  class StatusPublisher
+  {
 
-public:
+  public:
     StatusPublisher();
     StatusPublisher(double separation,double radius,double power_scale);
     void Refresh();
@@ -68,7 +63,7 @@ public:
     }
     bool can_movefoward();
     float get_ultrasonic_min_distance();
-private:
+  private:
 
 
 
@@ -80,6 +75,8 @@ private:
 
     sensor_msgs::Range CarSonar1;
     sensor_msgs::Range CarSonar2;
+    sensor_msgs::Range CarSonar3;
+    sensor_msgs::Range CarSonar4;
 
     geometry_msgs::Pose2D CarPos2D;//小车开始启动原点坐标系
     geometry_msgs::Twist  CarTwist;//小车自身坐标系
@@ -95,11 +92,13 @@ private:
     ros::Publisher pub_clearpoint_cloud_;
     ros::Publisher mSonar1Pub;
     ros::Publisher mSonar2Pub;
+    ros::Publisher mSonar3Pub;
+    ros::Publisher mSonar4Pub;
     ros::Publisher mIMUPub;
     sensor_msgs::Imu  CarIMU;
 
     bool mbUpdated;
-    double  distances_[2];
+    double  distances_[4];
     boost::mutex mMutex;
     bool move_forward_flag;
     bool move_backward_flag;
@@ -111,7 +110,7 @@ private:
     double power_scale_;
     ros::WallTime last_sonartime_;
     float min_sonardist_;
-};
+  };
 
 } //namespace xqserial_server
 

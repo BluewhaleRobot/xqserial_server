@@ -4,17 +4,20 @@
 #include "StatusPublisher.h"
 #include "AsyncSerial.h"
 #include <std_msgs/Bool.h>
-#include "galileo_serial_server/GalileoStatus.h"
 #include "galileo_serial_server/GalileoNativeCmds.h"
+#include "galileo_serial_server/GalileoStatus.h"
+#include "xqserial_server/Shutdown.h"
+#include "xqserial_server/http_request.hpp"
+#include "json.hpp"
 #include "sensor_msgs/LaserScan.h"
 #include <Eigen/Core>
 
 namespace xqserial_server
 {
 
-class DiffDriverController
-{
-public:
+  class DiffDriverController
+  {
+  public:
     DiffDriverController();
     DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_,double r_min);
     void run();
@@ -29,7 +32,8 @@ public:
     void send_speed();
     void UpdateSpeed();
     void filterGoal();
-    void updateC2C4();
+    bool UpdateC4Flag(ShutdownRequest &req, ShutdownResponse &res);
+    void sendHeartbag();
     void Refresh();
     void updateScan(const sensor_msgs::LaserScan& scan_in);
     void setBarParams(double angle_limit,double tran_dist, double x_limit, double y_limit)
@@ -42,12 +46,12 @@ public:
       scan_min_dist_ = x_limit_*2;
       move_forward_flag_ = true;
     }
+    void send_release();
     int speed_debug[2];
     ros::WallTime last_ordertime;
     bool DetectFlag_;
     bool fastStopFlag_;
-    
-private:
+  private:
     double max_wheelspeed;//单位为转每秒,只能为正数
     std::string cmd_topic;
     StatusPublisher* xq_status;
@@ -62,7 +66,7 @@ private:
     ros::NodeHandle mNH_;
     ros::Publisher mgalileoCmdsPub_;
     ros::WallTime last_touchtime_;
-    
+
     float linear_x_current_;
     float theta_z_current_;
 
@@ -96,7 +100,9 @@ private:
     std::vector<double> R_laserscan_;  //laserscan坐标系到base_footprint坐标系的转换
     std::vector<double> T_laserscan_;
     ros::WallTime last_scantime_;
-};
+
+    bool shutdown_flag_;
+  };
 
 }
 #endif // DIFFDRIVERCONTROLLER_H
