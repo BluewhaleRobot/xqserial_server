@@ -56,6 +56,10 @@ int main(int argc, char **argv)
     ros::param::param<double>("~r_min", r_min, 0.5);
     ros::param::param<std::string>("~cmd_topic", cmd_topic, "cmd_vel");
 
+    double angle_limit,x_limit,y_limit;
+    ros::param::param<double>("~angle_limit", angle_limit, 1.6);
+    ros::param::param<double>("~x_limit", x_limit, 1.2);
+    ros::param::param<double>("~y_limit", y_limit, 0.2);
     // 初始化log发布者和语音发布者
     ros::NodeHandle mNH;
     ros::Publisher log_pub = mNH.advertise<xiaoqiang_log::LogRecord>("/xiaoqiang_log", 1, true);
@@ -65,7 +69,7 @@ int main(int argc, char **argv)
         CallbackAsyncSerial serial(port,baud);
         serial.setCallback(boost::bind(&xqserial_server::StatusPublisher::Update,&xq_status,_1,_2));
         xqserial_server::DiffDriverController xq_diffdriver(max_speed,cmd_topic,&xq_status,&serial,r_min);
-        xq_diffdriver.setBarParams(tran_dist);
+        xq_diffdriver.setBarParams(angle_limit,tran_dist,x_limit,y_limit);
         boost::thread cmd2serialThread(& xqserial_server::DiffDriverController::run,&xq_diffdriver);
         // send test flag
         char debugFlagCmd[] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x01, 'T'};
@@ -110,10 +114,8 @@ int main(int argc, char **argv)
               audio_msg.data = "好的，我回去了，您慢用！";
               audio_pub.publish(audio_msg);
             }
-
             i++;
             r.sleep();
-            //cout<<"run"<<endl;
         }
 
         quit:

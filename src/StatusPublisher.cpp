@@ -37,7 +37,7 @@ StatusPublisher::StatusPublisher()
     {
         status[i]=0;
     }
-    car_status.encoder_ppr=600;
+    car_status.encoder_ppr=750;
 
    mPose2DPub = mNH.advertise<geometry_msgs::Pose2D>("xqserial_server/Pose2D",1,true);
    mStatusFlagPub = mNH.advertise<std_msgs::Int32>("xqserial_server/StatusFlag",1,true);
@@ -187,6 +187,7 @@ void StatusPublisher::Update(const char data[], unsigned int len)
                             //   }
                             mbUpdated=false;
                             car_status.encoder_ppr=750;
+                            car_status.max_speed=2.0;
                             break;
                           }
                       }
@@ -215,7 +216,7 @@ void StatusPublisher::Update(const char data[], unsigned int len)
                     // }
 
                     //ii++;
-                    //std::cout << car_status.encoder_ppr << " " << car_status.max_speed << std::endl;
+                    //std::cout << ii << std::endl;
                     new_packed_ok_len=0;
                     new_packed_len=0;
                 }
@@ -522,7 +523,7 @@ void StatusPublisher::Refresh()
           {
             for(int k=0;k<5;k++,++bariter_x, ++bariter_y,++bariter_z)
             {
-              *bariter_x=0.15+0.2;
+              *bariter_x=0.2+0.2;
               *bariter_y=-k*0.04;
               *bariter_z=0.15;
             }
@@ -532,7 +533,7 @@ void StatusPublisher::Refresh()
           {
             for(int k=0;k<5;k++,++bariter_x, ++bariter_y,++bariter_z)
             {
-              *bariter_x=0.15+0.2;
+              *bariter_x=0.2+0.2;
               *bariter_y=k*0.04;
               *bariter_z=0.15;
             }
@@ -561,13 +562,13 @@ void StatusPublisher::Refresh()
           {
             for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.15+0.2;
+              *cleariter_x=0.2+0.2;
               *cleariter_y=-k*0.04;
               *cleariter_z=0.0;
             }
             for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.10+0.2;
+              *cleariter_x=0.15+0.2;
               *cleariter_y=-k*0.04;
               *cleariter_z=0.0;
             }
@@ -576,13 +577,13 @@ void StatusPublisher::Refresh()
           {
             for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.15+0.2;
+              *cleariter_x=0.2+0.2;
               *cleariter_y=k*0.04;
               *cleariter_z=0.0;
             }
             for(int k=0;k<5;k++,++cleariter_x, ++cleariter_y,++cleariter_z)
             {
-              *cleariter_x=0.10+0.2;
+              *cleariter_x=0.15+0.2;
               *cleariter_y=k*0.04;
               *cleariter_z=0.0;
             }
