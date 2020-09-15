@@ -6,11 +6,11 @@
     <param name="max_speed" value="5.0"/>
     <param name="port" value="/dev/ttyUSB001"/>
     <param name="rot_dist" value="0.21"/>
-    <param name="tran_dist" value="0.3"/>
-    <param name="power_scale" value="1.0118"/>
+    <param name="tran_dist" value="0.25"/>
+    <param name="power_scale" value="1.0"/>
     <param name="angle_limit" value="1.6"/>
     <param name="x_limit" value="1.5"/>
-    <param name="y_limit" value="0.25"/>
+    <param name="y_limit" value="0.22"/>
     <param name="r_min" value="1.0"/>
     <remap from="/scan" to="/scan_filtered" />
   </node>

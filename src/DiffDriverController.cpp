@@ -50,9 +50,9 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
     acc_wz_max_ = 20.0;
 
     acc_vx_ = 0.4;
-    acc_wz_ = 1.7;
+    acc_wz_ = 3.0;
     acc_vx_set_ = 0.4; //1.0
-    acc_wz_set_ = 1.7; //6.0
+    acc_wz_set_ = 3.0; //6.0
 
     angle_limit_ = 1.6;
     tran_dist_ = 0.5;
