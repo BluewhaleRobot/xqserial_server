@@ -298,7 +298,7 @@ void StatusPublisher::Refresh()
     ii++;
     int delta_encoder_r = 0;
     int delta_encoder_l = 0;
-    //ROS_ERROR("car imu %d %d",mbUpdated_imu, mbUpdated_car);
+    //ROS_ERROR("car %d %d",mbUpdated_imu, mbUpdated_car);
     //先处理驱动器
     {
       boost::mutex::scoped_lock lock(mMutex_car);
@@ -350,7 +350,10 @@ void StatusPublisher::Refresh()
       {
         //处理imu
         ros::Time current_time = ros::Time::now();
-
+        if(car_status.encoder_ppr_imu == 4096)
+        {
+          car_status.encoder_ppr = car_status.encoder_ppr_imu;
+        }
         if(car_status.status <= 0)
         {
           //复位状态
