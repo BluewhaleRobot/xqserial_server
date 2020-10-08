@@ -256,7 +256,7 @@ void StatusPublisher::Refresh()
         var_angle=(0.01f/180.0f*PI)*(0.01f/180.0f*PI);
 
         delta_car=(car_status.encoder_delta_r+car_status.encoder_delta_l)/2.0f*1.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius;
-        if(delta_car>0.05||delta_car<-0.05)
+        if(std::isnan(delta_car)||delta_car>0.1||delta_car<-0.1)
         {
           // std::cout<<"get you!"<<std::endl;
           delta_car = 0;
@@ -281,7 +281,7 @@ void StatusPublisher::Refresh()
         if(delta_theta > 270 ) delta_theta -= 360;
         if(delta_theta < -270 ) delta_theta += 360;
 
-        if((!theta_updateflag) ||delta_theta>20||delta_theta<-20)
+        if((!theta_updateflag)||std::isnan(delta_theta) ||delta_theta>20||delta_theta<-20)
         {
           delta_theta = 0;
         }
@@ -473,10 +473,20 @@ void StatusPublisher::Refresh()
             angle_speed=car_status.IMU[5];
           }
 
+          static float angle_speed_last = 0;
+      		if (std::isnan(angle_speed) || std::fabs(angle_speed)>500)
+      		{
+      			angle_speed = angle_speed_last;
+      		}
+      		else
+      		{
+      			angle_speed_last = angle_speed;
+      		}
+          
           theta_sum -=theta_sums[theta_sum_index];
           theta_sums[theta_sum_index] = angle_speed * PI /180.0f;
           theta_sum +=theta_sums[theta_sum_index];
-          CarTwist.angular.z=theta_sum/8.0f; 
+          CarTwist.angular.z=theta_sum/8.0f;
           theta_sum_index++;
           if(theta_sum_index>7) theta_sum_index=0;
           //std::cout<<" " << angle_speed * PI /180.0f<<std::endl;
