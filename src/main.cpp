@@ -61,7 +61,7 @@ int main(int argc, char **argv)
 
     //初始化c2 c4输出
     ros::param::set("/xqserial_server/params/out1", 0);
-    ros::param::set("/xqserial_server/params/out2", 0);
+    ros::param::set("/xqserial_server/params/c4", 0);
 
     try {
         CallbackAsyncSerial serial(port,baud);
@@ -102,15 +102,23 @@ int main(int argc, char **argv)
               // std::cout << "oups!" << std::endl;
               //xq_diffdriver.last_ordertime=ros::WallTime::now();
             }
+
             if(i%100==0 && xq_diffdriver.DetectFlag_)
             {
               //下发底层红外开启命令
               char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x44,(char)0x01};
               serial.write(cmd_str,6);
             }
+
             if(i%1 == 0)
             {
               xq_diffdriver.check_faster_stop();
+            }
+
+            if(i%100 == 0)
+            {
+              //每隔1秒下发心跳包
+              xq_diffdriver.sendHeartbag();
             }
 
             //更新按钮
@@ -122,7 +130,7 @@ int main(int argc, char **argv)
               audio_pub.publish(audio_msg);
             }
 
-            if(i%10 == 0)
+            if(i%50 == 0)
             {
               xq_diffdriver.updateC2C4();
             }

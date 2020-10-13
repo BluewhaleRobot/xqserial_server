@@ -338,7 +338,7 @@ void StatusPublisher::Refresh()
             angle_speed=car_status.IMU[5];
           }
           static float angle_speed_last=0;
-          if(isnan(angle_speed)|| std::fabs(angle_speed)>500)
+          if(std::isnan(angle_speed)|| std::fabs(angle_speed)>500)
           {
             angle_speed = angle_speed_last;
           }

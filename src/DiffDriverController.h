@@ -4,8 +4,13 @@
 #include "StatusPublisher.h"
 #include "AsyncSerial.h"
 #include <std_msgs/Bool.h>
-#include "galileo_serial_server/GalileoStatus.h"
 #include "galileo_serial_server/GalileoNativeCmds.h"
+#include "galileo_serial_server/GalileoStatus.h"
+#include "xqserial_server/Shutdown.h"
+#include "xqserial_server/http_request.hpp"
+#include "json.hpp"
+
+
 
 namespace xqserial_server
 {
@@ -28,6 +33,8 @@ public:
     void UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status);
     bool dealBackSwitch();
     void updateC2C4();
+    bool UpdateC4Flag(ShutdownRequest &req, ShutdownResponse &res);
+    void sendHeartbag();
     int speed_debug[2];
     ros::WallTime last_ordertime;
     bool DetectFlag_;
@@ -39,6 +46,7 @@ private:
     StatusPublisher* xq_status;
     CallbackAsyncSerial* cmd_serial;
     boost::mutex mMutex;
+    boost::mutex mMutex_c4;
     bool MoveFlag;
     geometry_msgs::Twist  cmdTwist_;//小车自身坐标系
     boost::mutex mStausMutex_;

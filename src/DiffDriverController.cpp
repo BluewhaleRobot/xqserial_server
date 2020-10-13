@@ -36,13 +36,14 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
 
 void DiffDriverController::run()
 {
-    ros::NodeHandle nodeHandler;
+    ros::NodeHandle nodeHandler("~");
     ros::Subscriber sub = nodeHandler.subscribe(cmd_topic, 1, &DiffDriverController::sendcmd, this);
     ros::Subscriber sub2 = nodeHandler.subscribe("/imu_cal", 1, &DiffDriverController::imuCalibration,this);
     ros::Subscriber sub3 = nodeHandler.subscribe("/global_move_flag", 1, &DiffDriverController::updateMoveFlag,this);
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag,this);
     ros::Subscriber sub5 = nodeHandler.subscribe("/move_base/StatusFlag", 1, &DiffDriverController::updateFastStopFlag,this);
     ros::Subscriber sub6 = nodeHandler.subscribe("/galileo/status", 1, &DiffDriverController::UpdateNavStatus, this);
+    ros::ServiceServer service = nodeHandler.advertiseService("shutdown", &DiffDriverController::UpdateC4Flag, this);
     ros::spin();
 }
 void DiffDriverController::updateMoveFlag(const std_msgs::Bool& moveFlag)
@@ -63,6 +64,40 @@ void DiffDriverController::imuCalibration(const std_msgs::Bool& calFlag)
     }
   }
 }
+
+bool DiffDriverController::UpdateC4Flag(ShutdownRequest &req, ShutdownResponse &res)
+{
+  ROS_WARN_STREAM("Start processing shutdown request");
+  if(req.flag)
+  {
+    boost::mutex::scoped_lock lock(mMutex_c4);
+    //下发底层c4开关命令
+    ros::param::set("/xqserial_server/params/c4", 1);
+    char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x4b,(char)0x01};
+    if(NULL!=cmd_serial)
+    {
+        cmd_serial->write(cmd_str,6);
+    }
+    ROS_WARN_STREAM("Send shutdown command to driver");
+    res.result = true;
+  }
+  else{
+    ROS_WARN_STREAM("Shutdown set to False");
+    res.result = false;
+  }
+  return true;
+}
+
+void DiffDriverController::sendHeartbag()
+{
+  //下发底层心跳包
+  char cmd_str[5]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x01,(char)0x4c};
+  if(NULL!=cmd_serial)
+  {
+      cmd_serial->write(cmd_str,5);
+  }
+}
+
 void DiffDriverController::updateFastStopFlag(const std_msgs::Int32& fastStopmsg)
 {
   boost::mutex::scoped_lock lock(mStausMutex_);
@@ -434,10 +469,11 @@ bool DiffDriverController::dealBackSwitch()
 
 void DiffDriverController::updateC2C4()
 {
+  boost::mutex::scoped_lock lock(mMutex_c4);
   int c2_value = 0;
   int c4_value = 0;
   ros::param::param<int>("/xqserial_server/params/out1", c2_value, c2_value);
-  ros::param::param<int>("/xqserial_server/params/out2", c4_value, c4_value);
+  ros::param::param<int>("/xqserial_server/params/c4", c4_value, c4_value);
   ROS_DEBUG("c2 %d %d , c4 %d %d",c2_value,xq_status->car_status.hbz2, c4_value, xq_status->car_status.hbz4);
   if(xq_status->car_status.hbz2 != c2_value)
   {
