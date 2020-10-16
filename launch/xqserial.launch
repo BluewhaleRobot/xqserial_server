@@ -1,10 +1,10 @@
 <launch>
   <node pkg="xqserial_server" type="xqserial_server" name="motor_driver">
     <param name="debug_flag" value="false"/>
-    <param name="wheel_separation" value="0.36"/>
-    <param name="wheel_radius" value="0.0825"/>
+    <param name="wheel_separation" value="0.4"/>
+    <param name="wheel_radius" value="0.04"/>
     <param name="max_speed" value="5.0"/>
-    <param name="port" value="/dev/ttyUSB001"/>`1
+    <param name="port" value="/dev/ttyUSB001"/>
     <param name="rot_dist" value="0.25"/>
     <param name="tran_dist" value="0.4"/>
     <param name="power_scale" value="1.0"/>

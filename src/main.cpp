@@ -34,8 +34,8 @@ int main(int argc, char **argv)
     //获取小车机械参数
     double separation=0,radius=0;
     bool DebugFlag = false;
-    ros::param::param<double>("~wheel_separation", separation, 0.36);
-    ros::param::param<double>("~wheel_radius", radius, 0.0825);
+    ros::param::param<double>("~wheel_separation", separation, 0.4);
+    ros::param::param<double>("~wheel_radius", radius, 0.04);
     ros::param::param<bool>("~debug_flag", DebugFlag, false);
 
     double rot_dist,tran_dist;
