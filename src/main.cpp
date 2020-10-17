@@ -52,7 +52,7 @@ int main(int argc, char **argv)
     double max_speed,r_min;
     string cmd_topic;
     ros::param::param<double>("~max_speed", max_speed, 5.0);
-    ros::param::param<std::string>("~cmd_topic", cmd_topic, "cmd_vel");
+    ros::param::param<std::string>("~cmd_topic", cmd_topic, "/cmd_vel");
     ros::param::param<double>("~r_min", r_min, 0.25);
 
     // 初始化语音发布者

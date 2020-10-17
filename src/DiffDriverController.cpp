@@ -379,7 +379,7 @@ void DiffDriverController::check_faster_stop()
   speed_temp[1]=std::max(-100.0,speed_temp[1]);
 
 
-  //ROS_ERROR("speed %f",speed_temp[0]);
+  //ROS_ERROR("speed %f %f",speed_temp[0],speed_temp[1]);
   for(i=0;i<2;i++)
   {
    speed[i]=speed_temp[i];
