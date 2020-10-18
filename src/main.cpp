@@ -50,6 +50,13 @@ int main(int argc, char **argv)
     ros::param::param<double>("~wheel_radius", radius, 0.04);
     ros::param::param<bool>("~debug_flag", DebugFlag, false);
 
+    bool changeForward_flag = false;
+    bool changeRot_flag = false;
+    bool changeEncoder_flag = false;
+    ros::param::param<bool>("~changeForward_flag", changeForward_flag, false);
+    ros::param::param<bool>("~changeRot_flag", changeRot_flag, false);
+    ros::param::param<bool>("~changeEncoder_flag", changeEncoder_flag, false);
+
     double rot_dist,tran_dist;
     ros::param::param<double>("~rot_dist", rot_dist, -0.21);
     ros::param::param<double>("~tran_dist", tran_dist, -0.3);
@@ -63,10 +70,11 @@ int main(int argc, char **argv)
     //半径减小2倍，最大转速增大2倍
     radius = radius/2.0;
     max_speed = max_speed*2.0;
-    
+
     double power_scale;
     ros::param::param<double>("~power_scale", power_scale, 1.0);
     xqserial_server::StatusPublisher xq_status(separation,radius,DebugFlag,power_scale);
+    xq_status.setEncoderflag(changeEncoder_flag);
     xq_status.setBarParams(rot_dist,tran_dist);
 
     // 初始化log发布者和语音发布者
@@ -82,6 +90,7 @@ int main(int argc, char **argv)
       serial_imu.setCallback(boost::bind(&xqserial_server::StatusPublisher::Update_imu,&xq_status,_1,_2));
 
       xqserial_server::DiffDriverController xq_diffdriver(max_speed,cmd_topic,&xq_status,&serial_car,&serial_imu);
+      xq_diffdriver.setMotorflag(changeForward_flag,changeRot_flag);
       boost::thread cmd2serialThread(& xqserial_server::DiffDriverController::run,&xq_diffdriver);
 
 

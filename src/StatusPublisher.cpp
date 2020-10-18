@@ -104,6 +104,7 @@ StatusPublisher::StatusPublisher()
    distances_[0] = 4.2;
    distances_[1] = 4.2;
    base_time_ = ros::Time::now().toSec();
+   mchangeEncoder_flag = false;
 }
 
 StatusPublisher::StatusPublisher(double separation,double radius,bool debugFlag,double power_scale)
@@ -203,6 +204,12 @@ void StatusPublisher::Update_imu(const char data[], unsigned int len)
                     }
                     if (mbUpdated_imu)
                     {
+                      if(mchangeEncoder_flag)
+                      {
+                        //反转电机编码器反馈值
+                        car_status.encoder_delta_r = -car_status.encoder_delta_r;
+                        car_status.encoder_delta_l = -car_status.encoder_delta_l;
+                      }
                       base_time_ = ros::Time::now().toSec();
                     }
                     new_packed_ok_len=0;
@@ -247,7 +254,7 @@ void StatusPublisher::Refresh()
     var_angle = (0.01f / 180.0f * PI) * (0.01f / 180.0f * PI);
 
     delta_car = (-car_status.encoder_delta_r - car_status.encoder_delta_l) / 2.0f * 1.0f / car_status.encoder_ppr * 2.0f * PI * wheel_radius;
-    
+
     //ROS_ERROR("%d %d",-car_status.encoder_delta_r,-car_status.encoder_delta_l);
 
     if (std::isnan(delta_car)||delta_car > 0.10|| delta_car < -0.10)

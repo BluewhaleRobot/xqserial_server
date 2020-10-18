@@ -72,6 +72,10 @@ public:
       tran_dist_ = tran_dist;
     }
     float get_ultrasonic_min_distance();
+    void setEncoderflag(bool changeEncoder_flag)
+    {
+      mchangeEncoder_flag = changeEncoder_flag;
+    }
 private:
     //Wheel separation, wrt the midpoint of the wheel width: meters
     double wheel_separation;
@@ -118,9 +122,10 @@ private:
 
     double distances_[2];
     double power_scale_;
+    bool mchangeEncoder_flag;
 };
 
 } //namespace xqserial_server
 
 
-#endif // STATUSPUBLISHER_H
+#endif // STATUSPUBLISHER_Hxq_status

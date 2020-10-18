@@ -21,6 +21,8 @@ DiffDriverController::DiffDriverController()
     updateOrderflag_ = false;
     fastStopFlag_ = false;
     last_ordertime=ros::WallTime::now();
+    mchangeForward_flag = false;
+    mchangeRot_flag = false;
 }
 
 DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_topic_,StatusPublisher* xq_status_,CallbackAsyncSerial* cmd_serial_car_,CallbackAsyncSerial* cmd_serial_imu_)
@@ -40,6 +42,8 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
     updateOrderflag_ = false;
     fastStopFlag_ = false;
     last_ordertime=ros::WallTime::now();
+    mchangeForward_flag = false;
+    mchangeRot_flag = false;
 }
 
 void DiffDriverController::run()
@@ -209,6 +213,15 @@ void DiffDriverController::send_speed()
   left_speed_ = -(int16_t)(speed_temp[0]);
   right_speed_ = -(int16_t)(speed_temp[1]);
 
+  if(mchangeForward_flag)
+  {
+    left_speed_ = -left_speed_;
+  }
+
+  if(mchangeRot_flag)
+  {
+    right_speed_ = -right_speed_;
+  }
   //下发速度指令
   char buffer [30];
   int len;

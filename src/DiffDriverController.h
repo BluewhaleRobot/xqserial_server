@@ -26,6 +26,11 @@ public:
     void send_fasterstop();
     void send_release();
     ros::WallTime last_ordertime;
+    void setMotorflag(bool changeForward_flag, bool changeRot_flag)
+    {
+      mchangeForward_flag = changeForward_flag;
+      mchangeRot_flag = changeRot_flag;
+    }
 
 private:
     double max_wheelspeed;//单位为转每秒,只能为正数
@@ -43,6 +48,8 @@ private:
     float linear_x_;
     float theta_z_;
     bool send_flag_;
+    bool mchangeForward_flag;
+    bool mchangeRot_flag;
 };
 
 }
