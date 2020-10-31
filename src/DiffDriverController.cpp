@@ -132,7 +132,7 @@ void DiffDriverController::Refresh()
   {
     //10秒或C1按下去了
     send_release();
-    boost::mutex::scoped_lock lock(mScanMutex_);
+    boost::mutex::scoped_lock lock2(mScanMutex_);
     scan_min_dist_ = x_limit_*2;
     move_forward_flag_ = true;
   }
@@ -236,7 +236,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     }
     {
       //建图时过滤转弯半径
-      boost::mutex::scoped_lock lock(mStausMutex_);
+      boost::mutex::scoped_lock lock2(mStausMutex_);
       if(galileoStatus_.map_status == 1)
       {
         float r_temp = std::max(std::fabs(R_goal_),R_min_);
