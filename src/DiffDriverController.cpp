@@ -253,7 +253,7 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     }
     //ROS_ERROR("speed3 %f %f, %f",linear_x_goal_,theta_z_goal_,R_goal_);
 
-    this->filterGoal();
+    //this->filterGoal();
     //ROS_ERROR("speed4 %f %f, %f",linear_x_goal_,theta_z_goal_,R_goal_);
 }
 

@@ -295,6 +295,7 @@ void StatusPublisher::Update_imu(const char data[], unsigned int len)
 void StatusPublisher::Refresh()
 {
     static unsigned int ii=0;
+    static bool first_update = true;
     ii++;
     int delta_encoder_r = 0;
     int delta_encoder_l = 0;
@@ -335,6 +336,13 @@ void StatusPublisher::Refresh()
 
       delta_encoder_l = -delta_encoder_l; //左侧电机反向
 
+      if(first_update)
+      {
+        //第一次需要丢弃
+        first_update = false;
+        delta_encoder_r = 0;
+        delta_encoder_l = 0;
+      }
       //ROS_ERROR("delta_encoder_r delta_encoder_l %d %d, car_status.encoder_r_current car_status.encoder_l_current %d %d",delta_encoder_r, delta_encoder_l,car_status.encoder_r_current,car_status.encoder_l_current);
       mbUpdated_car = false;
     }
