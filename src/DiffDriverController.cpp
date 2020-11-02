@@ -110,7 +110,7 @@ void DiffDriverController::Refresh()
   if(t_diff.toSec()<6.0)
   {
     //ROS_ERROR("oups1");
-    if(t_diff.toSec()>3.0 || xq_status->get_status()<=0 || xq_status->car_status.hbz2 ==1)
+    if(t_diff.toSec()>3.0 || xq_status->get_status()<=0 || xq_status->car_status.hbz2 ==1 || xq_status->car_status.hbz1 ==1)
     {
       //ROS_ERROR("oups2 %f %d %d",t_diff.toSec(),xq_status->get_status(),xq_status->car_status.hbz2);
       boost::mutex::scoped_lock lock(mMutex);
