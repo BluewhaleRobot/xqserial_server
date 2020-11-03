@@ -444,7 +444,14 @@ void StatusPublisher::Refresh()
         if(distance_sum_i%5==0)
         {
           //平滑
-          forward_flag_ = true;
+          if(car_status.hbz1 == 1)
+          {
+            forward_flag_ = false;
+          }
+          else
+          {
+            forward_flag_ = true;
+          }
           distance1_sum -=distance1_sums[distance_sum_index];
           distance1_sums[distance_sum_index] = car_status.distance1;
           distance1_sum +=distance1_sums[distance_sum_index];
