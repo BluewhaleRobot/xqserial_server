@@ -162,8 +162,11 @@ void DiffDriverController::sendcmd2(const geometry_msgs::Twist &command)
   sendcmd(cmdTwist);
 }
 
-void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
+void DiffDriverController::sendcmd(const geometry_msgs::Twist &command1)
 {
+    geometry_msgs::Twist command;
+    command.linear.x = -command1.linear.x;
+    command.angular.z = command1.angular.z;
 
     static time_t t1=time(NULL),t2;
     int i=0,wheel_ppr=1;
