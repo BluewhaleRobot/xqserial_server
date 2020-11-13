@@ -165,8 +165,8 @@ void DiffDriverController::sendcmd2(const geometry_msgs::Twist &command)
 void DiffDriverController::sendcmd(const geometry_msgs::Twist &command1)
 {
     geometry_msgs::Twist command;
-    command.linear.x = -command1.linear.x;
-    command.angular.z = command1.angular.z;
+    command.linear.x = command1.linear.x;
+    command.angular.z = -command1.angular.z;
 
     static time_t t1=time(NULL),t2;
     int i=0,wheel_ppr=1;
@@ -254,8 +254,8 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command1)
     //ROS_ERROR("speed %f %f %f",speed_temp[0],vx_temp,bar_distance);
     for(i=0;i<2;i++)
     {
-     speed[i]=(int8_t)speed_temp[i];
-     speed_debug[i]=(int8_t)speed_temp[i];
+     speed[i]=-(int8_t)speed_temp[i];
+     speed_debug[i]=-(int8_t)speed_temp[i];
      if(speed[i]<0)
      {
          //if(speed[i]>-5) speed[i]=-4;
@@ -348,8 +348,8 @@ void DiffDriverController::check_faster_stop()
   //ROS_ERROR("speed %f",speed_temp[0]);
   for(i=0;i<2;i++)
   {
-   speed[i]=speed_temp[i];
-   speed_debug[i]=speed_temp[i];
+   speed[i]=-speed_temp[i];
+   speed_debug[i]=-speed_temp[i];
    if(speed[i]<0)
    {
        //if(speed[i]>-5) speed[i]=-4;
