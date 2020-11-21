@@ -256,15 +256,15 @@ void DiffDriverController::send_speed()
     speed_temp[1] = std::min(speed_temp[1], 1000.0);
     speed_temp[1] = std::max(-1000.0, speed_temp[1]);
 
-    left_speed_ = (int16_t)(speed_temp[0]);
-    right_speed_ = (int16_t)(speed_temp[1]);
+    left_speed_ = -(int16_t)(speed_temp[0]);
+    right_speed_ = -(int16_t)(speed_temp[1]);
   }
 
 
   //下发速度指令
   char buffer [30];
   int len;
-  len = std::sprintf(buffer, "!M %d %d", left_speed_,right_speed_);
+  len = std::sprintf(buffer, "!M %d %d", right_speed_,left_speed_);
   buffer[len] = (char)0x0d;
   buffer[len+1] = (char)0x0a;
   if(NULL!=cmd_serial_car)
