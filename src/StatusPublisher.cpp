@@ -295,7 +295,16 @@ void StatusPublisher::Refresh()
     if(car_status.status_imu == 1 )
     {
       //反映红外状态
-      car_status.status = 0;
+      
+      if((car_status.hbz_status & 0x04) == 0x04)
+      {
+        car_status.status = -2; //C3急停按下了
+      }
+      else
+      {
+        car_status.status = 0;
+      }
+      
     }
     else
     {
@@ -419,20 +428,21 @@ void StatusPublisher::Refresh()
     //超声波测距
     //发布超声波topic
     rot_flag_ = true;
+    forward_flag_ = true;
     if(car_status.sonar_distance[0]>0.1)
     {
       if(car_status.sonar_distance[0]>4.0||car_status.sonar_distance[0]<0.2) car_status.sonar_distance[0]=4.0;
       CarSonar1.header.stamp = current_time.fromSec(base_time_);
       CarSonar1.range = car_status.sonar_distance[0];
       mSonar1Pub.publish(CarSonar1);
-      if(car_status.sonar_distance[0]<rot_dist_ && rot_flag_) rot_flag_ = false;
+      if(car_status.sonar_distance[1]<tran_dist_ && forward_flag_) forward_flag_ = false;
     }
     else
     {
       car_status.sonar_distance[0]=4.0;
     }
 
-    forward_flag_ = true;
+    
     if(car_status.sonar_distance[1]>0.1)
     {
       if(car_status.sonar_distance[1]>4.0||car_status.sonar_distance[1]<0.2) car_status.sonar_distance[1]=4.0;
@@ -452,7 +462,7 @@ void StatusPublisher::Refresh()
       CarSonar3.header.stamp = current_time.fromSec(base_time_);
       CarSonar3.range = car_status.sonar_distance[2];
       mSonar3Pub.publish(CarSonar3);
-      if(car_status.sonar_distance[2]<rot_dist_ && rot_flag_) rot_flag_ = false;
+      if(car_status.sonar_distance[1]<tran_dist_ && forward_flag_) forward_flag_ = false;
     }
     else
     {

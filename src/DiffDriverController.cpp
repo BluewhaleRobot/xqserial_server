@@ -55,7 +55,7 @@ void DiffDriverController::run()
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag,this);
     ros::Subscriber sub5 = nodeHandler.subscribe("/move_base/StatusFlag", 1, &DiffDriverController::updateFastStopFlag,this);
     ros::Subscriber sub6 = nodeHandler.subscribe("/galileo/status", 1, &DiffDriverController::UpdateNavStatus, this);
-    ros::Rate r(100);//发布周期为50hz
+    ros::Rate r(50);//发布周期为50hz
     int i=0;
     while (ros::ok())
     {
@@ -64,32 +64,38 @@ void DiffDriverController::run()
       r.sleep();
       if (xq_status->get_status() == -1|| xq_status->get_status()>0) continue; //底层还在初始化
       ros::WallDuration t_diff = ros::WallTime::now() - last_ordertime;
-
       {
         boost::mutex::scoped_lock lock(mMutex);
-        //3秒速度保持功能，
-        if(t_diff.toSec()<3.0)
+        if((xq_status->car_status.hbz_status & 0x04)==0x04)
         {
-          if(i%10==0 || updateOrderflag_)
-          {
-            updateOrderflag_ = false;
-
-            //有速度指令则发速度，没有则停止
-            if(send_flag_)
-            {
-              filterSpeed();
-              send_speed();
-            }
-            else
-            {
-              send_stop();
-            }
-          }
-          continue;
+          send_stop();
         }
-        //3秒后开始锁轴
-        fastStopFlag_ = false;
-        send_flag_ = false;
+        else
+        {
+          //3秒速度保持功能，
+          if(t_diff.toSec()<3.0)
+          {
+            if(i%10==0 || updateOrderflag_)
+            {
+              updateOrderflag_ = false;
+
+              //有速度指令则发速度，没有则停止
+              if(send_flag_)
+              {
+                filterSpeed();
+                send_speed();
+              }
+              else
+              {
+                send_stop();
+              }
+            }
+            continue;
+          }
+          //3秒后开始锁轴
+          fastStopFlag_ = false;
+          send_flag_ = false;
+        }
       }//速度指令结束
 
     }
