@@ -50,6 +50,7 @@ void DiffDriverController::run()
     ros::Subscriber sub3 = nodeHandler.subscribe("/global_move_flag", 1, &DiffDriverController::updateMoveFlag,this);
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag,this);
     ros::Subscriber sub5 = nodeHandler.subscribe("/move_base/StatusFlag", 1, &DiffDriverController::updateFastStopFlag,this);
+    ros::Subscriber sub6 = nodeHandler.subscribe("/galileo/status", 1, &DiffDriverController::UpdateNavStatus, this);
     ros::Rate r(100);//发布周期为50hz
     int i=0;
     while (ros::ok())
@@ -139,9 +140,13 @@ void DiffDriverController::updateFastStopFlag(const std_msgs::Int32& fastStopmsg
   boost::mutex::scoped_lock lock(mMutex);
   if(fastStopmsg.data == 2)
   {
-    fastStopFlag_ = true;
-    updateOrderflag_ = true;
-    last_ordertime=ros::WallTime::now();
+    boost::mutex::scoped_lock lock(mStausMutex_);
+    if(galileoStatus_.target_status == 1)
+    {
+      fastStopFlag_ = true;
+      updateOrderflag_ = true;
+      last_ordertime=ros::WallTime::now();
+    }
   }
   else
   {
@@ -174,10 +179,10 @@ void DiffDriverController::filterSpeed()
   // {
   //   vx_temp = std::min(vx_temp,0.5*(bar_distance-0.2));
   // }
-  if (!MoveFlag)
+  if (!MoveFlag && vx_temp>0.01)
   {
     vx_temp = 0.;
-    vtheta_temp = 0.;
+    //vtheta_temp = 0.;
   }
 
   //超声波避障
@@ -300,7 +305,28 @@ void DiffDriverController::send_release()
   }
 }
 
+void DiffDriverController::UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status)
+{
+    boost::mutex::scoped_lock lock(mStausMutex_);
+    galileoStatus_.nav_status = current_receive_status.navStatus;
+    galileoStatus_.visual_status = current_receive_status.visualStatus;
+    galileoStatus_.charge_status = current_receive_status.chargeStatus;
+    galileoStatus_.map_status = current_receive_status.mapStatus;
+    galileoStatus_.power = current_receive_status.power;
+    galileoStatus_.target_numID = current_receive_status.targetNumID;
+    galileoStatus_.target_status = current_receive_status.targetStatus;
+    galileoStatus_.target_distance = current_receive_status.targetDistance;
+    galileoStatus_.angle_goal_status = current_receive_status.angleGoalStatus;
+    galileoStatus_.control_speed_x = current_receive_status.controlSpeedX;
+    galileoStatus_.control_speed_theta = current_receive_status.controlSpeedTheta;
+    galileoStatus_.current_speed_x = current_receive_status.currentSpeedX;
+    galileoStatus_.current_speed_theta = current_receive_status.currentSpeedTheta;
 
+    if(galileoStatus_.target_status != 1)
+    {
+      fastStopFlag_ = false;
+    }
+}
 
 
 

@@ -456,20 +456,22 @@ void StatusPublisher::Refresh()
     //超声波测距
     //发布超声波topic
     rot_flag_ = true;
+    forward_flag_ = true;
     if(car_status.sonar_distance[0]>0.1)
     {
       if(car_status.sonar_distance[0]>4.0||car_status.sonar_distance[0]<0.2) car_status.sonar_distance[0]=4.0;
       CarSonar1.header.stamp = current_time.fromSec(base_time_);
       CarSonar1.range = car_status.sonar_distance[0];
       mSonar1Pub.publish(CarSonar1);
-      if(car_status.sonar_distance[0]<rot_dist_ && rot_flag_) rot_flag_ = false;
+      if(car_status.sonar_distance[0]<tran_dist_ && forward_flag_) forward_flag_ = false;
+      //if(car_status.sonar_distance[0]<rot_dist_ && rot_flag_) rot_flag_ = false;
     }
     else
     {
       car_status.sonar_distance[0]=4.0;
     }
 
-    forward_flag_ = true;
+    
     if(car_status.sonar_distance[1]>0.1)
     {
       car_status.sonar_distance[1] = 4.0; //屏蔽掉
