@@ -112,18 +112,18 @@ int main(int argc, char **argv)
             break;
         }
 
+        serial_car.write(driver1_read_odom_cmd,8);
+        usleep(3000);//间隔1MS
+        serial_car.write(driver2_read_odom_cmd,8);
+        usleep(6000);//延时8MS，等待数据上传和处理
+
+        xq_status.Refresh();//定时发布状态
+
         if(i%100 == 0)
         {
           //每隔2秒下发心跳包
           xq_diffdriver.sendHeartbag();
         }
-
-        serial_car.write(driver1_read_odom_cmd,8);
-        usleep(3000);//间隔1MS
-        serial_car.write(driver2_read_odom_cmd,8);
-        usleep(5000);//延时8MS，等待数据上传和处理
-
-        xq_status.Refresh();//定时发布状态
 
         if(xq_status.car_status.driver_status == 0 && i%10==0)
         {

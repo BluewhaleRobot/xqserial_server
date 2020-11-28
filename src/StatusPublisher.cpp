@@ -239,9 +239,10 @@ void StatusPublisher::Update_car(const char data[], unsigned int len)
             case 0x02:
               //错误状态
               car_status.encoder_l_current = odom_data;
+              mbUpdated_car = true;
               break;
           }
-          mbUpdated_car = true;
+
         }
     }
 
@@ -345,65 +346,71 @@ void StatusPublisher::Update_imu(const char data[], unsigned int len)
 
 void StatusPublisher::Refresh()
 {
+    boost::mutex::scoped_lock lock1(mMutex_imu);
+    boost::mutex::scoped_lock lock2(mMutex_car);
     static unsigned int ii=0;
     static bool first_update = true;
     ii++;
     int delta_encoder_r = 0;
     int delta_encoder_l = 0;
+    static  int sum_delta_encoder_r = 0;
+    static  int sum_delta_encoder_l = 0;
     //ROS_ERROR("car %d %d",mbUpdated_imu, mbUpdated_car);
     //先处理驱动器
     {
-      boost::mutex::scoped_lock lock(mMutex_car);
-      if(ii%5 == 0)
+      //boost::mutex::scoped_lock lock(mMutex_car);
+      //if(mbUpdated_car)
       {
-        //发布驱动器状态
-        std_msgs::Int32 driver_flag;
-        driver_flag.data = car_status.driver_status;
-        mDriverFlagPub.publish(driver_flag);
-      }
+        if(ii%5 == 0)
+        {
+          //发布驱动器状态
+          std_msgs::Int32 driver_flag;
+          driver_flag.data = car_status.driver_status;
+          mDriverFlagPub.publish(driver_flag);
+        }
 
-      delta_encoder_r = car_status.encoder_r_current - encoder_r_last;
-      encoder_r_last = car_status.encoder_r_current;
-      delta_encoder_l = -(car_status.encoder_l_current - encoder_l_last);//反方向
-      encoder_l_last = car_status.encoder_l_current;
-      //ROS_ERROR("%d %d,%d %d",car_status.encoder_r_current, car_status.encoder_l_current, delta_encoder_r, delta_encoder_l);
-      if(delta_encoder_r>1147483647)
-      {
-        delta_encoder_r = delta_encoder_r - 2147483648;
-      }
-      if(delta_encoder_r<-1147483647)
-      {
-        delta_encoder_r = delta_encoder_r + 2147483647;
-      }
+        delta_encoder_r = car_status.encoder_r_current - encoder_r_last;
+        encoder_r_last = car_status.encoder_r_current;
+        delta_encoder_l = -(car_status.encoder_l_current - encoder_l_last);//反方向
+        encoder_l_last = car_status.encoder_l_current;
+        //ROS_ERROR("%d %d,%d %d",car_status.encoder_r_current, car_status.encoder_l_current, delta_encoder_r, delta_encoder_l);
+        if(delta_encoder_r>1147483647)
+        {
+          delta_encoder_r = delta_encoder_r - 2147483648;
+        }
+        if(delta_encoder_r<-1147483647)
+        {
+          delta_encoder_r = delta_encoder_r + 2147483647;
+        }
 
-      if(delta_encoder_l>1147483647)
-      {
-        delta_encoder_l = delta_encoder_l - 2147483648;
-      }
-      if(delta_encoder_l<-1147483647)
-      {
-        delta_encoder_l = delta_encoder_l + 2147483647;
-      }
+        if(delta_encoder_l>1147483647)
+        {
+          delta_encoder_l = delta_encoder_l - 2147483648;
+        }
+        if(delta_encoder_l<-1147483647)
+        {
+          delta_encoder_l = delta_encoder_l + 2147483647;
+        }
 
-      if(first_update)
-      {
-        //第一次需要丢弃
-        first_update = false;
-        delta_encoder_r = 0;
-        delta_encoder_l = 0;
+        if(first_update && mbUpdated_car)
+        {
+          //第一次需要丢弃
+          first_update = false;
+          delta_encoder_r = 0;
+          delta_encoder_l = 0;
+        }
+        //ROS_ERROR(" %d %d , %d %d",delta_encoder_r, delta_encoder_l,car_status.encoder_r_current,car_status.encoder_l_current);
+        mbUpdated_car = false;
       }
-      //ROS_ERROR("delta_encoder_r delta_encoder_l %d %d, car_status.encoder_r_current car_status.encoder_l_current %d %d",delta_encoder_r, delta_encoder_l,car_status.encoder_r_current,car_status.encoder_l_current);
-      mbUpdated_car = false;
     }
-
     //处理传感器数据
     static float theta_last = 0.0;
     float delta_theta = 0;
     static int update_nums=0;
     static bool yaw_omega_ready = false;
     {
-      boost::mutex::scoped_lock lock(mMutex_imu);
-      if(mbUpdated_imu)
+      //boost::mutex::scoped_lock lock(mMutex_imu);
+      //if(mbUpdated_imu)
       {
         //处理imu
         ros::Time current_time = ros::Time::now();
@@ -430,7 +437,7 @@ void StatusPublisher::Refresh()
         {
           delta_theta = car_status.theta_imu - theta_last - yaw_omega;
           //ROS_ERROR("delta %f , theta_raw %f, yaw_omega %f", delta_theta, car_status.theta_imu,yaw_omega);
-          if( std::fabs(car_status.theta_imu - theta_last)<0.01 && std::fabs(delta_encoder_r) < 2 && std::fabs(delta_encoder_l) < 2)
+          if(mbUpdated_imu && std::fabs(car_status.theta_imu - theta_last)<0.01 && std::fabs(delta_encoder_r) < 2 && std::fabs(delta_encoder_l) < 2)
           {
             if(update_nums>50)
             {
@@ -481,10 +488,13 @@ void StatusPublisher::Refresh()
         var_angle = (0.01f/180.0f*PI)*(0.01f/180.0f*PI);
 
         delta_car = (delta_encoder_r + delta_encoder_l)/2.0f*1.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius;
-        if(std::isnan(delta_theta) ||delta_car>0.1||delta_car<-0.1)
+        if(std::isnan(delta_car) ||delta_car>0.1||delta_car<-0.1)
         {
           delta_car = 0;
         }
+        //sum_delta_encoder_r += delta_encoder_r;
+        //sum_delta_encoder_l += delta_encoder_l;
+        //ROS_ERROR(" %d %d , %d %d",sum_delta_encoder_r, sum_delta_encoder_l,car_status.encoder_r_current,car_status.encoder_l_current);
 
         delta_x=delta_car*cos(CarPos2D.theta* PI / 180.0f);
         delta_y=delta_car*sin(CarPos2D.theta* PI / 180.0f);

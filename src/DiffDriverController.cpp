@@ -125,7 +125,7 @@ void DiffDriverController::Refresh()
 
   boost::mutex::scoped_lock lock(mShutdownMutex_);
   ros::WallDuration t_diff = ros::WallTime::now() - last_ordertime;
-  if(t_diff.toSec()<8.0 && (xq_status->car_status.hbz_status & 0x04)==0 && !shutdown_flag_)
+  if(t_diff.toSec()<10.0 && (xq_status->car_status.hbz_status & 0x04)==0 && !shutdown_flag_)
   {
     if(xq_status->car_status.driver_enable1 !=1 || xq_status->car_status.driver_enable1 !=1)
     {
@@ -149,7 +149,7 @@ void DiffDriverController::Refresh()
   }
   else
   {
-    //8秒或C1按下去了
+    //10秒或C1按下去了
     if(xq_status->car_status.driver_enable1 !=0 || xq_status->car_status.driver_enable1 !=0)
     {
       send_release();
@@ -337,7 +337,7 @@ void DiffDriverController::send_speed()
     speed1_cmd[11] = crc_hl[0];
     speed1_cmd[12] = crc_hl[1];
     cmd_serial_car->write(speed1_cmd,13);
-    usleep(3000);//延时1MS
+    usleep(3500);//延时1MS
 
     speed2_cmd[7] = (left_speed_>>8)&0xff;
     speed2_cmd[8] = left_speed_&0xff;
@@ -347,7 +347,7 @@ void DiffDriverController::send_speed()
     speed2_cmd[11] = crc_hl[0];
     speed2_cmd[12] = crc_hl[1];
     cmd_serial_car->write(speed2_cmd,13);
-    usleep(3000);//延时1MS
+    usleep(3500);//延时1MS
 
     //ROS_ERROR("%d %d",right_speed_, left_speed_);
   }
@@ -367,9 +367,9 @@ void DiffDriverController::send_release()
   if(NULL!=cmd_serial_car)
   {
     cmd_serial_car->write(speed_cmd1,8);
-    usleep(3000);//延时1MS
+    usleep(3500);//延时1MS
     cmd_serial_car->write(speed_cmd2,8);
-    usleep(3000);//延时1MS
+    usleep(3500);//延时1MS
   }
   linear_x_current_ = 0;
   theta_z_current_ = 0;
@@ -395,9 +395,9 @@ void DiffDriverController::send_enable()
   if(NULL!=cmd_serial_car)
   {
     cmd_serial_car->write(speed_cmd1,8);
-    usleep(3000);//延时1MS
+    usleep(3500);//延时1MS
     cmd_serial_car->write(speed_cmd2,8);
-    usleep(3000);//延时1MS
+    usleep(3500);//延时1MS
   }
 }
 
