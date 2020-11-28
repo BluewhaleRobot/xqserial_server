@@ -119,15 +119,17 @@ int main(int argc, char **argv)
         }
 
         serial_car.write(driver1_read_odom_cmd,8);
-        usleep(1000);//间隔1MS
+        usleep(3000);//间隔1MS
         serial_car.write(driver2_read_odom_cmd,8);
-        usleep(8000);//延时8MS，等待数据上传和处理
+        usleep(5000);//延时8MS，等待数据上传和处理
+
         xq_status.Refresh();//定时发布状态
+
         if(xq_status.car_status.driver_status == 0 && i%10==0)
         {
           //驱动器如果没有进入can模式则不断下发进入指令
           serial_car.write(driver_canmode_cmd, 8);
-          usleep(1000);//间隔1MS
+          usleep(3000);//间隔1MS
         }
         else
         {
@@ -137,9 +139,9 @@ int main(int argc, char **argv)
             if(i%10==0)
             {
               serial_car.write(driver1_speed_mode_cmd, 8);
-              usleep(1000);//间隔1MS
+              usleep(3000);//间隔1MS
               serial_car.write(driver2_speed_mode_cmd, 8);
-              usleep(1000);//间隔1MS
+              usleep(3000);//间隔1MS
             }
           }
           else

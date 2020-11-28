@@ -74,6 +74,7 @@ public:
       acc_wz_ = acc_wz_set_;
     }
     void send_release();
+    void send_enable();
     void setBarParams(double angle_limit,double tran_dist, double x_limit, double y_limit)
     {
       boost::mutex::scoped_lock lock(mScanMutex_);

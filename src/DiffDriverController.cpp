@@ -125,9 +125,15 @@ void DiffDriverController::Refresh()
 
   boost::mutex::scoped_lock lock(mShutdownMutex_);
   ros::WallDuration t_diff = ros::WallTime::now() - last_ordertime;
-  if(t_diff.toSec()<10.0 && (xq_status->car_status.hbz_status & 0x01)==1 && !shutdown_flag_)
+  if(t_diff.toSec()<8.0 && (xq_status->car_status.hbz_status & 0x04)==0 && !shutdown_flag_)
   {
-    if(t_diff.toSec()>3.0 || xq_status->get_status()<=0)
+    if(xq_status->car_status.driver_enable1 !=1 || xq_status->car_status.driver_enable1 !=1)
+    {
+      send_enable();
+      return;
+    }
+
+    if(t_diff.toSec()>2.0 || xq_status->get_status()<=0)
     {
       boost::mutex::scoped_lock lock(mMutex);
       //命令超时3秒，或者imu还在初始化
@@ -143,8 +149,11 @@ void DiffDriverController::Refresh()
   }
   else
   {
-    //10秒或C1按下去了
-    send_release();
+    //8秒或C1按下去了
+    if(xq_status->car_status.driver_enable1 !=0 || xq_status->car_status.driver_enable1 !=0)
+    {
+      send_release();
+    }
     boost::mutex::scoped_lock lock2(mScanMutex_);
     scan_min_dist_ = x_limit_*2;
     move_forward_flag_ = true;
@@ -313,13 +322,6 @@ void DiffDriverController::send_speed()
 
   if(NULL!=cmd_serial_car)
   {
-    //下发使能
-    const char driver1_enable_cmd[8] = {(char)0x01,(char)0x06,(char)0x00,(char)0x50,(char)0x00,(char)0x0f,(char)0xc9,(char)0xdf}; //使能
-    const char driver2_enable_cmd[8] = {(char)0x02,(char)0x06,(char)0x00,(char)0x50,(char)0x00,(char)0x0f,(char)0xc9,(char)0xec}; //使能
-    cmd_serial_car->write(driver1_enable_cmd,8);
-    usleep(1000);//延时1MS
-    cmd_serial_car->write(driver2_enable_cmd,8);
-    usleep(1000);//延时1MS
     //下发速度指令
     //                           0           1          2          3          4          5          6          7          8          9         10         11         12
     char speed1_cmd[13] = {(char)0x01,(char)0x10,(char)0x00,(char)0x40,(char)0x00,(char)0x02,(char)0x04,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
@@ -335,7 +337,7 @@ void DiffDriverController::send_speed()
     speed1_cmd[11] = crc_hl[0];
     speed1_cmd[12] = crc_hl[1];
     cmd_serial_car->write(speed1_cmd,13);
-    usleep(1000);//延时1MS
+    usleep(3000);//延时1MS
 
     speed2_cmd[7] = (left_speed_>>8)&0xff;
     speed2_cmd[8] = left_speed_&0xff;
@@ -345,7 +347,9 @@ void DiffDriverController::send_speed()
     speed2_cmd[11] = crc_hl[0];
     speed2_cmd[12] = crc_hl[1];
     cmd_serial_car->write(speed2_cmd,13);
-    usleep(1000);//延时1MS
+    usleep(3000);//延时1MS
+
+    //ROS_ERROR("%d %d",right_speed_, left_speed_);
   }
 
   boost::mutex::scoped_lock lock(mMutex);
@@ -363,9 +367,9 @@ void DiffDriverController::send_release()
   if(NULL!=cmd_serial_car)
   {
     cmd_serial_car->write(speed_cmd1,8);
-    usleep(1000);//延时1MS
+    usleep(3000);//延时1MS
     cmd_serial_car->write(speed_cmd2,8);
-    usleep(1000);//延时1MS
+    usleep(3000);//延时1MS
   }
   linear_x_current_ = 0;
   theta_z_current_ = 0;
@@ -379,6 +383,22 @@ void DiffDriverController::send_release()
 
   acc_vx_ = acc_vx_set_;
   acc_wz_ = acc_wz_set_;
+}
+
+void DiffDriverController::send_enable()
+{
+  boost::mutex::scoped_lock lock(mMutex);
+  //下发速度指令
+  //                       0           1           2          3          4          5          6          7
+  char speed_cmd1[8] = {(char)0x01,(char)0x06,(char)0x00,(char)0x50,(char)0x00,(char)0x0f,(char)0xc9,(char)0xdf};
+  char speed_cmd2[8] = {(char)0x02,(char)0x06,(char)0x00,(char)0x50,(char)0x00,(char)0x0f,(char)0xc9,(char)0xec};
+  if(NULL!=cmd_serial_car)
+  {
+    cmd_serial_car->write(speed_cmd1,8);
+    usleep(3000);//延时1MS
+    cmd_serial_car->write(speed_cmd2,8);
+    usleep(3000);//延时1MS
+  }
 }
 
 void DiffDriverController::UpdateSpeed()

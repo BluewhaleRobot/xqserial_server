@@ -45,7 +45,9 @@ typedef struct {
   int driver_error;      //0正常，正数代表驱动器错误状态
   int driver_mode1;      //0 其他模式， 1 速度模式
   int driver_mode2;      //0 其他模式， 1 速度模式
-  int driver_status;       //0复位状态，1 can模式, 2 已进入can 速度模式
+  int driver_status;     //0复位状态，1 can模式, 2 已进入can 速度模式
+  int driver_enable1;    //0 释放， 1使能
+  int driver_enable2;    //0 释放， 1使能
 }UPLOAD_STATUS;
 
 class StatusPublisher
@@ -61,6 +63,8 @@ public:
       car_status.driver_status = 0;
       car_status.driver_mode1 = 0;
       car_status.driver_mode2 = 0;
+      car_status.driver_enable1 = 0;
+      car_status.driver_enable2 = 0;
       car_status.encoder_r_current = 0;
       car_status.encoder_l_current = 0;
       encoder_r_last = 0;
