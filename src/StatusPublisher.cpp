@@ -38,7 +38,7 @@ StatusPublisher::StatusPublisher()
     {
         status[i]=0;
     }
-    car_status.encoder_ppr=5600;
+    car_status.encoder_ppr=100000;
 
    mPose2DPub = mNH.advertise<geometry_msgs::Pose2D>("xqserial_server/Pose2D",1,true);
    mStatusFlagPub = mNH.advertise<std_msgs::Int32>("xqserial_server/StatusFlag",1,true);
@@ -102,6 +102,7 @@ StatusPublisher::StatusPublisher()
    distances_[1] = 4.0;
    distances_[2] = 4.0;
    distances_[3] = 4.0;
+   car_status.driver_status = 0;
 }
 
 StatusPublisher::StatusPublisher(double separation,double radius,double power_scale)
@@ -112,13 +113,14 @@ StatusPublisher::StatusPublisher(double separation,double radius,double power_sc
     power_scale_ = power_scale;
     last_sonartime_ = ros::WallTime::now();
     min_sonardist_ = 0.0;
+    car_status.driver_status = 0;
 }
 
 void StatusPublisher::Update_car(const char data[], unsigned int len)
 {
     int i=0,j=0;
     int * receive_byte;
-    static std::deque<unsigned char>  cmd_string_buf={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+    static std::deque<unsigned char>  cmd_string_buf={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
     unsigned char current_str=0x00;
 
     for(i=0;i<len;i++)
@@ -128,68 +130,88 @@ void StatusPublisher::Update_car(const char data[], unsigned int len)
         cmd_string_buf.push_back(current_str);
         //std::cout<< std::hex  << (int)current_str <<std::endl;
         //ROS_ERROR("current %d %d",data[i],i);
-        if(cmd_string_buf[0]!=0x01 ) //校验站号
+        if(cmd_string_buf[0]!=0x01 || cmd_string_buf[0]!=0x02 || cmd_string_buf[0]!=0xa6) //校验站号
         {
           continue;
         }
 
-        if(cmd_string_buf[1]!=0x43 ) //校验功能码
+        if(cmd_string_buf[1]!=0x03 || cmd_string_buf[1]!=0x06) //校验功能码
         {
           continue;
         }
 
+        if(cmd_string_buf[1]==0x06 && cmd_string_buf[2]==0x00 && cmd_string_buf[3]==0x4f && cmd_string_buf[4]==0x00)
+        {
+          if(cmd_string_buf[5]==0x01)
+          {
+            //can模式
+            car_status.driver_status = 1;
+            car_status.driver_mode1 = 0;
+            car_status.driver_mode2 = 0;
+          }
+
+          if(cmd_string_buf[5]==0x81)
+          {
+            //复位
+            car_status.driver_status = 0;
+            car_status.driver_mode1 = 0;
+            car_status.driver_mode2 = 0;
+          }
+          continue;
+        }
+
+        if(cmd_string_buf[1]==0x06 && cmd_string_buf[2]==0x00 && cmd_string_buf[3]==0x51 && cmd_string_buf[4]==0x00 && cmd_string_buf[5]==0x03)
+        {
+          if(cmd_string_buf[0]==0x01)
+          {
+            //can 速度模式
+            car_status.driver_mode1 = 1;
+          }
+
+          if(cmd_string_buf[0]==0x02)
+          {
+            //can 速度模式
+            car_status.driver_mode2 = 1;
+          }
+
+          if(car_status.driver_mode1 == 1 && car_status.driver_mode2 == 1)
+          {
+            car_status.driver_status = 2;
+          }
+          continue;
+        }
+
+        if( cmd_string_buf[2]!=0x04 )
+        {
+          //不是编码器
+          continue;
+        }
         //校验crc16
         uint8_t crc_hl[2];
-        unsigned char cmd_string_buf_copy[10] = {cmd_string_buf[0],cmd_string_buf[1],cmd_string_buf[2],cmd_string_buf[3],cmd_string_buf[4],cmd_string_buf[5],cmd_string_buf[6],cmd_string_buf[7],cmd_string_buf[8],cmd_string_buf[9]};
-        xqserial_server::CRC16CheckSum(cmd_string_buf_copy, 10, crc_hl);
-        //ROS_ERROR("crc %x %x , in %x %x",crc_hl[0],crc_hl[1],cmd_string_buf[7],cmd_string_buf[8]);
-        if(cmd_string_buf[10]!=crc_hl[0] || cmd_string_buf[11]!=crc_hl[1] )
+        unsigned char cmd_string_buf_copy[7] = {cmd_string_buf[0],cmd_string_buf[1],cmd_string_buf[2],cmd_string_buf[3],cmd_string_buf[4],cmd_string_buf[5],cmd_string_buf[6]};
+        xqserial_server::CRC16CheckSum(cmd_string_buf_copy, 7, crc_hl);
+        ROS_ERROR("crc %x %x , in %x %x",crc_hl[0],crc_hl[1],cmd_string_buf[7],cmd_string_buf[8]);
+        if(cmd_string_buf[7]!=crc_hl[0] || cmd_string_buf[8]!=crc_hl[1] )
         {
           continue;
         }
         //ROS_ERROR("receive one package!");
         //有效包，开始提取数据
         {
-          //右2 左1
+          //右1 左2
           boost::mutex::scoped_lock lock(mMutex_car);
-          unsigned short int data1_address = cmd_string_buf[2]<<8|cmd_string_buf[3];
-          unsigned short int data2_address = cmd_string_buf[4]<<8|cmd_string_buf[5];
-          short int data1 = cmd_string_buf[6]<<8|cmd_string_buf[7];
-          short int data2 = cmd_string_buf[8]<<8|cmd_string_buf[9];
+          int odom_data = cmd_string_buf[5]<<24|cmd_string_buf[6]<16|cmd_string_buf[3]<<8|cmd_string_buf[4];
 
-          switch (data1_address) {
-            //右轮电机
-            case 0x2100:
+          switch (cmd_string_buf[0]) {
+            case 0x01:
               //使能状态
-              car_status.driver_enable1 = data1;
+              car_status.encoder_r_current = odom_data;
               break;
-            case 0x5012:
+            case 0x02:
               //错误状态
-              car_status.driver_error1 = data1;
-              break;
-            case 0x5004:
-              //编码器位置
-              car_status.encoder_l_current = data1;
+              car_status.encoder_l_current = odom_data;
               break;
           }
-
-          switch (data2_address) {
-            //右轮电机
-            case 0x3100:
-              //使能状态
-              car_status.driver_enable2 = data2;
-              break;
-            case 0x5112:
-              //错误状态
-              car_status.driver_error2 = data2;
-              break;
-            case 0x5104:
-              //编码器位置
-              car_status.encoder_r_current = data2;
-              break;
-          }
-
-          car_status.driver_error = car_status.driver_error1 + car_status.driver_error2;
           mbUpdated_car = true;
         }
     }
@@ -307,31 +329,31 @@ void StatusPublisher::Refresh()
       {
         //发布驱动器状态
         std_msgs::Int32 driver_flag;
-        driver_flag.data = car_status.driver_error1 << 8 + car_status.driver_error2;
+        driver_flag.data = car_status.driver_status;
         mDriverFlagPub.publish(driver_flag);
       }
 
       delta_encoder_r = car_status.encoder_r_current - encoder_r_last;
       encoder_r_last = car_status.encoder_r_current;
-      delta_encoder_l = car_status.encoder_l_current - encoder_l_last;
+      delta_encoder_l = -(car_status.encoder_l_current - encoder_l_last);//反方向
       encoder_l_last = car_status.encoder_l_current;
 
-      if(delta_encoder_r>2000)
+      if(delta_encoder_r>1147483647)
       {
-        delta_encoder_r = delta_encoder_r - car_status.encoder_ppr;
+        delta_encoder_r = delta_encoder_r - 2147483648;
       }
-      if(delta_encoder_r<-2000)
+      if(delta_encoder_r<-1147483647)
       {
-        delta_encoder_r = delta_encoder_r + car_status.encoder_ppr;
+        delta_encoder_r = delta_encoder_r + 2147483647;
       }
 
-      if(delta_encoder_l>2000)
+      if(delta_encoder_l>1147483647)
       {
-        delta_encoder_l = delta_encoder_l - car_status.encoder_ppr;
+        delta_encoder_l = delta_encoder_l - 2147483648;
       }
-      if(delta_encoder_l<-2000)
+      if(delta_encoder_l<-1147483647)
       {
-        delta_encoder_l = delta_encoder_l + car_status.encoder_ppr;
+        delta_encoder_l = delta_encoder_l + 2147483647;
       }
 
       delta_encoder_l = -delta_encoder_l; //左侧电机反向
@@ -358,7 +380,7 @@ void StatusPublisher::Refresh()
       {
         //处理imu
         ros::Time current_time = ros::Time::now();
-        if(car_status.encoder_ppr_imu == 4096)
+        if(car_status.encoder_ppr_imu == 100000)
         {
           car_status.encoder_ppr = car_status.encoder_ppr_imu;
         }

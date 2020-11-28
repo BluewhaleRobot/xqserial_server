@@ -43,10 +43,9 @@ typedef struct {
   int encoder_r_current;  //右轮编码器当期读数， 个为单位
   int encoder_l_current;  //左轮编码器当期读数， 个为单位
   int driver_error;      //0正常，正数代表驱动器错误状态
-  int driver_error1;      //0正常，正数代表右驱动器错误状态
-  int driver_error2;      //0正常，正数代表左驱动器错误状态
-  int driver_enable1;      //0 释放 ， 1使能
-  int driver_enable2;      //0 释放， 1使能
+  int driver_mode1;      //0 其他模式， 1 速度模式
+  int driver_mode2;      //0 其他模式， 1 速度模式
+  int driver_status;       //0复位状态，1 can模式, 2 已进入can 速度模式
 }UPLOAD_STATUS;
 
 class StatusPublisher
@@ -59,8 +58,9 @@ public:
     void ResetDriver()
     {
       boost::mutex::scoped_lock lock(mMutex_car);
-      car_status.driver_enable1 = 0;
-      car_status.driver_enable2 = 0;
+      car_status.driver_status = 0;
+      car_status.driver_mode1 = 0;
+      car_status.driver_mode2 = 0;
       car_status.encoder_r_current = 0;
       car_status.encoder_l_current = 0;
       encoder_r_last = 0;
@@ -145,7 +145,7 @@ private:
     int yaw_index;
     float yaw_sum;
     float yaw_omega;
-    
+
     ros::WallTime last_sonartime_;
     float min_sonardist_;
 };

@@ -83,18 +83,23 @@ int main(int argc, char **argv)
       xq_diffdriver.setBarParams(angle_limit,tran_dist,x_limit,y_limit);
       boost::thread cmd2serialThread(& xqserial_server::DiffDriverController::run,&xq_diffdriver);
 
+      const char driver_reset_cmd[8] = {(char)0xa6,(char)0x06,(char)0x00,(char)0x4f,(char)0x00,(char)0x81,(char)0x61,(char)0x6a}; //模式
+      const char driver_canmode_cmd[8] = {(char)0xa6,(char)0x06,(char)0x00,(char)0x4f,(char)0x00,(char)0x01,(char)0x60,(char)0xca}; //模式
+      const char driver1_speed_mode_cmd[8] = {(char)0x01,(char)0x06,(char)0x00,(char)0x51,(char)0x00,(char)0x03,(char)0x98,(char)0x1a}; //模式
+      const char driver2_speed_mode_cmd[8] = {(char)0x02,(char)0x06,(char)0x00,(char)0x51,(char)0x00,(char)0x03,(char)0x98,(char)0x29}; //模式
+      const char driver1_read_odom_cmd[8] = {(char)0x01,(char)0x03,(char)0x00,(char)0x83,(char)0x00,(char)0x02,(char)0x35,(char)0xe3}; //模式
+      const char driver2_read_odom_cmd[8] = {(char)0x02,(char)0x03,(char)0x00,(char)0x83,(char)0x00,(char)0x02,(char)0x35,(char)0xd0}; //模式
+
       // send reset cmd
-      char resetCmd[] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x01, 'I'};
+      char imu_resetCmd[] = {(char)0xcd, (char)0xeb, (char)0xd7, (char)0x01, 'I'};
 
-      serial_imu.write(resetCmd, 5);
-
+      serial_imu.write(imu_resetCmd, 5);
+      serial_car.write(driver_reset_cmd, 8);
       ros::Duration(1).sleep();
 
-      const char driver_clear_cmd[8] = {(char)0x01,(char)0x06,(char)0x46,(char)0x02,(char)0x00,(char)0x00,(char)0x3d,(char)0x42}; //模式
-      const char driver_reset_cmd[8] = {(char)0x01,(char)0x06,(char)0x46,(char)0x03,(char)0x00,(char)0x01,(char)0xad,(char)0x42}; //模式
-      const char driver_read_error_cmd[8] = {(char)0x01,(char)0x43,(char)0x50,(char)0x12,(char)0x51,(char)0x12,(char)0x48,(char)0x9d}; //模式
-      const char driver_read_odom_cmd[8] = {(char)0x01,(char)0x43,(char)0x50,(char)0x04,(char)0x51,(char)0x04,(char)0x28,(char)0x97}; //模式
-      const char driver_read_enable_cmd[8] = {(char)0x01,(char)0x43,(char)0x21,(char)0x00,(char)0x31,(char)0x00,(char)0x5b,(char)0xa9}; //模式
+      //所有驱动器进入can操作模式
+      serial_car.write(driver_canmode_cmd, 8);
+      ros::Duration(1).sleep();
       ros::Rate r(50);//发布周期为50hz
       ros::WallTime last_movetime=ros::WallTime::now();
       static int i = 0;
@@ -113,55 +118,37 @@ int main(int argc, char **argv)
           xq_diffdriver.sendHeartbag();
         }
 
-        serial_car.write(driver_read_odom_cmd,8);
-        usleep(8000);//延时8MS，等待数据上传
+        serial_car.write(driver1_read_odom_cmd,8);
+        usleep(1000);//间隔1MS
+        serial_car.write(driver2_read_odom_cmd,8);
+        usleep(8000);//延时8MS，等待数据上传和处理
         xq_status.Refresh();//定时发布状态
-        if(i%2==0)
+        if(xq_status.car_status.driver_status == 0 && i%10==0)
         {
-          xq_diffdriver.Refresh();//更新驱动速度 25hz
-        }
-        //如果驱动器有报警，需要清除报警，清除报警3次后都恢复不了，就重启驱动器
-        if(xq_status.car_status.driver_error != 0 && i%10==0)
-        {
-          if(clear_try<3)
-          {
-            //清除错误
-            ROS_ERROR("clear motor driver error! %d %d ",xq_status.car_status.driver_error1, xq_status.car_status.driver_error2);
-            serial_car.write(driver_clear_cmd,8);
-            usleep(2000);//延时2MS
-            serial_car.write(driver_read_error_cmd,8);
-            clear_try ++;
-          }
-          else
-          {
-            //复位，需要重置一些状态
-            ROS_ERROR("reset motor driver ! %d %d ",xq_status.car_status.driver_error1, xq_status.car_status.driver_error2);
-            serial_car.write(driver_reset_cmd,8);
-            xq_status.ResetDriver();
-            xq_diffdriver.ResetDriver();
-            clear_try = 0;
-          }
+          //驱动器如果没有进入can模式则不断下发进入指令
+          serial_car.write(driver_canmode_cmd, 8);
+          usleep(1000);//间隔1MS
         }
         else
         {
-          clear_try = 0;
-        }
-
-        if(i%25==0)
-        {
-          //读取驱动器状态
-          serial_car.write(driver_read_enable_cmd,8);
-          usleep(2000);//延时2MS
-          serial_car.write(driver_read_error_cmd,8);
-        }
-
-        //更新按钮
-        if(xq_diffdriver.dealBackSwitch())
-        {
-          //告诉用户回去了
-          std_msgs::String audio_msg;
-          audio_msg.data = "好的，我回去了，您慢用！";
-          audio_pub.publish(audio_msg);
+          if(xq_status.car_status.driver_status == 1)
+          {
+            //如果没有进入速度模式，则下发速度模式指令
+            if(i%10==0)
+            {
+              serial_car.write(driver1_speed_mode_cmd, 8);
+              usleep(1000);//间隔1MS
+              serial_car.write(driver2_speed_mode_cmd, 8);
+              usleep(1000);//间隔1MS
+            }
+          }
+          else
+          {
+            if(i%2==0)
+            {
+              xq_diffdriver.Refresh();//更新驱动速度 25hz
+            }
+          }
         }
         i++;
         r.sleep();

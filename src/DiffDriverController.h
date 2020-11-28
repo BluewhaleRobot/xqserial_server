@@ -97,6 +97,7 @@ private:
     CallbackAsyncSerial* cmd_serial_car;
     CallbackAsyncSerial* cmd_serial_imu;
     boost::mutex mMutex;
+    boost::mutex mShutdownMutex_;
     bool MoveFlag;
     geometry_msgs::Twist  cmdTwist_;//小车自身坐标系
 
@@ -140,6 +141,7 @@ private:
     std::vector<double> R_laserscan_;  //laserscan坐标系到base_footprint坐标系的转换
     std::vector<double> T_laserscan_;
     ros::WallTime last_scantime_;
+    ros::WallTime last_scantime2_;
 
     bool shutdown_flag_;
 };

@@ -89,6 +89,7 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
       T_laserscan_.push_back(0.0);
     }
     last_scantime_ = ros::WallTime::now();
+    last_scantime2_ = ros::WallTime::now();
 
     scan_min_dist_ = x_limit_*2;
     move_forward_flag_ = true;
@@ -111,6 +112,18 @@ void DiffDriverController::run()
 
 void DiffDriverController::Refresh()
 {
+  {
+    boost::mutex::scoped_lock lock(mScanMutex_);
+    ros::WallDuration t_diff = ros::WallTime::now() - last_scantime2_;
+    float dt1 = t_diff.toSec();
+    if(dt1>2.0)
+    {
+      move_forward_flag_ = true;
+      scan_min_dist_ = 3.0;
+    }
+  }
+
+  boost::mutex::scoped_lock lock(mShutdownMutex_);
   ros::WallDuration t_diff = ros::WallTime::now() - last_ordertime;
   if(t_diff.toSec()<10.0 && (xq_status->car_status.hbz_status & 0x01)==1 && !shutdown_flag_)
   {
@@ -136,10 +149,13 @@ void DiffDriverController::Refresh()
     scan_min_dist_ = x_limit_*2;
     move_forward_flag_ = true;
   }
+
+
 }
 
 bool DiffDriverController::UpdateC4Flag(ShutdownRequest &req, ShutdownResponse &res)
 {
+  boost::mutex::scoped_lock lock(mShutdownMutex_);
   ROS_WARN_STREAM("Start processing shutdown request");
   if(req.flag)
   {
@@ -165,8 +181,9 @@ bool DiffDriverController::UpdateC4Flag(ShutdownRequest &req, ShutdownResponse &
 
 void DiffDriverController::updateStopFlag(const std_msgs::Int32& fastStopmsg)
 {
-  boost::mutex::scoped_lock lock(mMutex);
-  if(fastStopmsg.data == 2)
+  boost::mutex::scoped_lock lock1(mMutex);
+  boost::mutex::scoped_lock lock2(mStausMutex_);
+  if(fastStopmsg.data == 2 && galileoStatus_.target_status == 1)
   {
     stopFlag_ = true;
   }
@@ -259,12 +276,12 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
 
 void DiffDriverController::send_speed()
 {
-  int i = 0, wheel_ppr = 1;
+  int i = 0, wheel_ppr = 100000;
   double separation = 0, radius = 0, speed_lin = 0, speed_ang = 0, speed_temp[2];
 
   separation = xq_status->get_wheel_separation();
   radius = xq_status->get_wheel_radius();
-
+  wheel_ppr = xq_status->get_wheel_ppr();
   //转换速度单位，由米转换成转
   speed_lin = linear_x_current_ / (2.0 * PI * radius);
   speed_ang = theta_z_current_ * separation / (2.0 * PI * radius);
@@ -279,61 +296,76 @@ void DiffDriverController::send_speed()
     scale = 1.0;
   }
 
-  //转出最大速度百分比,并进行限幅
-  speed_temp[0] = scale * (speed_lin + speed_ang / 2) / max_wheelspeed * 100.0;
+  //进行限幅
+  speed_temp[0] = scale * (speed_lin + speed_ang / 2) ;
   speed_temp[0] = std::min(speed_temp[0], 100.0);
   speed_temp[0] = std::max(-100.0, speed_temp[0]);
 
-  speed_temp[1] = scale * (speed_lin - speed_ang / 2) / max_wheelspeed * 100.0;
+  speed_temp[1] = scale * (speed_lin - speed_ang / 2) ;
   speed_temp[1] = std::min(speed_temp[1], 100.0);
   speed_temp[1] = std::max(-100.0, speed_temp[1]);
 
-  int16_t left_speed_;
-  int16_t right_speed_;
+  int32_t left_speed_;
+  int32_t right_speed_;
 
-  right_speed_ = -(int16_t)(speed_temp[0]*max_wheelspeed*60/100.0f);
-  left_speed_ = (int16_t)(speed_temp[1]*max_wheelspeed*60/100.0f);
+  right_speed_ = (int32_t)(speed_temp[0]*10.0f*wheel_ppr); //单位 0.1 count/S
+  left_speed_ = -(int32_t)(speed_temp[1]*10.0f*wheel_ppr); //单位 0.1 count/S
 
   if(NULL!=cmd_serial_car)
   {
     //下发使能
-    const char driver_enable_cmd[12] = {(char)0x01,(char)0x44,(char)0x21,(char)0x00,(char)0x31,(char)0x00,(char)0x00,(char)0x01,(char)0x00,(char)0x01,(char)0x75,(char)0x34}; //模式
-    cmd_serial_car->write(driver_enable_cmd,12);
-    usleep(2000);//延时2MS
+    const char driver1_enable_cmd[8] = {(char)0x01,(char)0x06,(char)0x00,(char)0x50,(char)0x00,(char)0x0f,(char)0xc9,(char)0xdf}; //使能
+    const char driver2_enable_cmd[8] = {(char)0x02,(char)0x06,(char)0x00,(char)0x50,(char)0x00,(char)0x0f,(char)0xc9,(char)0xec}; //使能
+    cmd_serial_car->write(driver1_enable_cmd,8);
+    usleep(1000);//延时1MS
+    cmd_serial_car->write(driver2_enable_cmd,8);
+    usleep(1000);//延时1MS
     //下发速度指令
-    char speed_cmd[12] = {(char)0x01,(char)0x44,(char)0x23,(char)0x18,(char)0x33,(char)0x18,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
+    //                           0           1          2          3          4          5          6          7          8          9         10         11         12
+    char speed1_cmd[13] = {(char)0x01,(char)0x10,(char)0x00,(char)0x40,(char)0x00,(char)0x02,(char)0x04,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
+    //                           0           1          2          3          4          5          6          7          8          9         10         11         12
+    char speed2_cmd[13] = {(char)0x02,(char)0x10,(char)0x00,(char)0x40,(char)0x00,(char)0x02,(char)0x04,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00};
     uint8_t crc_hl[2];
 
-    speed_cmd[6] = (left_speed_>>8)&0xff;
-    speed_cmd[7] = left_speed_&0xff;
-    speed_cmd[8] = (right_speed_>>8)&0xff;
-    speed_cmd[9] = right_speed_&0xff;
-    xqserial_server::CRC16CheckSum((unsigned char *)speed_cmd, 10, crc_hl);
-    speed_cmd[10] = crc_hl[0];
-    speed_cmd[11] = crc_hl[1];
-    //ROS_ERROR("speed %f %f %d %d",linear_x_current_,theta_z_current_,right_speed_,left_speed_);
-    //ROS_ERROR("one package %d %d %d %d %d %d",speed_cmd[6],speed_cmd[7],speed_cmd[8],speed_cmd[9],speed_cmd[10],speed_cmd[11] );
-    cmd_serial_car->write(speed_cmd,12);
+    speed1_cmd[7] = (right_speed_>>8)&0xff;
+    speed1_cmd[8] = right_speed_&0xff;
+    speed1_cmd[9] = (right_speed_>>24)&0xff;
+    speed1_cmd[10] = (right_speed_>>16)&0xff;
+    xqserial_server::CRC16CheckSum((unsigned char *)speed1_cmd, 11, crc_hl);
+    speed1_cmd[11] = crc_hl[0];
+    speed1_cmd[12] = crc_hl[1];
+    cmd_serial_car->write(speed1_cmd,13);
+    usleep(1000);//延时1MS
+
+    speed2_cmd[7] = (left_speed_>>8)&0xff;
+    speed2_cmd[8] = left_speed_&0xff;
+    speed2_cmd[9] = (left_speed_>>24)&0xff;
+    speed2_cmd[10] = (left_speed_>>16)&0xff;
+    xqserial_server::CRC16CheckSum((unsigned char *)speed2_cmd, 11, crc_hl);
+    speed2_cmd[11] = crc_hl[0];
+    speed2_cmd[12] = crc_hl[1];
+    cmd_serial_car->write(speed2_cmd,13);
+    usleep(1000);//延时1MS
   }
 
   boost::mutex::scoped_lock lock(mMutex);
   linear_x_last_ = linear_x_current_;
   theta_z_last_ = theta_z_current_;
-
 }
 
 void DiffDriverController::send_release()
 {
   boost::mutex::scoped_lock lock(mMutex);
   //下发速度指令
-  //                       0           1           2          3          4          5          6          7          8          9          10         11
-  char speed_cmd1[12] = {(char)0x01,(char)0x44,(char)0x23,(char)0x18,(char)0x33,(char)0x18,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0xdd,(char)0x0c};
-  char speed_cmd2[12] = {(char)0x01,(char)0x44,(char)0x21,(char)0x00,(char)0x31,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0xe5,(char)0x34};
+  //                       0           1           2          3          4          5          6          7
+  char speed_cmd1[8] = {(char)0x01,(char)0x06,(char)0x00,(char)0x50,(char)0x00,(char)0x00,(char)0x89,(char)0xdb};
+  char speed_cmd2[8] = {(char)0x02,(char)0x06,(char)0x00,(char)0x50,(char)0x00,(char)0x00,(char)0x89,(char)0xe8};
   if(NULL!=cmd_serial_car)
   {
-    cmd_serial_car->write(speed_cmd1,12);
-    usleep(2000);//延时2MS
-    cmd_serial_car->write(speed_cmd2,12);
+    cmd_serial_car->write(speed_cmd1,8);
+    usleep(1000);//延时1MS
+    cmd_serial_car->write(speed_cmd2,8);
+    usleep(1000);//延时1MS
   }
   linear_x_current_ = 0;
   theta_z_current_ = 0;
@@ -672,6 +704,7 @@ void DiffDriverController::updateScan(const sensor_msgs::LaserScan& scan_in)
     move_forward_flag_ = true;
   }
   last_scantime_ = ros::WallTime::now();
+  last_scantime2_ = ros::WallTime::now();
 }
 
 
