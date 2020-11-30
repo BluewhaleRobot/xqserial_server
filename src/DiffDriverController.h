@@ -103,6 +103,7 @@ private:
     ros::NodeHandle mNH_;
     ros::Publisher mgalileoCmdsPub_;
     boost::mutex mStausMutex_;
+    boost::mutex mShutdownMutex_;
     bool back_touch_falg_;
 
     float R_min_;
@@ -140,6 +141,7 @@ private:
     std::vector<double> R_laserscan_;  //laserscan坐标系到base_footprint坐标系的转换
     std::vector<double> T_laserscan_;
     ros::WallTime last_scantime_;
+    ros::WallTime last_scantime2_;
 
     bool shutdown_flag_;
 };

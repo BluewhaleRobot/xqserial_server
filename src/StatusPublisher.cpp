@@ -294,6 +294,8 @@ void StatusPublisher::Update_imu(const char data[], unsigned int len)
 
 void StatusPublisher::Refresh()
 {
+    boost::mutex::scoped_lock lock1(mMutex_imu);
+    boost::mutex::scoped_lock lock2(mMutex_car);
     static unsigned int ii=0;
     static bool first_update = true;
     ii++;
@@ -302,7 +304,7 @@ void StatusPublisher::Refresh()
     //ROS_ERROR("car %d %d",mbUpdated_imu, mbUpdated_car);
     //先处理驱动器
     {
-      boost::mutex::scoped_lock lock(mMutex_car);
+      //boost::mutex::scoped_lock lock(mMutex_car);
       if(ii%5 == 0)
       {
         //发布驱动器状态
@@ -353,8 +355,8 @@ void StatusPublisher::Refresh()
     static int update_nums=0;
     static bool yaw_omega_ready = false;
     {
-      boost::mutex::scoped_lock lock(mMutex_imu);
-      if(mbUpdated_imu)
+      //boost::mutex::scoped_lock lock(mMutex_imu);
+      //if(mbUpdated_imu)
       {
         //处理imu
         ros::Time current_time = ros::Time::now();
@@ -432,7 +434,7 @@ void StatusPublisher::Refresh()
         var_angle = (0.01f/180.0f*PI)*(0.01f/180.0f*PI);
 
         delta_car = (delta_encoder_r + delta_encoder_l)/2.0f*1.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius;
-        if(std::isnan(delta_theta) ||delta_car>0.05||delta_car<-0.05)
+        if(std::isnan(delta_car) ||delta_car>0.05||delta_car<-0.05)
         {
           delta_car = 0;
         }

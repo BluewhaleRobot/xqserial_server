@@ -111,12 +111,24 @@ void DiffDriverController::run()
 
 void DiffDriverController::Refresh()
 {
+  {
+    boost::mutex::scoped_lock lock(mScanMutex_);
+    ros::WallDuration t_diff = ros::WallTime::now() - last_scantime2_;
+    float dt1 = t_diff.toSec();
+    if(dt1>2.0)
+    {
+      move_forward_flag_ = true;
+      scan_min_dist_ = 3.0;
+    }
+  }
+
+  boost::mutex::scoped_lock lock1(mShutdownMutex_);
   ros::WallDuration t_diff = ros::WallTime::now() - last_ordertime;
   if(t_diff.toSec()<10.0 && (xq_status->car_status.hbz_status & 0x01)==1 && !shutdown_flag_)
   {
     if(t_diff.toSec()>3.0 || xq_status->get_status()<=0)
     {
-      boost::mutex::scoped_lock lock(mMutex);
+      boost::mutex::scoped_lock lock2(mMutex);
       //命令超时3秒，或者imu还在初始化
       linear_x_goal_ = 0;
       theta_z_goal_ = 0;
@@ -132,7 +144,7 @@ void DiffDriverController::Refresh()
   {
     //10秒或C1按下去了
     send_release();
-    boost::mutex::scoped_lock lock2(mScanMutex_);
+    boost::mutex::scoped_lock lock3(mScanMutex_);
     scan_min_dist_ = x_limit_*2;
     move_forward_flag_ = true;
   }
@@ -140,6 +152,7 @@ void DiffDriverController::Refresh()
 
 bool DiffDriverController::UpdateC4Flag(ShutdownRequest &req, ShutdownResponse &res)
 {
+  boost::mutex::scoped_lock lock1(mShutdownMutex_);
   ROS_WARN_STREAM("Start processing shutdown request");
   if(req.flag)
   {
@@ -672,6 +685,7 @@ void DiffDriverController::updateScan(const sensor_msgs::LaserScan& scan_in)
     move_forward_flag_ = true;
   }
   last_scantime_ = ros::WallTime::now();
+  last_scantime2_ = ros::WallTime::now();
 }
 
 
