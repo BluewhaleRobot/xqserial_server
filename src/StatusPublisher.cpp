@@ -744,7 +744,7 @@ void StatusPublisher::Refresh()
         int clearArea_nums=0;
         static int hbz1_num=0,hbz2_num=0;
 
-        if(distances_[1]<tran_dist_ || distances_[3]<tran_dist_)
+        if(distances_[2]<tran_dist_ || distances_[3]<tran_dist_)
         {
           hbz1_num++;
           if(hbz1_num>10) barArea_nums += 5;
@@ -755,7 +755,7 @@ void StatusPublisher::Refresh()
           if(hbz1_num==0) clearArea_nums += 10;
         }
 
-        if(distances_[0]<tran_dist_ || distances_[2]<tran_dist_)
+        if(distances_[0]<tran_dist_ || distances_[1]<tran_dist_)
         {
           hbz2_num++;
           if(hbz2_num>10) barArea_nums += 5;
@@ -781,7 +781,7 @@ void StatusPublisher::Refresh()
           sensor_msgs::PointCloud2Iterator<float> bariter_x(*barcloud_msg, "x");
           sensor_msgs::PointCloud2Iterator<float> bariter_y(*barcloud_msg, "y");
           sensor_msgs::PointCloud2Iterator<float> bariter_z(*barcloud_msg, "z");
-          if((distances_[1]<tran_dist_ || distances_[3]<tran_dist_)&&hbz1_num>10)
+          if((distances_[2]<tran_dist_ || distances_[3]<tran_dist_)&&hbz1_num>10)
           {
             for(int k=0;k<5;k++,++bariter_x, ++bariter_y,++bariter_z)
             {
@@ -791,7 +791,7 @@ void StatusPublisher::Refresh()
             }
           }
 
-          if((distances_[0]<tran_dist_ || distances_[2]<tran_dist_)&&hbz2_num>10)
+          if((distances_[0]<tran_dist_ || distances_[1]<tran_dist_)&&hbz2_num>10)
           {
             for(int k=0;k<5;k++,++bariter_x, ++bariter_y,++bariter_z)
             {
