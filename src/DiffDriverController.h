@@ -26,6 +26,7 @@ public:
     void send_stop();
     void send_fasterstop();
     void send_release();
+    void get_odom();
     ros::WallTime last_ordertime;
     void UpdateNavStatus(const galileo_serial_server::GalileoStatus& current_receive_status);
 

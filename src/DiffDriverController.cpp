@@ -266,10 +266,10 @@ void DiffDriverController::send_speed()
   int len;
   len = std::sprintf(buffer, "!M %d %d", right_speed_,left_speed_);
   buffer[len] = (char)0x0d;
-  buffer[len+1] = (char)0x0a;
+  //buffer[len+1] = (char)0x0a;
   if(NULL!=cmd_serial_car)
   {
-      cmd_serial_car->write(buffer,len+2);
+      cmd_serial_car->write(buffer,len+1);
   }
   //ROS_ERROR("send speed %s %d",buffer,len);
 }
@@ -281,10 +281,10 @@ void DiffDriverController::send_stop()
   int len;
   len = std::sprintf(buffer, "!M %d %d", 0,0);
   buffer[len] = (char)0x0d;
-  buffer[len+1] = (char)0x0a;
+  //buffer[len+1] = (char)0x0a;
   if(NULL!=cmd_serial_car)
   {
-      cmd_serial_car->write(buffer,len+2);
+      cmd_serial_car->write(buffer,len+1);
   }
 }
 
@@ -295,10 +295,10 @@ void DiffDriverController::send_fasterstop()
   int len;
   len = std::sprintf(buffer, "!EX");
   buffer[len] = (char)0x0d;
-  buffer[len+1] = (char)0x0a;
+  //buffer[len+1] = (char)0x0a;
   if(NULL!=cmd_serial_car)
   {
-      cmd_serial_car->write(buffer,len+2);
+      cmd_serial_car->write(buffer,len+1);
   }
 }
 
@@ -309,10 +309,10 @@ void DiffDriverController::send_release()
   int len;
   len = std::sprintf(buffer, "!MG");
   buffer[len] = (char)0x0d;
-  buffer[len+1] = (char)0x0a;
+  //buffer[len+1] = (char)0x0a;
   if(NULL!=cmd_serial_car)
   {
-      cmd_serial_car->write(buffer,len+2);
+      cmd_serial_car->write(buffer,len+1);
   }
 }
 
@@ -328,7 +328,19 @@ void DiffDriverController::UpdateNavStatus(const galileo_serial_server::GalileoS
 }
 
 
-
+void DiffDriverController::get_odom()
+{
+  boost::mutex::scoped_lock lock(mMutex);
+  //下发急停释放指令
+  char buffer [30];
+  int len;
+  len = std::sprintf(buffer, "?c 0");
+  buffer[len] = (char)0x0d;
+  if(NULL!=cmd_serial_car)
+  {
+      cmd_serial_car->write(buffer,len+1);
+  }
+}
 
 
 

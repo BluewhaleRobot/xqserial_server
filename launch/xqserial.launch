@@ -1,9 +1,9 @@
 <launch>
   <node pkg="xqserial_server" type="xqserial_server" name="motor_driver" respawn="true" respawn_delay="10">
     <param name="debug_flag" value="false"/>
-    <param name="wheel_separation" value="0.6"/>
-    <param name="wheel_radius" value="0.14808"/>
-    <param name="max_speed" value="5.0"/>
+    <param name="wheel_separation" value="0.7"/>
+    <param name="wheel_radius" value="0.1"/>
+    <param name="max_speed" value="1.66667"/>
     <param name="rot_dist" value="-0.21"/>
     <param name="tran_dist" value="0.5"/>
     <param name="port_car" value="/dev/stm32Car"/>

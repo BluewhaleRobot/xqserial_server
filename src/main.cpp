@@ -98,7 +98,7 @@ int main(int argc, char **argv)
       serial_imu.write(resetCmd, 5);
       ros::Duration(5).sleep();
 
-      ros::Rate r(100);//发布周期为50hz
+      ros::Rate r(50);//发布周期为50hz
       int i=0;
       const char driver_clear_cmd[12] = {(char)0xc2,(char)0x9a,(char)0x01,(char)0x03,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x60}; //模式
 
@@ -110,10 +110,8 @@ int main(int argc, char **argv)
               break;
           }
           i++;
-          // if(i%50==0)
-          // {
-          //   boost::thread keep_speed_Thread(&xqserial_server::DiffDriverController::keep_speed,&xq_diffdriver);
-          // }
+          xq_diffdriver.get_odom();
+          usleep(8000);//延时8MS，等待数据上传和处理
           xq_status.Refresh();//定时发布状态
           r.sleep();
       }

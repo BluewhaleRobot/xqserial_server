@@ -27,8 +27,8 @@ namespace xqserial_server
 typedef struct {
     int status_imu;//小车状态，0表示未初始化，1表示正常，-1表示error
     float power_imu;             //电源电压【9 13】v
-    float theta;             //方位角，【0 360）°
-    int encoder_ppr;         //车轮1转对应的编码器个数
+    float theta_imu;             //方位角，【0 360）°
+    int encoder_ppr_imu;         //车轮1转对应的编码器个数
     int encoder_delta_r;     //右轮编码器增量， 个为单位
     int encoder_delta_l;     //左轮编码器增量， 个为单位
     unsigned int upwoard;    //1表示正向安装,0表示反向安装
@@ -41,7 +41,9 @@ typedef struct {
     int encoder_r_current;  //右轮编码器当期读数， 个为单位
     int encoder_l_current;  //左轮编码器当期读数， 个为单位
     int driver_status;      //0正常，正数代表驱动器错误状态
+    int encoder_ppr;         //车轮1转对应的编码器个数
 
+    float theta;
     int status;            //0 正常 -1未初始化 -2有障碍物 正数代表驱动器错误状态
 
 }UPLOAD_STATUS;
@@ -118,6 +120,14 @@ private:
 
     double distances_[2];
     double power_scale_;
+
+    int encoder_r_last;  //右轮编码器上期读数， 个为单位
+    int encoder_l_last;  //左轮编码上期读数， 个为单位
+
+    float yaw_deltas[100];
+    int yaw_index;
+    float yaw_sum;
+    float yaw_omega;
 };
 
 } //namespace xqserial_server
