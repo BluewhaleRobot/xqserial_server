@@ -257,14 +257,14 @@ void DiffDriverController::send_speed()
     speed_temp[1] = std::max(-1000.0, speed_temp[1]);
 
     left_speed_ = -(int16_t)(speed_temp[0]);
-    right_speed_ = -(int16_t)(speed_temp[1]);
+    right_speed_ = (int16_t)(speed_temp[1]);
   }
 
 
   //下发速度指令
   char buffer [30];
   int len;
-  len = std::sprintf(buffer, "!M %d %d", right_speed_,left_speed_);
+  len = std::sprintf(buffer, "!M %d %d",left_speed_,right_speed_);
   buffer[len] = (char)0x0d;
   //buffer[len+1] = (char)0x0a;
   if(NULL!=cmd_serial_car)
@@ -331,7 +331,7 @@ void DiffDriverController::UpdateNavStatus(const galileo_serial_server::GalileoS
 void DiffDriverController::get_odom()
 {
   boost::mutex::scoped_lock lock(mMutex);
-  //下发急停释放指令
+  //下发编码器获取指令
   char buffer [30];
   int len;
   len = std::sprintf(buffer, "?c 0");

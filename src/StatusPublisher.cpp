@@ -143,6 +143,7 @@ void StatusPublisher::Update_car(const char data[], unsigned int len)
   for(i=0;i<len;i++)
   {
     current_str=data[i];
+    //ROS_ERROR("current_car %x",data[i]);
     //判断是否有新包头
     if(last_str==0x43&&current_str==0x3d)
     {
@@ -163,26 +164,28 @@ void StatusPublisher::Update_car(const char data[], unsigned int len)
 
       if(new_packed1_ready)
       {
-        //通道1编码器
+        //通道1编码器,左电机
         cmd_string_buf1[cmd_string_buf1_len] = 0; //字符串结束
         std::string encoder1_str;
         for(int k = 0;k<cmd_string_buf1_len; k++)
         {
           encoder1_str.push_back(cmd_string_buf1[k]);
         }
-        car_status.encoder_r_current = std::stoi(encoder1_str);
+        //ROS_ERROR("%s",encoder1_str.c_str());
+        car_status.encoder_l_current = std::stoi(encoder1_str);
         mbUpdated_car = true;
       }
       if(new_packed2_ready)
       {
-         //通道2编码器
+         //通道2编码器，右电机
          cmd_string_buf2[cmd_string_buf2_len] = 0; //字符串结束
          std::string encoder2_str;
          for(int k = 0;k<cmd_string_buf2_len; k++)
          {
            encoder2_str.push_back(cmd_string_buf2[k]);
          }
-         car_status.encoder_l_current = std::stoi(encoder2_str);
+         //ROS_ERROR("%s",encoder2_str.c_str());
+         car_status.encoder_r_current = std::stoi(encoder2_str);
          mbUpdated_car = true;
       }
       //复位
@@ -335,11 +338,11 @@ void StatusPublisher::Refresh()
     //boost::mutex::scoped_lock lock(mMutex_car);
     //if(mbUpdated_car)
     {
-      delta_encoder_r = car_status.encoder_r_current - encoder_r_last;
+      delta_encoder_r = -(car_status.encoder_r_current - encoder_r_last);
       encoder_r_last = car_status.encoder_r_current;
       delta_encoder_l = -(car_status.encoder_l_current - encoder_l_last);//反方向
       encoder_l_last = car_status.encoder_l_current;
-      ROS_ERROR("%d %d,%d %d",car_status.encoder_r_current, car_status.encoder_l_current, delta_encoder_r, delta_encoder_l);
+      //ROS_ERROR("%d %d,%d %d",car_status.encoder_r_current, car_status.encoder_l_current, delta_encoder_r, delta_encoder_l);
       if(delta_encoder_r>1147483647)
       {
         delta_encoder_r = delta_encoder_r - 2147483648;
@@ -384,7 +387,7 @@ void StatusPublisher::Refresh()
       {
         car_status.encoder_ppr = car_status.encoder_ppr_imu;
       }
-      if(car_status.status <= 0)
+      if(car_status.status_imu <= 0)
       {
         //复位状态
         theta_last = car_status.theta_imu;
@@ -454,6 +457,7 @@ void StatusPublisher::Refresh()
       var_angle = (0.01f/180.0f*PI)*(0.01f/180.0f*PI);
 
       delta_car = (delta_encoder_r + delta_encoder_l)/2.0f*1.0f/car_status.encoder_ppr*2.0f*PI*wheel_radius;
+      //ROS_ERROR("%d %f",delta_encoder_r + delta_encoder_l,delta_car);
       if(std::isnan(delta_car) ||delta_car>0.1||delta_car<-0.1)
       {
         delta_car = 0;
@@ -473,7 +477,7 @@ void StatusPublisher::Refresh()
       if(CarPos2D.theta<0.0) CarPos2D.theta+=360;
 
       mPose2DPub.publish(CarPos2D);
-
+      
       //flag
       std_msgs::Int32 flag;
       if(car_status.status_imu == 1 )
@@ -499,14 +503,13 @@ void StatusPublisher::Refresh()
       if(car_status.status == 0)
       {
         //反映驱动板错误
-        boost::mutex::scoped_lock lock(mMutex_car);
         car_status.status = car_status.driver_status;
       }
 
       flag.data = car_status.status;
 
       mStatusFlagPub.publish(flag);
-
+      
     	//Twist
     	static float v_sums[8] = { 0,0,0,0,0,0,0,0 }, v_sum = 0, v_set = 0;
     	static float theta_sums[8] = { 0,0,0,0,0,0,0,0 }, theta_sum = 0, theta_set = 0;
@@ -561,7 +564,7 @@ void StatusPublisher::Refresh()
 
       CarPower.data = car_status.power_imu*power_scale_;
       mPowerPub.publish(CarPower);
-
+      
       CarOdom.header.stamp = current_time.fromSec(base_time_);
       CarOdom.header.frame_id = "odom";
       CarOdom.pose.pose.position.x = CarPos2D.x;
@@ -608,7 +611,7 @@ void StatusPublisher::Refresh()
     		CarIMU.linear_acceleration.z = car_status.IMU[2];
     	}
       mIMUPub.publish(CarIMU);
-
+      
       //超声波测距
       //发布超声波topic
       rot_flag_ = true;
