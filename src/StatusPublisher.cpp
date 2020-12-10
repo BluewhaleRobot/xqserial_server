@@ -622,7 +622,7 @@ void StatusPublisher::Refresh()
         CarSonar1.header.stamp = current_time.fromSec(base_time_);
         CarSonar1.range = car_status.sonar_distance[0];
         mSonar1Pub.publish(CarSonar1);
-        if(car_status.sonar_distance[1]<tran_dist_ && forward_flag_) forward_flag_ = false;
+        if(car_status.sonar_distance[0]<tran_dist_ && forward_flag_) forward_flag_ = false;
       }
       else
       {
@@ -649,7 +649,7 @@ void StatusPublisher::Refresh()
         CarSonar3.header.stamp = current_time.fromSec(base_time_);
         CarSonar3.range = car_status.sonar_distance[2];
         mSonar3Pub.publish(CarSonar3);
-        if(car_status.sonar_distance[1]<tran_dist_ && forward_flag_) forward_flag_ = false;
+        if(car_status.sonar_distance[2]<tran_dist_ && forward_flag_) forward_flag_ = false;
       }
       else
       {
