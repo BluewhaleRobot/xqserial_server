@@ -32,6 +32,7 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
     linear_x_ = 0.;
     theta_z_ = 0.;
     stopFlag_ = false;
+    last_stopflagtime=ros::WallTime::now();
 }
 
 void DiffDriverController::run()
@@ -43,6 +44,7 @@ void DiffDriverController::run()
     ros::Subscriber sub4 = nodeHandler.subscribe("/barDetectFlag", 1, &DiffDriverController::updateBarDetectFlag,this);
     ros::Subscriber sub5 = nodeHandler.subscribe("/move_base/StatusFlag", 1, &DiffDriverController::updateStopFlag,this);
     ros::Subscriber sub6 = nodeHandler.subscribe("/elevator_pose", 1, &DiffDriverController::updateElevator,this);
+   
     ros::spin();
 }
 void DiffDriverController::updateMoveFlag(const std_msgs::Bool& moveFlag)
@@ -95,7 +97,8 @@ void DiffDriverController::updateStopFlag(const std_msgs::Int32& fastStopmsg)
   boost::mutex::scoped_lock lock(mMutex);
   if(fastStopmsg.data == 2)
   {
-    stopFlag_ = true;
+    //stopFlag_ = true;
+    last_stopflagtime=ros::WallTime::now();
   }
   else
   {
@@ -127,6 +130,36 @@ void DiffDriverController::sendcmd(const geometry_msgs::Twist &command)
     boost::mutex::scoped_lock lock(mMutex);
     linear_x_ = command.linear.x ;
     theta_z_ = command.angular.z;
+
+    time1=ros::Time::now().toSec();
+    if(time1  >time2 + 2)
+{
+    time2 = time1;
+    ros::NodeHandle nodeHandler;
+    ros::Publisher audio_pub = nodeHandler.advertise<std_msgs::String>("/xiaoqiang_tts/text", 1, true);
+    std_msgs::String audio_msg;
+     audio_msg.data = " ";
+
+      if(theta_z_ > 0.1)
+   {
+      audio_msg.data = "AGV左转";
+  }     
+       if(theta_z_  < -0.1)
+   {
+      audio_msg.data = "AGV右转";
+  }
+      if(linear_x_ > 0.1)
+  {
+    audio_msg.data = "AGV前进";
+  }
+  
+     if(linear_x_ < -0.1)
+   {
+      audio_msg.data = "AGV后退";
+  }
+    
+    audio_pub.publish(audio_msg);
+}
     last_ordertime=ros::WallTime::now();
     this->filterSpeed();
     this->send_speed();
@@ -151,8 +184,8 @@ void DiffDriverController::send_speed()
   vtheta_temp=theta_z_;
   if(std::fabs(vx_temp)<0.11)
   {
-    if(vtheta_temp>0.02&&vtheta_temp<0.3) vtheta_temp=0.3;
-    if(vtheta_temp<-0.02&&vtheta_temp>-0.3) vtheta_temp=-0.3;
+    if(vtheta_temp>0.02&&vtheta_temp<0.11) vtheta_temp=0.11;
+    if(vtheta_temp<-0.02&&vtheta_temp>-0.11) vtheta_temp=-0.11;
   }
   //转换速度单位，由米转换成转
   speed_lin=vx_temp/(2.0*PI*radius);
@@ -201,6 +234,9 @@ void DiffDriverController::send_speed()
   if(NULL!=cmd_serial)
   {
       cmd_serial->write(cmd_str,13);
+      //   double a =ros::Time::now().toSec();
+      //  printf("hutest110   ros::Time::now() = %lf\n",a);
+
   }
 }
 
@@ -218,6 +254,8 @@ bool DiffDriverController::checkStop()
 
     if(stopFlag_)
     {
+      ros::WallDuration t_diff = ros::WallTime::now() - last_stopflagtime;
+      if(t_diff.toSec()>3.0) stopFlag_ = false;
       return_flag = true;
     }
     else

@@ -4,6 +4,7 @@
 #include "StatusPublisher.h"
 #include "AsyncSerial.h"
 #include <std_msgs/Bool.h>
+#include <std_msgs/String.h>
 
 namespace xqserial_server
 {
@@ -27,6 +28,7 @@ public:
     geometry_msgs::Twist get_cmdTwist(void);
     int speed_debug[2];
     ros::WallTime last_ordertime;
+    ros::WallTime last_stopflagtime;
     bool DetectFlag_;
     bool stopFlag_;
 private:
@@ -39,6 +41,8 @@ private:
     geometry_msgs::Twist  cmdTwist_;//小车自身坐标系
     float linear_x_;
     float theta_z_;
+    double  time1;
+    double  time2 = 0;
 };
 
 }
