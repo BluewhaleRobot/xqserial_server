@@ -37,7 +37,7 @@ StatusPublisher::StatusPublisher()
     {
         status[i]=0;
     }
-    car_status.encoder_ppr=750;
+    car_status.encoder_ppr=780;
 
    mPose2DPub = mNH.advertise<geometry_msgs::Pose2D>("xqserial_server/Pose2D",1,true);
    mStatusFlagPub = mNH.advertise<std_msgs::Int32>("xqserial_server/StatusFlag",1,true);
@@ -184,8 +184,8 @@ void StatusPublisher::Update(const char data[], unsigned int len)
                             //     std::cout<<(unsigned int)current_str<<std::endl;
                             //   }
                             mbUpdated=false;
-                            car_status.encoder_ppr=750;
-                            car_status.max_speed=2.0;
+                            car_status.encoder_ppr=780;
+                            car_status.max_speed=1.5;
                             break;
                           }
                       }
