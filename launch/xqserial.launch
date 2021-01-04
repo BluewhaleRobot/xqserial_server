@@ -11,6 +11,7 @@
     <param name="x_limit" value="1.5"/>
     <param name="y_limit" value="0.27"/>
     <param name="r_min" value="1.0"/>
+    <rosparam param="R_laserscan">[0.0, 1.0, -1.0, 0.0]</rosparam>
     <param name="cmd_topic" value="/cmd_vel" />
     <remap from="/scan" to="/scan_filtered" />
   </node>
