@@ -73,7 +73,7 @@ DiffDriverController::DiffDriverController(double max_speed_,std::string cmd_top
       R_laserscan_.push_back(0.0);
       R_laserscan_.push_back(-1.0);
     }
-
+    //ROS_ERROR("R %f %f %f %f",R_laserscan_[0],R_laserscan_[1],R_laserscan_[2],R_laserscan_[3]);
     std::string T_laserscan_name;
     if(private_nh.searchParam("T_laserscan", T_laserscan_name))
     {
