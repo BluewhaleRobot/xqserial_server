@@ -24,6 +24,13 @@ int main(int argc, char **argv)
 
     ros::init(argc, argv, "xqserial_server");
     ros::start();
+    
+    //获取串口参数
+    std::string port_sonar;
+    ros::param::param<std::string>("~port_sonar", port_sonar, "/dev/stm32Sonar");
+    int baud_sonar;
+    ros::param::param<int>("~baud_sonar", baud_sonar, 115200);
+    cout<<"port_car:"<<port_sonar<<" baud_sonar:"<<baud_sonar<<endl;
 
     //获取串口参数
     std::string port;
@@ -64,6 +71,10 @@ int main(int argc, char **argv)
     ros::param::set("/xqserial_server/params/c4", 0);
 
     try {
+        CallbackAsyncSerial serial_sonar(port_sonar,baud_sonar);
+        serial_sonar.setCallback(boost::bind(&xqserial_server::StatusPublisher::Update_sonar,&xq_status,_1,_2));
+
+       
         CallbackAsyncSerial serial(port,baud);
         serial.setCallback(boost::bind(&xqserial_server::StatusPublisher::Update,&xq_status,_1,_2));
         xqserial_server::DiffDriverController xq_diffdriver(max_speed,cmd_topic,&xq_status,&serial,r_min);
