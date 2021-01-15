@@ -471,7 +471,7 @@ void StatusPublisher::Refresh()
       car_status.sonar_distance[0]=4.0;
     }
 
-    
+
     if(car_status.sonar_distance[1]>0.1)
     {
       car_status.sonar_distance[1] = 4.0; //屏蔽掉
@@ -492,7 +492,11 @@ void StatusPublisher::Refresh()
       CarSonar3.header.stamp = current_time.fromSec(base_time_);
       CarSonar3.range = car_status.sonar_distance[2];
       mSonar3Pub.publish(CarSonar3);
-      if(car_status.sonar_distance[2]<rot_dist_ && rot_flag_) rot_flag_ = false;
+
+      if(car_status.sonar_distance[2]<rot_dist_ && rot_flag_)
+      {
+        rot_flag_ = false;
+      }
     }
     else
     {

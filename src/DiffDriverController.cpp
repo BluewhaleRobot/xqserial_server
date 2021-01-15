@@ -69,7 +69,7 @@ void DiffDriverController::run()
           if(i%10==0 || updateOrderflag_)
           {
             updateOrderflag_ = false;
-            if(fastStopFlag_)
+            if(fastStopFlag_ && linear_x_ > 0.01)
             {
               //优先急停
               send_fasterstop();
