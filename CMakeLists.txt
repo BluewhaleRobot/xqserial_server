@@ -52,9 +52,9 @@ include_directories(
   ${Boost_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
   ${JSONCPP_INCLUDE_DIRS}
-  ${EIGEN_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
 )
-add_definitions(${EIGEN_DEFINITIONS})
+add_definitions(${EIGEN3_DEFINITIONS})
 
 set(SRCS src/main.cpp src/AsyncSerial.cpp src/DiffDriverController.cpp src/StatusPublisher.cpp)
 add_executable(${PROJECT_NAME} ${SRCS})

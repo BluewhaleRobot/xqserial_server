@@ -100,7 +100,7 @@ void AsyncSerial::open(const std::string& devname, unsigned int baud_rate,
     pimpl->port.set_option(opt_flow);
     pimpl->port.set_option(opt_stop);
 
-    boost::asio::basic_serial_port<boost::asio::serial_port_service>::native_type native = pimpl->port.native(); // serial_port_ is the boost's serial port class.
+    boost::asio::basic_serial_port<boost::asio::serial_port>::native_handle_type native = pimpl->port.native_handle();
     struct serial_struct serial_tempf;
     ioctl(native, TIOCGSERIAL, &serial_tempf);
     serial_tempf.flags |= ASYNC_LOW_LATENCY; // (0x2000)
@@ -109,7 +109,7 @@ void AsyncSerial::open(const std::string& devname, unsigned int baud_rate,
     //This gives some work to the io_service before it is started
     pimpl->io.post(boost::bind(&AsyncSerial::doRead, this));
 
-    thread t(boost::bind(&asio::io_service::run, &pimpl->io));
+    boost::thread t(boost::bind(&asio::io_service::run, &pimpl->io));
     pimpl->backgroundThread.swap(t);
     setErrorStatus(false);//If we get here, no error
     pimpl->open=true; //Port is now open
@@ -122,7 +122,7 @@ bool AsyncSerial::isOpen() const
 
 bool AsyncSerial::errorStatus() const
 {
-    lock_guard<mutex> l(pimpl->errorMutex);
+    boost::lock_guard<boost::mutex> l(pimpl->errorMutex);
     return pimpl->error;
 }
 
@@ -144,7 +144,7 @@ void AsyncSerial::close()
 void AsyncSerial::write(const char *data, size_t size)
 {
     {
-        lock_guard<mutex> l(pimpl->writeQueueMutex);
+        boost::lock_guard<boost::mutex> l(pimpl->writeQueueMutex);
         pimpl->writeQueue.insert(pimpl->writeQueue.end(),data,data+size);
     }
     pimpl->io.post(boost::bind(&AsyncSerial::doWrite, this));
@@ -153,7 +153,7 @@ void AsyncSerial::write(const char *data, size_t size)
 void AsyncSerial::write(const std::vector<char>& data)
 {
     {
-        lock_guard<mutex> l(pimpl->writeQueueMutex);
+        boost::lock_guard<boost::mutex> l(pimpl->writeQueueMutex);
         pimpl->writeQueue.insert(pimpl->writeQueue.end(),data.begin(),
                 data.end());
     }
@@ -163,7 +163,7 @@ void AsyncSerial::write(const std::vector<char>& data)
 void AsyncSerial::writeString(const std::string& s)
 {
     {
-        lock_guard<mutex> l(pimpl->writeQueueMutex);
+        boost::lock_guard<boost::mutex> l(pimpl->writeQueueMutex);
         pimpl->writeQueue.insert(pimpl->writeQueue.end(),s.begin(),s.end());
     }
     pimpl->io.post(boost::bind(&AsyncSerial::doWrite, this));
@@ -232,7 +232,7 @@ void AsyncSerial::doWrite()
     //If a write operation is already in progress, do nothing
     if(pimpl->writeBuffer==0)
     {
-        lock_guard<mutex> l(pimpl->writeQueueMutex);
+        boost::lock_guard<boost::mutex> l(pimpl->writeQueueMutex);
         pimpl->writeBufferSize=pimpl->writeQueue.size();
         pimpl->writeBuffer.reset(new char[pimpl->writeQueue.size()]);
         copy(pimpl->writeQueue.begin(),pimpl->writeQueue.end(),
@@ -248,7 +248,7 @@ void AsyncSerial::writeEnd(const boost::system::error_code& error)
 {
     if(!error)
     {
-        lock_guard<mutex> l(pimpl->writeQueueMutex);
+        boost::lock_guard<boost::mutex> l(pimpl->writeQueueMutex);
         if(pimpl->writeQueue.empty())
         {
             pimpl->writeBuffer.reset();
@@ -281,7 +281,7 @@ void AsyncSerial::doClose()
 
 void AsyncSerial::setErrorStatus(bool e)
 {
-    lock_guard<mutex> l(pimpl->errorMutex);
+    boost::lock_guard<boost::mutex> l(pimpl->errorMutex);
     pimpl->error=e;
 }
 
@@ -434,7 +434,7 @@ bool AsyncSerial::isOpen() const
 
 bool AsyncSerial::errorStatus() const
 {
-    lock_guard<mutex> l(pimpl->errorMutex);
+    boost::lock_guard<boost::mutex> l(pimpl->errorMutex);
     return pimpl->error;
 }
 
@@ -524,7 +524,7 @@ void AsyncSerial::doClose()
 
 void AsyncSerial::setErrorStatus(bool e)
 {
-    lock_guard<mutex> l(pimpl->errorMutex);
+    boost::lock_guard<boost::mutex> l(pimpl->errorMutex);
     pimpl->error=e;
 }
 
