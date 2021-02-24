@@ -141,7 +141,9 @@ bool DiffDriverController::UpdateC4Flag(ShutdownRequest &req, ShutdownResponse &
   ROS_WARN_STREAM("Start processing shutdown request");
   if(req.flag)
   {
+    boost::mutex::scoped_lock lock(mMutex_c4);
     //下发底层c4开关命令
+    ros::param::set("/xqserial_server/params/c4", 1);
     char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x4b,(char)0x00};
     if(NULL!=cmd_serial)
     {
@@ -638,6 +640,34 @@ void DiffDriverController::updateScan(const sensor_msgs::LaserScan& scan_in)
   last_scantime_ = ros::WallTime::now();
 }
 
+void DiffDriverController::updateC1C4()
+{
+  boost::mutex::scoped_lock lock(mMutex_c4);
+  int c1_value = 0;
+  int c4_value = 0;
+  ros::param::param<int>("/xqserial_server/params/out1", c1_value, c1_value);
+  ros::param::param<int>("/xqserial_server/params/c4", c4_value, c4_value);
+  ROS_DEBUG("c1 %d %d , c4 %d %d",c1_value,xq_status->car_status.hbz1, c4_value, xq_status->car_status.hbz4);
+  if(xq_status->car_status.hbz1 != c1_value)
+  {
+    char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x4e,(char)0x00};
+    cmd_str[5] = c1_value;
+    if(NULL!=cmd_serial)
+    {
+        cmd_serial->write(cmd_str,6);
+    }
+  }
+
+  if(xq_status->car_status.hbz4 != c4_value)
+  {
+    char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x4b,(char)0x00};
+    cmd_str[5] = c4_value;
+    if(NULL!=cmd_serial)
+    {
+        cmd_serial->write(cmd_str,6);
+    }
+  }
+}
 
 
 

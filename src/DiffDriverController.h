@@ -84,6 +84,8 @@ public:
       scan_min_dist_ = x_limit_*2;
       move_forward_flag_ = true;
     }
+    
+    void updateC1C4();
 
     int speed_debug[2];
     ros::WallTime last_ordertime;
@@ -97,6 +99,7 @@ private:
     StatusPublisher* xq_status;
     CallbackAsyncSerial* cmd_serial;
     boost::mutex mMutex;
+    boost::mutex mMutex_c4;
     bool MoveFlag;
     geometry_msgs::Twist  cmdTwist_;//小车自身坐标系
 
