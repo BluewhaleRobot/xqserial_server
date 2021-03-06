@@ -4,8 +4,8 @@
     <param name="wheel_separation" value="0.40"/>
     <param name="wheel_radius" value="0.085"/>
     <param name="max_speed" value="3.0"/>
-    <param name="port_car" value="/dev/stm32Car"/>
-    <param name="port_imu" value="/dev/stm32Imu"/>
+    <param name="port_car" value="/dev/ttyUSB0"/>
+    <param name="port_imu" value="/dev/ttyUSB1"/>
     <param name="power_scale" value="1.0155"/>
     <param name="tran_dist" value="0.3"/>
     <param name="angle_limit" value="1.6"/>

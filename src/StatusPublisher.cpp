@@ -118,7 +118,7 @@ void StatusPublisher::Update_car(const char data[], unsigned int len)
 {
     int i=0,j=0;
     int * receive_byte;
-    static std::deque<unsigned char>  cmd_string_buf={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+    static std::deque<unsigned char>  cmd_string_buf={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
     unsigned char current_str=0x00;
 
     for(i=0;i<len;i++)
@@ -133,17 +133,22 @@ void StatusPublisher::Update_car(const char data[], unsigned int len)
           continue;
         }
 
-        if(cmd_string_buf[1]!=0x43 ) //校验功能码
+        if(cmd_string_buf[1]!=0x03 ) //校验功能码
+        {
+          continue;
+        }
+         
+        if(cmd_string_buf[2]!=0x08 ) //校验长度
         {
           continue;
         }
 
         //校验crc16
         uint8_t crc_hl[2];
-        unsigned char cmd_string_buf_copy[10] = {cmd_string_buf[0],cmd_string_buf[1],cmd_string_buf[2],cmd_string_buf[3],cmd_string_buf[4],cmd_string_buf[5],cmd_string_buf[6],cmd_string_buf[7],cmd_string_buf[8],cmd_string_buf[9]};
-        xqserial_server::CRC16CheckSum(cmd_string_buf_copy, 10, crc_hl);
-        //ROS_ERROR("crc %x %x , in %x %x",crc_hl[0],crc_hl[1],cmd_string_buf[7],cmd_string_buf[8]);
-        if(cmd_string_buf[10]!=crc_hl[0] || cmd_string_buf[11]!=crc_hl[1] )
+        unsigned char cmd_string_buf_copy[11] = {cmd_string_buf[0],cmd_string_buf[1],cmd_string_buf[2],cmd_string_buf[3],cmd_string_buf[4],cmd_string_buf[5],cmd_string_buf[6],cmd_string_buf[7],cmd_string_buf[8],cmd_string_buf[9],cmd_string_buf[10]};
+        xqserial_server::CRC16CheckSum(cmd_string_buf_copy, 11, crc_hl);
+        //ROS_ERROR("crc %x %x , in %x %x",crc_hl[0],crc_hl[1],cmd_string_buf[11],cmd_string_buf[12]);
+        if(cmd_string_buf[11]!=crc_hl[0] || cmd_string_buf[12]!=crc_hl[1] )
         {
           continue;
         }
@@ -152,42 +157,11 @@ void StatusPublisher::Update_car(const char data[], unsigned int len)
         {
           //右2 左1
           boost::mutex::scoped_lock lock(mMutex_car);
-          unsigned short int data1_address = cmd_string_buf[2]<<8|cmd_string_buf[3];
-          unsigned short int data2_address = cmd_string_buf[4]<<8|cmd_string_buf[5];
-          short int data1 = cmd_string_buf[6]<<8|cmd_string_buf[7];
-          short int data2 = cmd_string_buf[8]<<8|cmd_string_buf[9];
-
-          switch (data1_address) {
-            //右轮电机
-            case 0x2100:
-              //使能状态
-              car_status.driver_enable1 = data1;
-              break;
-            case 0x5012:
-              //错误状态
-              car_status.driver_error1 = data1;
-              break;
-            case 0x5004:
-              //编码器位置
-              car_status.encoder_l_current = data1;
-              break;
-          }
-
-          switch (data2_address) {
-            //右轮电机
-            case 0x3100:
-              //使能状态
-              car_status.driver_enable2 = data2;
-              break;
-            case 0x5112:
-              //错误状态
-              car_status.driver_error2 = data2;
-              break;
-            case 0x5104:
-              //编码器位置
-              car_status.encoder_r_current = data2;
-              break;
-          }
+          int data1 = cmd_string_buf[5]<<24|cmd_string_buf[6]<<16|cmd_string_buf[3]<<8|cmd_string_buf[4];
+          int data2 = cmd_string_buf[9]<<24|cmd_string_buf[10]<<16|cmd_string_buf[7]<<8|cmd_string_buf[8];
+          
+          car_status.encoder_l_current = data1;
+          car_status.encoder_r_current = data2;
 
           car_status.driver_error = car_status.driver_error1 + car_status.driver_error2;
           mbUpdated_car = true;
@@ -301,7 +275,7 @@ void StatusPublisher::Refresh()
     ii++;
     int delta_encoder_r = 0;
     int delta_encoder_l = 0;
-    //ROS_ERROR("car %d %d",mbUpdated_imu, mbUpdated_car);
+    ROS_ERROR("car %d , %d ",mbUpdated_car,car_status.encoder_l_current);
     //先处理驱动器
     {
       //boost::mutex::scoped_lock lock(mMutex_car);

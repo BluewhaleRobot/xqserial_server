@@ -31,7 +31,7 @@ int main(int argc, char **argv)
     std::string port_car;
     ros::param::param<std::string>("~port_car", port_car, "/dev/stm32Car");
     int baud_car;
-    ros::param::param<int>("~baud_car", baud_car, 115200);
+    ros::param::param<int>("~baud_car", baud_car, 230400);
     cout<<"port_car:"<<port_car<<" baud_car:"<<baud_car<<endl;
 
     std::string port_imu;
@@ -90,12 +90,10 @@ int main(int argc, char **argv)
 
       ros::Duration(1).sleep();
 
-      const char driver_clear_cmd[8] = {(char)0x01,(char)0x06,(char)0x46,(char)0x02,(char)0x00,(char)0x00,(char)0x3d,(char)0x42}; //模式
-      const char driver_reset_cmd[8] = {(char)0x01,(char)0x06,(char)0x46,(char)0x03,(char)0x00,(char)0x01,(char)0xad,(char)0x42}; //模式
-      const char driver_read_error_cmd[8] = {(char)0x01,(char)0x43,(char)0x50,(char)0x12,(char)0x51,(char)0x12,(char)0x48,(char)0x9d}; //模式
-      const char driver_read_odom_cmd[8] = {(char)0x01,(char)0x43,(char)0x50,(char)0x04,(char)0x51,(char)0x04,(char)0x28,(char)0x97}; //模式
-      const char driver_read_enable_cmd[8] = {(char)0x01,(char)0x43,(char)0x21,(char)0x00,(char)0x31,(char)0x00,(char)0x5b,(char)0xa9}; //模式
-      ros::Rate r(50);//发布周期为50hz
+      const char driver_speed_test_cmd[17] = {(char)0x01,(char)0x10,(char)0x10,(char)0x04,(char)0x00,(char)0x04,(char)0x08,(char)0x00,(char)0x64,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x5c,(char)0xe3}; //模式
+      const char driver_speed_stop_cmd[17] = {(char)0x01,(char)0x10,(char)0x10,(char)0x04,(char)0x00,(char)0x04,(char)0x08,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x00,(char)0x79,(char)0x25}; //模式
+      const char driver_read_odom_cmd[8] = {(char)0x01,(char)0x03,(char)0x13,(char)0x84,(char)0x00,(char)0x04,(char)0x00,(char)0xa4}; 
+      ros::Rate r(100);//发布周期为50hz
       ros::WallTime last_movetime=ros::WallTime::now();
       static int i = 0;
       static int clear_try = 0;
@@ -103,70 +101,24 @@ int main(int argc, char **argv)
       {
         if(serial_car.errorStatus() || serial_car.isOpen()==false)
         {
-            cerr<<"Error: serial port closed unexpectedly"<<endl;
-            break;
+          cerr<<"Error: serial port closed unexpectedly"<<endl;
+          break;
         }
 
-        if(i%100 == 0)
+        if(i ==0)
         {
-          //每隔2秒下发心跳包
-          xq_diffdriver.sendHeartbag();
-        }
-
-        serial_car.write(driver_read_odom_cmd,8);
-        usleep(8000);//延时8MS，等待数据上传
-        xq_status.Refresh();//定时发布状态
-        if(i%2==0)
-        {
-          xq_diffdriver.Refresh();//更新驱动速度 25hz
-        }
-        //如果驱动器有报警，需要清除报警，清除报警3次后都恢复不了，就重启驱动器
-        if(xq_status.car_status.driver_error != 0 && i%10==0)
-        {
-          if(clear_try<3)
-          {
-            //清除错误
-            ROS_ERROR("clear motor driver error! %d %d ",xq_status.car_status.driver_error1, xq_status.car_status.driver_error2);
-            serial_car.write(driver_clear_cmd,8);
-            usleep(2000);//延时2MS
-            serial_car.write(driver_read_error_cmd,8);
-            clear_try ++;
-          }
-          else
-          {
-            //复位，需要重置一些状态
-            ROS_ERROR("reset motor driver ! %d %d ",xq_status.car_status.driver_error1, xq_status.car_status.driver_error2);
-            serial_car.write(driver_reset_cmd,8);
-            xq_status.ResetDriver();
-            xq_diffdriver.ResetDriver();
-            clear_try = 0;
-          }
+          serial_car.write(driver_read_odom_cmd,8);
+          i++;
         }
         else
         {
-          clear_try = 0;
+          serial_car.write(driver_speed_test_cmd,17);
+          xq_status.Refresh();//定时发布状态
+          i = 0;
         }
-
-        if(i%25==0)
-        {
-          //读取驱动器状态
-          serial_car.write(driver_read_enable_cmd,8);
-          usleep(2000);//延时2MS
-          serial_car.write(driver_read_error_cmd,8);
-        }
-
-        //更新按钮
-        if(xq_diffdriver.dealBackSwitch())
-        {
-          //告诉用户回去了
-          std_msgs::String audio_msg;
-          audio_msg.data = "好的，我回去了，您慢用！";
-          audio_pub.publish(audio_msg);
-        }
-        i++;
         r.sleep();
       }
-      xq_diffdriver.send_release();
+      serial_car.write(driver_speed_stop_cmd,17);
       usleep(10000);//延时10MS
       quit:
         serial_car.close();
