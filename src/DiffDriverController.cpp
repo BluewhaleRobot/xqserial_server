@@ -73,7 +73,7 @@ bool DiffDriverController::UpdateC4Flag(ShutdownRequest &req, ShutdownResponse &
     boost::mutex::scoped_lock lock(mMutex_c4);
     //下发底层c4开关命令
     ros::param::set("/xqserial_server/params/c4", 1);
-    char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x4b,(char)0x01};
+    char cmd_str[6]={(char)0xcd,(char)0xeb,(char)0xd7,(char)0x02,(char)0x4e,(char)0x01};
     if(NULL!=cmd_serial)
     {
         cmd_serial->write(cmd_str,6);
